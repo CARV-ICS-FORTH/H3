@@ -66,11 +66,11 @@ int h3_move_object(h3_handle handle, h3_name bucket_name, h3_name src_object_nam
 int h3_delete_object(h3_handle handle, h3_name bucket_name, h3_name object_name);
 
 // Multipart management
-int h3_list_multiparts(h3_handle handle, h3_name bucket_name, int max_size, int offset, h3_multipart *multiparts, int *size);
-int h3_create_multipart(h3_handle handle, h3_name bucket_name, h3_multipart *multipart);
-int h3_delete_multipart(h3_handle handle, h3_name bucket_name, h3_multipart multipart);
+int h3_list_multiparts(h3_handle handle, h3_name bucket_name, h3_name prefix, int max_size, int offset, h3_multipart *multiparts, int *size);
+int h3_create_multipart(h3_handle handle, h3_name bucket_name, h3_name object_name, h3_multipart *multipart);
+int h3_complete_multipart(h3_handle handle, h3_multipart multipart);
+int h3_abort_multipart(h3_handle handle, h3_multipart multipart);
 
-int h3_info_multipart(h3_handle handle, h3_name bucket_name, h3_multipart multipart, int max_size, int offset, h3_multipart_info *multipart_info, int *size);
-int h3_write_multipart(h3_handle handle, h3_name bucket_name, h3_multipart multipart, int position, void *data, int size);
-int h3_copy_multipart(h3_handle handle, h3_name bucket_name, h3_name object_name, int offset, int size, h3_multipart multipart, int position);
-int h3_commit_multipart(h3_handle handle, h3_name bucket_name, h3_name object_name, h3_multipart multipart);
+int h3_list_parts(h3_handle handle, h3_multipart multipart, int max_size, int offset, h3_multipart_info *multipart_info, int *size);
+int h3_write_part(h3_handle handle, h3_multipart multipart, int position, void *data, int size);
+int h3_copy_part(h3_handle handle, h3_name object_name, int offset, int size, h3_multipart multipart, int position);
