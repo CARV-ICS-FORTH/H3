@@ -1,0 +1,15 @@
+.DS_Store
+venv/
+*.egg-info
+build/
+dist/
+*.o
+*.so*
+*.bin
+.cproject
+.project
+.settings
+__pychache__
+_build/
+*.pyc
+h3cp/h3cp
