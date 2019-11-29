@@ -33,12 +33,9 @@ Users, buckets and objects in H3 have associated metadata. Objects also have dat
 Metadata
 ^^^^^^^^
 
-Each user, bucket and object in H3 has a unique name identifier corresponding to a key in the backend holding its metadata. The object metadata contain -among others- the keys corresponding to the data. User keys are formulated by concatenating ``'@'`` and the user id (eg. ``@42``). Bucket keys are the bucket names. Object keys are produced by concatenating the bucket name, ``/`` and the full object name (eg. ``mybucket/a``, ``mybucket/a/b/c``).
+Each user, bucket and object in H3 has a unique name identifier corresponding to a key in the backend holding its metadata. User keys are formulated by concatenating ``'@'`` and the user id (eg. ``@42``). Bucket keys are the bucket names. Object keys are produced by concatenating the bucket name, ``/`` and the full object name (eg. ``mybucket/a``, ``mybucket/a/b/c``).
 
-**Valid characters**
-Bucket ID:  The bucket name may be made up of all alaphanumeric characters except ``/`` since this the bucket-object delimeter.
-Object ID: TBD
-User ID: TBD
+There are no limitations on the characters that can be used for object names. Bucket names cannot include ``/`` (Amazon S3 requires compliance with DNS naming).
 
 User metadata includes:
 
@@ -61,7 +58,8 @@ By storing bucket/object names as keys, we are able to use the key-value's scan 
 
 To avoid resizing values for object metadata very often, we allocate metadata in duplicates of a batch size, where each batch may hold information for several data parts. The same applies to user metadata for storing bucket names.
 
-We handle multipart data writes (multipart upload) with special types of objects, which exist in the namespace that results from concatenating the bucket name with marker ``$`` and an identifier (upload_id) generated internally on user request. The id is the hash of the bucket and object-id concatenation. 
+We handle multipart data writes (multipart upload) with special types of objects, which exist in the namespace that results from concatenating the bucket name with marker ``$`` and an identifier generated internally.
+
 Data
 ^^^^
 
@@ -71,7 +69,7 @@ Object data is broken up into parts if it is larger than the value size limitati
 
 Each read or write operation results in one metadata get at the backend, one or more key reads/writes (depending on how many parts the object consists of and how the read/write boundary overlaps with those part offsets/lengths), and a metadata write. We avoid writing over the current boundary of object data parts, as in Kreon this requires reallocating space for the key-value pair. Instead, we write a new part to enlarge an object.
 
-Multipart data is handled in the exact same way. Part ``i`` of data belonging to ``mybucket$b`` goes into key ``'_' + hash('mybucket$b') + '#' + i``. Any internal parts go into ``... '#' + i + '.' + j``. When a multipart object is complete, it is moved to the "standard" object namespace.
+Multipart data is handled in the exact same way. Part ``i`` of data belonging to ``mybucket$b`` goes into key ``'_' + hash('mybucket$b') + '#' + i``. Any internal parts go into ``... '#' + i + '.' + j``. When a multipart object is complete, it is moved to the "standard" object namespace. The hash of the object key (``hash('mybucket$b')``), is actually used as the multipart identifier returned to the user.
 
 *Note: There has been a discussion on splitting up data into extents and storing the extents as write-once, content-hashed blocks. This has pros (fast copies, easy versioning, data deduplication, snapshots) and cons (hash lists in metadata management, hash calculation, garbage collection).*
 
@@ -83,9 +81,9 @@ The following table outlines in pseudocode how H3 operations are implemented wit
     | ``user_id = '@' + <user_name>``
     | ``bucket_id = <bucket name>``
     | ``object_id = <bucket name> + '/' + <object_name>``
-    | ``object_part_id = '_' + hash(object_id) + '#' + <part_id> + ['.' + <subpart_id>]``
-    | ``multipart_id = <bucket name> + '$' + <multipart_name>``
-    | ``multipart_part_id = '_' + hash(multipart_id) + '#' + <part_id> + ['.' + <subpart_id>]``
+    | ``object_part_id = '_' + hash(object_id) + '#' + <part_number> + ['.' + <subpart_number>]``
+    | ``multipart_id = <bucket name> + '$' + <object_name>``
+    | ``multipart_part_id = '_' + hash(multipart_id) + '#' + <part_number> + ['.' + <subpart_number>]``
 
 :Create bucket:
     | ``get(key=user_id)``
