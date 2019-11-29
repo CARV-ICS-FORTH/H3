@@ -22,7 +22,7 @@ typedef char * h3_name;
 typedef void * h3_multipart;
 
 typedef enum {
-    H3_STORE_REDIS, H3_STORE_KREON, H3_STORE_FILESYSTEM, H3_STORE_NumOfStores
+    H3_STORE_REDIS, H3_STORE_ROCKSDB, H3_STORE_KREON, H3_STORE_FILESYSTEM, H3_STORE_NumOfStores
 }H3_StoreType;
 
 //
