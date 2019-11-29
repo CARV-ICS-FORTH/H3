@@ -60,8 +60,8 @@ int h3_foreach_object(h3_handle handle, h3_name bucket_name, h3_name prefix, int
 int h3_info_object(h3_handle handle, h3_name bucket_name, h3_name object_name, h3_object_info *object_info);
 int h3_read_object(h3_handle handle, h3_name bucket_name, h3_name object_name, int max_size, int offset, void *data, int *size);
 int h3_write_object(h3_handle handle, h3_name bucket_name, h3_name object_name, void *data, int offset, int size);
+int h3_write_object_from_object(h3_handle handle, h3_name bucket_name, h3_name src_object_name, int offset, int size, h3_name dest_object_name);
 int h3_copy_object(h3_handle handle, h3_name bucket_name, h3_name src_object_name, h3_name dest_object_name);
-int h3_copy_object_part(h3_handle handle, h3_name bucket_name, h3_name src_object_name, int offset, int size, h3_name dest_object_name);
 int h3_move_object(h3_handle handle, h3_name bucket_name, h3_name src_object_name, h3_name dest_object_name);
 int h3_delete_object(h3_handle handle, h3_name bucket_name, h3_name object_name);
 
@@ -73,4 +73,4 @@ int h3_abort_multipart(h3_handle handle, h3_multipart multipart);
 
 int h3_list_parts(h3_handle handle, h3_multipart multipart, int max_size, int offset, h3_multipart_info *multipart_info, int *size);
 int h3_write_part(h3_handle handle, h3_multipart multipart, int position, void *data, int size);
-int h3_copy_part(h3_handle handle, h3_name object_name, int offset, int size, h3_multipart multipart, int position);
+int h3_write_part_from_object(h3_handle handle, h3_name object_name, int offset, int size, h3_multipart multipart, int position);
