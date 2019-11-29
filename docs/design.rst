@@ -28,12 +28,17 @@ Note that H3 cannot enforce strict data protection semantics, due to its nature 
 Data organization
 -----------------
 
-Users, buckets and objects in H3 have associated metadata. Objects also have data, that - depending on the creation/write method - can consist of a single or multiple parts. We assume that the key-value backend may have size limits on either keys and/or values.
+Users, buckets and objects in H3 have associated metadata. Objects also have data, that - depending on the creation/write method - can consist of a single or multiple parts of variable size. We assume that the key-value backend may have size limits on either keys and/or values thus H3 will automatically break over-sized values into an appropriate number of smaller parts.
 
 Metadata
 ^^^^^^^^
 
-Each user, bucket and object in H3 has a unique name identifier which corresponds to a key in the backend holding its metadata. User keys are formulated by concatenating ``'@'`` and the user id (eg. ``@42``). Bucket keys are the bucket names. Object keys are produced by concatenating the bucket name, ``/`` and the full object name (eg. ``mybucket/a``, ``mybucket/a/b/c``, or ``mybucket/a|b|c``).
+Each user, bucket and object in H3 has a unique name identifier corresponding to a key in the backend holding its metadata. The object metadata contain -among others- the keys corresponding to the data. User keys are formulated by concatenating ``'@'`` and the user id (eg. ``@42``). Bucket keys are the bucket names. Object keys are produced by concatenating the bucket name, ``/`` and the full object name (eg. ``mybucket/a``, ``mybucket/a/b/c``).
+
+**Valid characters**
+Bucket ID:  The bucket name may be made up of all alaphanumeric characters except ``/`` since this the bucket-object delimeter.
+Object ID: TBD
+User ID: TBD
 
 User metadata includes:
 
@@ -56,8 +61,7 @@ By storing bucket/object names as keys, we are able to use the key-value's scan 
 
 To avoid resizing values for object metadata very often, we allocate metadata in duplicates of a batch size, where each batch may hold information for several data parts. The same applies to user metadata for storing bucket names.
 
-We handle multipart data writes with special types of objects, which exist in the namespace that results from concatenating the bucket name and ``$``. Multipart object names (identifiers) are automatically generated internally on user request and are 32-byte random strings.
-
+We handle multipart data writes (multipart upload) with special types of objects, which exist in the namespace that results from concatenating the bucket name with marker ``$`` and an identifier (upload_id) generated internally on user request. The id is the hash of the bucket and object-id concatenation. 
 Data
 ^^^^
 
