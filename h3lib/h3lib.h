@@ -21,6 +21,10 @@ typedef void * h3_handle;
 typedef char * h3_name;
 typedef void * h3_multipart;
 
+typedef enum {
+    H3_STORE_REDIS, H3_STORE_ROCKSDB, H3_STORE_KREON, H3_STORE_FILESYSTEM, H3_STORE_NumOfStores
+}H3_StoreType;
+
 typedef struct {
 	h3_name name;
 	int byte_size;
@@ -42,6 +46,8 @@ typedef struct {
 } h3_multipart_info;
 
 typedef void (*h3_name_iterator_cb)(h3_name name, void *user_data);
+
+char* h3_version();
 
 // Handle management
 h3_handle h3_init_handle(h3_name storage, int argc, char **argv);
