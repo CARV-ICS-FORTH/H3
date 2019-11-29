@@ -11,5 +11,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include <stdio.h>
 
 #include "h3lib.h"
+#include "h3lib_config.h"
+
+#define BUFF_SIZE 24
+char* h3_version(){
+    static char buffer[BUFF_SIZE];
+    snprintf(buffer, BUFF_SIZE, "v%d.%d\n", H3LIB_VERSION_MAJOR, H3LIB_VERSION_MINOR);
+    return buffer;
+}

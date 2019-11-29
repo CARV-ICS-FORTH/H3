@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#import "kvlib.h"
+#include "kvlib.h"
 
 kv_handle kv_init_fs(int argc, char **argv) {
 	return NULL;
 }
 
 void kv_free_fs(kv_handle handle) {
-	return KV_SUCCESS;
+    return;
 }
 
 int kv_list_fs(kv_handle handle) {

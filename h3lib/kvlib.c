@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#import "kvlib.h"
+#include "kvlib.h"
 
-kv_handle kv_init_handle(kv_name storage, int argc, char **argv) {
-
+kv_handle kv_init_handle(H3_StoreType storeType, int argc, char **argv) {
+    return NULL;
 }
 
 void kv_free_handle(kv_handle handle) {

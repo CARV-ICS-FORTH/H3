@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <stdio.h>
+
+#include "h3lib.h"
+
 // Error codes
 #define KV_SUCCESS 1
 #define KV_FAILURE 0
@@ -20,21 +24,21 @@ typedef void * kv_handle;
 typedef char * kv_key;
 
 // Handle management
-kv_handle kv_init_handle(kv_name storage, int argc, char **argv);
+kv_handle kv_init_handle(H3_StoreType storeType, int argc, char **argv);
 void kv_free_handle(kv_handle handle);
 
 // Key-value operations
 typedef struct kv_operations {
-	kv_handle (*init)(int argc, char **argv),
-	void (*free)(kv_handle handle),
-	int (*list)(kv_handle handle),
-	int (*exists)(kv_handle handle, kv_key key),
-	int (*read)(kv_handle handle, kv_key key, int max_size, int offset, void *value, int *size),
-	int (*write)(kv_handle handle, kv_key key, void *value, int offset, int size),
-	int (*copy)(kv_handle handle, kv_key src_key, kv_key dest_key),
-	int (*move)(kv_handle handle, kv_key src_key, kv_key dest_key),
-	int (*delete)(kv_handle handle, kv_key key),
-	int (*sync)(kv_handle handle)
+	kv_handle (*init)(int argc, char **argv);
+	void (*free)(kv_handle handle);
+	int (*list)(kv_handle handle);
+	int (*exists)(kv_handle handle, kv_key key);
+	int (*read)(kv_handle handle, kv_key key, int max_size, int offset, void *value, int *size);
+	int (*write)(kv_handle handle, kv_key key, void *value, int offset, int size);
+	int (*copy)(kv_handle handle, kv_key src_key, kv_key dest_key);
+	int (*move)(kv_handle handle, kv_key src_key, kv_key dest_key);
+	int (*delete)(kv_handle handle, kv_key key);
+	int (*sync)(kv_handle handle);
 } kv_operations;
 
 extern const struct kv_operations kv_operations_filesystem;
