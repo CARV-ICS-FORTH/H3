@@ -21,14 +21,21 @@ endif()
 include(GNUInstallDirs)
 
 
-
 #https://cmake.org/cmake/help/v3.10/command/add_library.html
 set(SOURCE_FILES h3lib.c kvlib.c kv_fs.c )
 add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES})
 
 #https://cmake.org/cmake/help/v3.10/command/target_include_directories.html
 target_include_directories( ${PROJECT_NAME} PUBLIC
-                            "${PROJECT_BINARY_DIR}")
+                            "${PROJECT_BINARY_DIR}"
+                            "${GLIB_HEADERS}")
+                            
+
+find_package(PkgConfig REQUIRED)
+pkg_search_module(GLIB REQUIRED glib-2.0)
+target_include_directories(${PROJECT_NAME} PRIVATE ${GLIB_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_NAME} INTERFACE ${GLIB_LDFLAGS})
+                           
 
 #target_include_directories( ${PROJECT_NAME} PUBLIC
 #                            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -47,17 +54,3 @@ set_target_properties( ${PROJECT_NAME} PROPERTIES
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES h3lib.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME} )
 
-
-
-
-
-
-# set the project name and version
-#project(h3lib  VERSION 1.0)
-
-#configure_file(h3lib_config.h.in h3lib_config.h)
-
-# add the executable
-#add_executable(h3lib main.c)
-#
-#target_include_directories(h3lib PUBLIC "${PROJECT_BINARY_DIR}" )

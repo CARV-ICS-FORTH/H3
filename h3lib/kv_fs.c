@@ -14,21 +14,40 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+
+#include <glib.h>
+
 #include "kv_interface.h"
 #include "kv_fs.h"
 
 typedef struct {
-    int dummy;
-    KV_Filesystem_Params* params;
+    char* root;
 }KV_Filesystem_Handle;
 
-KV_Handle kv_init_fs(void* params) {
+KV_Handle kv_init_fs(GKeyFile* cfgFile) {
+    g_autoptr(GError) error = NULL;
     KV_Filesystem_Handle* handle = malloc(sizeof(KV_Filesystem_Handle));
-    handle->params = (KV_Filesystem_Params*) params;
+
+    handle->root = g_key_file_get_string (cfgFile, "FS", "root", &error);
+    if(handle->root == NULL){
+
+        // Key 'root' is not defined, use default value instead
+        if(g_error_matches (error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND)){
+            handle->root = strdup("/tmp/h3");
+        }
+
+        // Error, section 'FS' is missing
+        else
+            return NULL;
+    }
+
 	return (KV_Handle)handle;
 }
 
 void kv_free_fs(KV_Handle handle) {
+    KV_Filesystem_Handle* iHandle = (KV_Filesystem_Handle*) handle;
+    free(iHandle->root);
+    free(iHandle);
     return;
 }
 

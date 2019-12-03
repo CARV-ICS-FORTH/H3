@@ -50,7 +50,7 @@ typedef void (*h3_name_iterator_cb)(H3_Name name, void* userData);
 char* H3_Version();
 
 // Handle management
-H3_Handle H3_Init(H3_StoreType storageType, void* storageParams);
+H3_Handle H3_Init(H3_StoreType storageType, char* cfgFileName);
 void H3_Free(H3_Handle handle);
 
 // Bucket management

@@ -15,6 +15,8 @@
 #ifndef KV_INTERFACE_H_
 #define KV_INTERFACE_H_
 
+#include <glib.h>
+
 // Error codes
 #define KV_SUCCESS 1
 #define KV_FAILURE 0
@@ -28,7 +30,7 @@ typedef char* KV_Key;
 
 // Key-value operations
 typedef struct KV_Operations {
-	KV_Handle (*init)(void* params);
+	KV_Handle (*init)(GKeyFile* cfgFile);
 	void (*free)(KV_Handle handle);
 
     int (*metadata_read)(KV_Handle handle, KV_Key key, int maxSize, int offset, void *value, int *size);

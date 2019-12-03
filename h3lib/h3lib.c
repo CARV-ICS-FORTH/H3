@@ -14,10 +14,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <glib.h>
+#include <glib/gprintf.h>
+
 #include "h3lib.h"
 #include "h3lib_config.h"
 #include "kv_interface.h"
-#include "kv_fs.h"
 
 #define BUFF_SIZE 24
 
@@ -39,11 +41,20 @@ char* H3_Version(){
 }
 
 
-// Handle management
-H3_Handle H3_Init(H3_StoreType storageType, void* storageParams) {
-    H3_Context* context = malloc(sizeof(H3_Context));
-    void* params;
 
+// Handle management
+// https://developer.gnome.org/glib/stable/glib-Key-value-file-parser.html
+H3_Handle H3_Init(H3_StoreType storageType, char* cfgFileName) {
+    g_autoptr(GError) error = NULL;
+    GKeyFile* cfgFile = g_key_file_new();
+    if( !g_key_file_load_from_file(cfgFile, cfgFileName, G_KEY_FILE_NONE, &error)) {
+        if (!g_error_matches (error, G_FILE_ERROR, G_FILE_ERROR_NOENT))
+            g_warning ("Error loading key file: %s", error->message);
+        return NULL;
+    }
+
+
+    H3_Context* context = malloc(sizeof(H3_Context));
     switch(storageType){
         case H3_STORE_REDIS:
         case H3_STORE_ROCKSDB:
@@ -52,21 +63,15 @@ H3_Handle H3_Init(H3_StoreType storageType, void* storageParams) {
             context->operation = NULL;
             break;
 
-        case H3_STORE_FILESYSTEM: {
-            KV_Filesystem_Params* fsParams = malloc(sizeof(KV_Filesystem_Params));
-            // Extract info from storageParams
-            fsParams->dummy = 0;
+        case H3_STORE_FILESYSTEM:
             context->operation = &operationsFilesystem;
-            params = (void*) fsParams;
-        }
-        break;
+            break;
 
         default:
             exit(-1);
     }
 
-
-    context->handle = context->operation->init(params);
+    context->handle = context->operation->init(cfgFile);
 
     return (H3_Handle)context;
 }
