@@ -6,21 +6,24 @@ project(h3lib VERSION 1.0 LANGUAGES C)
 configure_file(h3lib_config.h.in h3lib_config.h)
 
 
-#set(DEFAULT_BUILD_TYPE "Release")
-#
-#if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-#  message(STATUS "Setting build type to '${DEFAULT_BUILD_TYPE}' as none was specified.")
-#  set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}" CACHE STRING "Choose the type of build." FORCE)
-#  # Set the possible values of build type for cmake-gui
-#  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release")
-#endif()
+# https://cmake.org/cmake/help/v3.10/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
+# https://cmake.org/cmake/help/v3.10/variable/CMAKE_CONFIGURATION_TYPES.html#variable:CMAKE_CONFIGURATION_TYPES
+set(DEFAULT_BUILD_TYPE "Release")
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  message(STATUS "Setting build type to '${DEFAULT_BUILD_TYPE}' as none was specified.")
+  set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}" CACHE STRING "Choose the type of build." FORCE)
+  # Set the possible values of build type for cmake-gui
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+endif()
 
+# Define GNU standard installation directories as variables CMAKE_INSTALL_xxxx
+# https://cmake.org/cmake/help/v3.10/module/GNUInstallDirs.html
 include(GNUInstallDirs)
 
 
 
 #https://cmake.org/cmake/help/v3.10/command/add_library.html
-set(SOURCE_FILES h3lib.c kvlib.c kvlib_fs.c )
+set(SOURCE_FILES h3lib.c kvlib.c kv_fs.c )
 add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES})
 
 #https://cmake.org/cmake/help/v3.10/command/target_include_directories.html
@@ -39,20 +42,11 @@ set_target_properties( ${PROJECT_NAME} PROPERTIES
                        VERSION ${PROJECT_VERSION}
                        SOVERSION 1)
 
-
+# Use "sudo make install" to apply.
 # https://cmake.org/cmake/help/v3.10/command/install.html
-#install(TARGETS ${PROJECT_NAME} LIBRARY MyLibConfig)
+install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(FILES h3lib.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME} )
 
-#install(TARGETS ${PROJECT_NAME} EXPORT MyLibConfig
-#    ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}
-#    LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
-#    RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR})
-#    
-#install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME})
-#
-#install(EXPORT MyLibConfig DESTINATION share/MyLib/cmake)
-#
-#export(TARGETS ${PROJECT_NAME} FILE MyLibConfig.cmake)
 
 
 
