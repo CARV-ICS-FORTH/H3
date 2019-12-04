@@ -92,6 +92,7 @@ KV_Operations operationsFilesystem = {
 
     .metadata_read = kv_read_fs,
     .metadata_write = kv_write_fs,
+    .metadata_create = kv_create_fs,
 
 	.list = kv_list_fs,
 	.exists = kv_exists_fs,

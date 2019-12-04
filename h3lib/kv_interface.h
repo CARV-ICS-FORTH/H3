@@ -42,6 +42,7 @@ typedef struct KV_Operations {
 
     int (*metadata_read)(KV_Handle handle, KV_Key key, int offset, KV_Value* value, int* size);
     int (*metadata_write)(KV_Handle handle, KV_Key key, KV_Value value, int offset, int size);
+    int (*metadata_create)(KV_Handle handle, KV_Key key, KV_Value value, int offset, int size);
 
 	int (*list)(KV_Handle handle);
 	int (*exists)(KV_Handle handle, KV_Key key);

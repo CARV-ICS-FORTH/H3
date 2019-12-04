@@ -30,7 +30,10 @@
 
 #define H3_USERID_SIZE      (H3_OBJECT_NAME_SIZE - 1)
 
-//#define mGetUserId(token)   (token)->userId
+
+typedef unsigned char H3_UserId[H3_USERID_SIZE];
+typedef unsigned char H3_BucketId[H3_BUCKET_NAME_SIZE];
+typedef unsigned char H3_ObjectId[H3_BUCKET_NAME_SIZE + H3_BUCKET_NAME_SIZE + 1];
 
 typedef struct {
     H3_StoreType type;
@@ -40,7 +43,20 @@ typedef struct {
     KV_Operations* operation;
 }H3_Context;
 
-typedef unsigned char H3_UserId[H3_USERID_SIZE];
+typedef struct{
+    int nBuckets;
+    H3_BucketId bucket[];
+}H3_UserMetadata;
+
+typedef struct{
+    int dummy;
+}H3_BucketMetadata;
+
+
+
+#define mSizeofUserMetadata(a) (sizeof(H3_UserMetadata) + (a)->nBuckets * sizeof(H3_BucketId))
+
+
 
 
 int ValidateBucketName(char* name);

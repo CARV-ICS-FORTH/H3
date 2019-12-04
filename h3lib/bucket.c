@@ -36,6 +36,8 @@ int H3_CreateBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName){
     H3_Context* ctx = (H3_Context*)handle;
     KV_Handle _handle = ctx->handle;
     H3_UserId userId;
+    H3_BucketMetadata bucketMetadata;
+    H3_UserMetadata* userMetadata;
     KV_Value value;
     int size = 0;
 
@@ -46,14 +48,21 @@ int H3_CreateBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName){
         return H3_FAILURE;
     }
 
-    ctx->operation->metadata_read(_handle, userId, 0, &value, &size);
+    if( ctx->operation->metadata_create(_handle, bucketName, (KV_Value)&bucketMetadata,0, sizeof(H3_BucketMetadata))){
+        ctx->operation->metadata_read(_handle, userId, 0, &value, &size);
 
+        userMetadata = (H3_UserMetadata*)value;
+        userMetadata = realloc(userMetadata, mSizeofUserMetadata(userMetadata) + sizeof(H3_BucketId));
+        strncpy(userMetadata->bucket[userMetadata->nBuckets], bucketName, sizeof(H3_BucketId));
+        userMetadata->nBuckets++;
 
-//    user_metadata = get(key=user_id)
-//    create(key=bucket_id, value=bucket_metadata)
-//    user_metadata += bucket_id
-//    put(key=user_id, value=user_metadata)
-    return H3_SUCCESS;
+        ctx->operation->metadata_write(_handle, userId, (KV_Value)userMetadata, 0, mSizeofUserMetadata(userMetadata));
+        free(userMetadata);
+
+        return H3_SUCCESS;
+    }
+
+    return H3_FAILURE;
 }
 
 int H3_InfoBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_BucketInfo* bucketInfo){return H3_FAILURE;}

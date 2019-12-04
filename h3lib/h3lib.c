@@ -40,36 +40,36 @@ H3_Handle H3_Init(H3_StoreType storageType, char* cfgFileName) {
     }
 
 
-    H3_Context* context = malloc(sizeof(H3_Context));
+    H3_Context* ctx = malloc(sizeof(H3_Context));
     switch(storageType){
         case H3_STORE_REDIS:
         case H3_STORE_ROCKSDB:
         case H3_STORE_KREON:
         case H3_STORE_IME:
-            context->operation = NULL;
+            ctx->operation = NULL;
             break;
 
         case H3_STORE_FILESYSTEM:
-            context->operation = &operationsFilesystem;
+            ctx->operation = &operationsFilesystem;
             break;
 
         default:
 //            if(errorMsg)
 //                snprintf(errorMsg, H3_ERROR_MESSAGE, "Unexpected storage type: %d", storageType);
-            free(context);
+            free(ctx);
             return NULL;
     }
 
-    context->type = storageType;
-    context->handle = context->operation->init(cfgFile);
+    ctx->type = storageType;
+    ctx->handle = ctx->operation->init(cfgFile);
 
-    return (H3_Handle)context;
+    return (H3_Handle)ctx;
 }
 
 void H3_Free(H3_Handle handle){
-    H3_Context* context = (H3_Context*)handle;
-    context->operation->free(context->handle);
-    free(context);
+    H3_Context* ctx = (H3_Context*)handle;
+    ctx->operation->free(ctx->handle);
+    free(ctx);
 };
 
 
