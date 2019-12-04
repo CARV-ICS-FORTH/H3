@@ -54,3 +54,7 @@ set_target_properties( ${PROJECT_NAME} PROPERTIES
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES h3lib.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME} )
 
+# https://gitlab.kitware.com/cmake/community/wikis/doc/ctest/Testing-With-CTest
+enable_testing()
+add_subdirectory(tests)
+
