@@ -47,6 +47,6 @@ typedef struct KV_Operations {
 	int (*sync)(KV_Handle handle);
 } KV_Operations;
 
-#endif // KV_INTERFACE_H_
+#endif /* KV_INTERFACE_H_ */
 
 

@@ -12,9 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef H3LIB_H_
+#define H3LIB_H_
+
 // Error codes
 #define H3_SUCCESS 1
 #define H3_FAILURE 0
+
+#define H3_ERROR_MESSAGE    512
 
 // Types
 typedef void* H3_Handle;
@@ -24,6 +29,10 @@ typedef void* H3_MultipartId;
 typedef enum {
     H3_STORE_REDIS, H3_STORE_ROCKSDB, H3_STORE_KREON, H3_STORE_FILESYSTEM, H3_STORE_IME, H3_STORE_NumOfStores
 }H3_StoreType;
+
+typedef struct{
+   int userId;
+}H3_Token;
 
 typedef struct {
 	H3_Name name;
@@ -54,28 +63,30 @@ H3_Handle H3_Init(H3_StoreType storageType, char* cfgFileName);
 void H3_Free(H3_Handle handle);
 
 // Bucket management
-int H3_ListBuckets(H3_Handle handle, int maxSize, int offset, H3_Name* bucketNames, int* size);
-int H3_ForeachBucket(H3_Handle handle, h3_name_iterator_cb function, void* userData);
-int H3_InfoBucket(H3_Handle handle, H3_Name bucketName, H3_BucketInfo* bucketInfo);
-int H3_CreateBucket(H3_Handle handle, H3_Name bucketName);
-int H3_DeleteBucket(H3_Handle handle, H3_Name bucketName);
+int H3_ListBuckets(H3_Handle handle, H3_Token* token, int maxSize, int offset, H3_Name* bucketNames, int* size);
+int H3_ForeachBucket(H3_Handle handle, H3_Token* token, h3_name_iterator_cb function, void* userData);
+int H3_InfoBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_BucketInfo* bucketInfo);
+int H3_CreateBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName);
+int H3_DeleteBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName);
 
 // Object management
-int H3_ListObjects(H3_Handle handle, H3_Name bucketName, H3_Name prefix, int maxSize, int offset, H3_Name* objectNames, int* size);
-int H3_ForeachObject(H3_Handle handle, H3_Name bucketName, H3_Name prefix, int maxSize, int offset, h3_name_iterator_cb function, void* userData);
-int H3_InfoObject(H3_Handle handle, H3_Name bucketName, H3_Name objectName, H3_ObjectInfo* objectInfo);
-int H3_ReadObject(H3_Handle handle, H3_Name bucketName, H3_Name objectName, int maxSize, int offset, void* data, int* size);
-int H3_WriteObject(H3_Handle handle, H3_Name bucketName, H3_Name objectName, void* data, int offset, int size);
-int H3_CopyObject(H3_Handle handle, H3_Name bucketName, H3_Name srcObjectName, H3_Name dstObjectName);
-int H3_PartialCopyObject(H3_Handle handle, H3_Name bucketName, H3_Name srcObjectName, int offset, int size, H3_Name dstObjectName);
-int H3_MoveObject(H3_Handle handle, H3_Name bucketName, H3_Name srcObjectName, H3_Name dstObjectName);
-int H3_DeleteObject(H3_Handle handle, H3_Name bucketName, H3_Name objectName);
+int H3_ListObjects(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name prefix, int maxSize, int offset, H3_Name* objectNames, int* size);
+int H3_ForeachObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name prefix, int maxSize, int offset, h3_name_iterator_cb function, void* userData);
+int H3_InfoObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name objectName, H3_ObjectInfo* objectInfo);
+int H3_ReadObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name objectName, int maxSize, int offset, void* data, int* size);
+int H3_WriteObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name objectName, void* data, int offset, int size);
+int H3_CopyObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name srcObjectName, H3_Name dstObjectName);
+int H3_CopyObjectRange(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name srcObjectName, int offset, int size, H3_Name dstObjectName);
+int H3_MoveObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name srcObjectName, H3_Name dstObjectName);
+int H3_DeleteObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name objectName);
 
 // Multipart management
-int H3_ListMultiparts(H3_Handle handle, H3_Name bucketName, H3_Name prefix, int maxSize, int offset, H3_MultipartId* idArray, int* size);
-int H3_CreateMultipart(H3_Handle handle, H3_Name bucketName, H3_Name objectName, H3_MultipartId* id);
-int H3_CompleteMultipart(H3_Handle handle, H3_MultipartId id);
-int H3_AbortMultipart(H3_Handle handle, H3_MultipartId id);
-int H3_ListParts(H3_Handle handle, H3_MultipartId id, int maxSize, int offset, H3_MultipartInfo* info, int* size);
-int H3_UploadPart(H3_Handle handle, H3_MultipartId id, int partNumber, void* data, int size);
-int H3_UploadPartCopy(H3_Handle handle, H3_Name objectName, int offset, int size, H3_MultipartId id, int partNumber);
+int H3_ListMultiparts(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name prefix, int maxSize, int offset, H3_MultipartId* idArray, int* size);
+int H3_CreateMultipart(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name objectName, H3_MultipartId* id);
+int H3_CompleteMultipart(H3_Handle handle, H3_Token* token, H3_MultipartId id);
+int H3_AbortMultipart(H3_Handle handle, H3_Token* token, H3_MultipartId id);
+int H3_ListParts(H3_Handle handle, H3_Token* token, H3_MultipartId id, int maxSize, int offset, H3_MultipartInfo* info, int* size);
+int H3_UploadPart(H3_Handle handle, H3_Token* token, H3_MultipartId id, int partNumber, void* data, int size);
+int H3_UploadPartCopy(H3_Handle handle, H3_Token* token, H3_Name objectName, int offset, int size, H3_MultipartId id, int partNumber);
+
+#endif /* H3LIB_H_ */

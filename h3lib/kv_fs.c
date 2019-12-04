@@ -18,7 +18,7 @@
 #include <glib.h>
 
 #include "kv_interface.h"
-#include "kv_fs.h"
+//#include "kv_fs.h"
 
 typedef struct {
     char* root;

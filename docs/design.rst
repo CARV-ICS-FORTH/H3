@@ -85,10 +85,12 @@ The following table outlines in pseudocode how H3 operations are implemented wit
     | ``multipart_id = <bucket name> + '$' + <object_name>``
     | ``multipart_part_id = '_' + hash(multipart_id) + '#' + <part_number> + ['.' + <subpart_number>]``
 
+
 :Create bucket:
-    | ``get(key=user_id)``
+    | ``user_metadata = get(key=user_id)``
     | ``create(key=bucket_id, value=bucket_metadata)``
-    | ``put(key=user_id)``
+    | ``user_metadata += bucket_id``
+    | ``put(key=user_id, value=user_metadata)``
 :Delete bucket:
     | ``get(key=user_id)``
     | ``if scan(prefix=bucket_id + '/') == empty: delete(key=bucket_id)``
