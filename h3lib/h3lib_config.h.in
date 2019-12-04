@@ -1,0 +1,3 @@
+// the configured options and settings for h3lib
+#define H3LIB_VERSION_MAJOR @h3lib_VERSION_MAJOR@
+#define H3LIB_VERSION_MINOR @h3lib_VERSION_MINOR@
