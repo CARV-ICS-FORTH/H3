@@ -11,37 +11,21 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include <stdio.h>
-#include <stdlib.h>
 
-#include <glib.h>
-
-#include "h3lib.h"
-#include "h3lib_config.h"
-#include "kv_interface.h"
-
-#define BUFF_SIZE 24
-#define H3_SYSTEM_ID    0x00
-
-#define mGetUserId(token)   (token)->userId
-
-typedef struct {
-    int dummy;
-    H3_StoreType type;
-
-    // Store specific
-    KV_Handle handle;
-    KV_Operations* operation;
-}H3_Context;
+#include "common.h"
 
 extern KV_Operations operationsFilesystem;
+
+int GetUserId(H3_Token* token, H3_UserId id){
+    snprintf(id, H3_USERID_SIZE, "@%d", token->userId);
+    return H3_SUCCESS;
+}
 
 char* H3_Version(){
     static char buffer[BUFF_SIZE];
     snprintf(buffer, BUFF_SIZE, "v%d.%d\n", H3LIB_VERSION_MAJOR, H3LIB_VERSION_MINOR);
     return buffer;
 }
-
 
 
 // Handle management
@@ -88,28 +72,7 @@ void H3_Free(H3_Handle handle){
     free(context);
 };
 
-// Bucket management
-int H3_ListBuckets(H3_Handle handle, H3_Token* token, int maxSize, int offset, H3_Name* bucketNames, int* size){return H3_FAILURE;}
-int H3_ForeachBucket(H3_Handle handle, H3_Token* token, h3_name_iterator_cb function, void* userData){return H3_FAILURE;}
-int H3_InfoBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_BucketInfo* bucketInfo){return H3_FAILURE;}
 
-int H3_CreateBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName){
-    int userId;
-
-    // Validate bucketName
-
-    // Extract userId from token
-    if( !(userId = mGetUserId(token)))
-        return H3_FAILURE;
-
-//    user_metadata = get(key=user_id)
-//    create(key=bucket_id, value=bucket_metadata)
-//    user_metadata += bucket_id
-//    put(key=user_id, value=user_metadata)
-    return H3_SUCCESS;
-}
-
-int H3_DeleteBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName){return H3_FAILURE;}
 
 // Object management
 int H3_ListObjects(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name prefix, int maxSize, int offset, H3_Name* objectNames, int* size){return H3_FAILURE;}

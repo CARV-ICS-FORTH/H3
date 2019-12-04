@@ -23,24 +23,31 @@
 
 typedef void* KV_Handle;
 typedef char* KV_Key;
+typedef unsigned char* KV_Value;
 
-//// Handle management
-//KV_Handle kv_init_handle(H3_StoreType storeType, void* args);
-//void kv_free_handle(KV_Handle handle);
 
 // Key-value operations
 typedef struct KV_Operations {
 	KV_Handle (*init)(GKeyFile* cfgFile);
 	void (*free)(KV_Handle handle);
 
-    int (*metadata_read)(KV_Handle handle, KV_Key key, int maxSize, int offset, void *value, int *size);
-    int (*metadata_write)(KV_Handle handle, KV_Key key, void *value, int offset, int size);
+	/*
+	 * For functions metadata_read() and read() parameter size is in/out, i.e.
+	 * the caller sets it with the chunk size to retrieve (0x00 for all) and the
+	 * storage-backend sets it to the size it managed to retrieve.
+	 *
+	 * Also it is the responsibility of the storage-backend to allocate the buffer
+	 * for the data and the callers to release it.
+	 */
+
+    int (*metadata_read)(KV_Handle handle, KV_Key key, int offset, KV_Value* value, int* size);
+    int (*metadata_write)(KV_Handle handle, KV_Key key, KV_Value value, int offset, int size);
 
 	int (*list)(KV_Handle handle);
 	int (*exists)(KV_Handle handle, KV_Key key);
-	int (*read)(KV_Handle handle, KV_Key key, int maxSize, int offset, void *value, int *size);
-	int (*create)(KV_Handle handle, KV_Key key, void *value, int offset, int size);
-	int (*write)(KV_Handle handle, KV_Key key, void *value, int offset, int size);
+	int (*read)(KV_Handle handle, KV_Key key, int offset, KV_Value* value, int* size);
+	int (*create)(KV_Handle handle, KV_Key key, KV_Value value, int offset, int size);
+	int (*write)(KV_Handle handle, KV_Key key, KV_Value value, int offset, int size);
 	int (*copy)(KV_Handle handle, KV_Key srcKey, KV_Key dstKey);
 	int (*move)(KV_Handle handle, KV_Key srcKey, KV_Key dstKey);
 	int (*delete)(KV_Handle handle, KV_Key key);

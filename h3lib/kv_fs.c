@@ -18,7 +18,6 @@
 #include <glib.h>
 
 #include "kv_interface.h"
-//#include "kv_fs.h"
 
 typedef struct {
     char* root;
@@ -59,15 +58,15 @@ int kv_exists_fs(KV_Handle handle, KV_Key key) {
 	return KV_SUCCESS;
 }
 
-int kv_read_fs(KV_Handle handle, KV_Key key, int max_size, int offset, void *value, int *size) {
+int kv_read_fs(KV_Handle handle, KV_Key key, int offset, KV_Value* value, int* size) {
 	return KV_SUCCESS;
 }
 
-int kv_create_fs(KV_Handle handle, KV_Key key, void *value, int offset, int size) {
+int kv_create_fs(KV_Handle handle, KV_Key key, KV_Value value, int offset, int size) {
     return KV_SUCCESS;
 }
 
-int kv_write_fs(KV_Handle handle, KV_Key key, void *value, int offset, int size) {
+int kv_write_fs(KV_Handle handle, KV_Key key, KV_Value value, int offset, int size) {
 	return KV_SUCCESS;
 }
 

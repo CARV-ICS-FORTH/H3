@@ -20,9 +20,12 @@ endif()
 # https://cmake.org/cmake/help/v3.10/module/GNUInstallDirs.html
 include(GNUInstallDirs)
 
+#https://cmake.org/cmake/help/v3.10/variable/CMAKE_C_STANDARD.html?highlight=cmake_c_standard
+set(CMAKE_C_STANDARD 11)
+
 
 #https://cmake.org/cmake/help/v3.10/command/add_library.html
-set(SOURCE_FILES h3lib.c kvlib.c kv_fs.c )
+set(SOURCE_FILES h3lib.c bucket.c kv_fs.c )
 add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES})
 
 #https://cmake.org/cmake/help/v3.10/command/target_include_directories.html
