@@ -33,30 +33,46 @@ int ValidateBucketName(char* name){
 
 
 int H3_CreateBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName){
-    H3_Context* ctx = (H3_Context*)handle;
-    KV_Handle _handle = ctx->handle;
     H3_UserId userId;
     H3_BucketMetadata bucketMetadata;
     H3_UserMetadata* userMetadata;
     KV_Value value;
+    KV_Status status;
+
+    H3_Context* ctx = (H3_Context*)handle;
+    KV_Handle _handle = ctx->handle;
+    KV_Operations* op = ctx->operation;
     int size = 0;
 
     // Validate bucketName & extract userId from token
-    if( !ValidateBucketName(bucketName) ||
-        !GetUserId(token, userId)           ){
-
+    if( !ValidateBucketName(bucketName) || !GetUserId(token, userId) ){
         return H3_FAILURE;
     }
 
-    if( ctx->operation->metadata_create(_handle, bucketName, (KV_Value)&bucketMetadata,0, sizeof(H3_BucketMetadata))){
-        ctx->operation->metadata_read(_handle, userId, 0, &value, &size);
+    // Populate bucket metadata
+    bucketMetadata.timestamp = time(NULL);
 
-        userMetadata = (H3_UserMetadata*)value;
-        userMetadata = realloc(userMetadata, mSizeofUserMetadata(userMetadata) + sizeof(H3_BucketId));
+    if( op->metadata_create(_handle, bucketName, (KV_Value)&bucketMetadata, 0, sizeof(H3_BucketMetadata)) == KV_SUCCESS){
+
+        if( (status = op->metadata_read(_handle, userId, 0, &value, &size)) == KV_SUCCESS){
+            // Extend existing user's metadata to fit new bucket-id
+            userMetadata = (H3_UserMetadata*)value;
+            userMetadata = realloc(userMetadata, mSizeofUserMetadata(userMetadata) + sizeof(H3_BucketId));
+        }
+        else if(status == KV_KEY_NOT_EXIST){
+            // Create user's metadata i.e. create the user
+            userMetadata = calloc(1, sizeof(H3_UserMetadata) + sizeof(H3_BucketId));
+        }
+        else {
+            // Internal store error
+            op->metadata_delete(_handle, bucketName);
+            return H3_FAILURE;
+        }
+
+        // Populate metadata and push them to the store
         strncpy(userMetadata->bucket[userMetadata->nBuckets], bucketName, sizeof(H3_BucketId));
         userMetadata->nBuckets++;
-
-        ctx->operation->metadata_write(_handle, userId, (KV_Value)userMetadata, 0, mSizeofUserMetadata(userMetadata));
+        op->metadata_write(_handle, userId, (KV_Value)userMetadata, 0, mSizeofUserMetadata(userMetadata));
         free(userMetadata);
 
         return H3_SUCCESS;

@@ -50,39 +50,39 @@ void kv_free_fs(KV_Handle handle) {
     return;
 }
 
-int kv_list_fs(KV_Handle handle) {
+KV_Status kv_list_fs(KV_Handle handle) {
 	return KV_SUCCESS;
 }
 
-int kv_exists_fs(KV_Handle handle, KV_Key key) {
+KV_Status kv_exists_fs(KV_Handle handle, KV_Key key) {
 	return KV_SUCCESS;
 }
 
-int kv_read_fs(KV_Handle handle, KV_Key key, int offset, KV_Value* value, int* size) {
+KV_Status kv_read_fs(KV_Handle handle, KV_Key key, int offset, KV_Value* value, int* size) {
 	return KV_SUCCESS;
 }
 
-int kv_create_fs(KV_Handle handle, KV_Key key, KV_Value value, int offset, int size) {
+KV_Status kv_create_fs(KV_Handle handle, KV_Key key, KV_Value value, int offset, int size) {
     return KV_SUCCESS;
 }
 
-int kv_write_fs(KV_Handle handle, KV_Key key, KV_Value value, int offset, int size) {
+KV_Status kv_write_fs(KV_Handle handle, KV_Key key, KV_Value value, int offset, int size) {
 	return KV_SUCCESS;
 }
 
-int kv_copy_fs(KV_Handle handle, KV_Key src_key, KV_Key dest_key) {
+KV_Status kv_copy_fs(KV_Handle handle, KV_Key src_key, KV_Key dest_key) {
 	return KV_SUCCESS;
 }
 
-int kv_move_fs(KV_Handle handle, KV_Key src_key, KV_Key dest_key) {
+KV_Status kv_move_fs(KV_Handle handle, KV_Key src_key, KV_Key dest_key) {
 	return KV_SUCCESS;
 }
 
-int kv_delete_fs(KV_Handle handle, KV_Key key) {
+KV_Status kv_delete_fs(KV_Handle handle, KV_Key key) {
 	return KV_SUCCESS;
 }
 
-int kv_sync_fs(KV_Handle handle) {
+KV_Status kv_sync_fs(KV_Handle handle) {
 	return KV_SUCCESS;
 }
 
@@ -93,6 +93,7 @@ KV_Operations operationsFilesystem = {
     .metadata_read = kv_read_fs,
     .metadata_write = kv_write_fs,
     .metadata_create = kv_create_fs,
+    .metadata_delete = kv_delete_fs,
 
 	.list = kv_list_fs,
 	.exists = kv_exists_fs,

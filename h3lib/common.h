@@ -14,8 +14,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <time.h>
 #include <regex.h>
+
 #include <glib.h>
 
 #include "h3lib.h"
@@ -49,7 +50,7 @@ typedef struct{
 }H3_UserMetadata;
 
 typedef struct{
-    int dummy;
+    time_t timestamp;
 }H3_BucketMetadata;
 
 

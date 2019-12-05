@@ -17,13 +17,15 @@
 
 #include <glib.h>
 
-// Error codes
-#define KV_SUCCESS 1
-#define KV_FAILURE 0
 
 typedef void* KV_Handle;
 typedef char* KV_Key;
 typedef unsigned char* KV_Value;
+
+// Error codes
+typedef enum {
+    KV_FAILURE, KV_KEY_EXIST, KV_KEY_NOT_EXIST, KV_SUCCESS
+}KV_Status;
 
 
 // Key-value operations
@@ -32,27 +34,43 @@ typedef struct KV_Operations {
 	void (*free)(KV_Handle handle);
 
 	/*
-	 * For functions metadata_read() and read() parameter size is in/out, i.e.
+	 * --- Read Operations --
+	 * For functions metadata_read() and read() argument "size" is in/out, i.e.
 	 * the caller sets it with the chunk size to retrieve (0x00 for all) and the
 	 * storage-backend sets it to the size it managed to retrieve.
 	 *
 	 * Also it is the responsibility of the storage-backend to allocate the buffer
 	 * for the data and the callers to release it.
+	 *
+	 * --- Write Operations ---
+	 * Write operations create a key if doesn't exist or update its value otherwise. For
+	 * functions metadata_write() and write(), argument "size" indicates the size of the
+	 * caller supplied value, whereas argument "offset" indicates the starting-position
+	 * within the current buffer associated with the key that will be replaced by value.
+	 * If the size of the buffer is smaller than the offset the buffer will be padded
+	 * with 0x00 to make the offset fit. Padding is applied even if the key is just created.
+	 *
+	 *
+	 * --- Create Operations ---
+	 * Creates are identical to Writes but fail if key already exists.
 	 */
 
-    int (*metadata_read)(KV_Handle handle, KV_Key key, int offset, KV_Value* value, int* size);
-    int (*metadata_write)(KV_Handle handle, KV_Key key, KV_Value value, int offset, int size);
-    int (*metadata_create)(KV_Handle handle, KV_Key key, KV_Value value, int offset, int size);
 
-	int (*list)(KV_Handle handle);
-	int (*exists)(KV_Handle handle, KV_Key key);
-	int (*read)(KV_Handle handle, KV_Key key, int offset, KV_Value* value, int* size);
-	int (*create)(KV_Handle handle, KV_Key key, KV_Value value, int offset, int size);
-	int (*write)(KV_Handle handle, KV_Key key, KV_Value value, int offset, int size);
-	int (*copy)(KV_Handle handle, KV_Key srcKey, KV_Key dstKey);
-	int (*move)(KV_Handle handle, KV_Key srcKey, KV_Key dstKey);
-	int (*delete)(KV_Handle handle, KV_Key key);
-	int (*sync)(KV_Handle handle);
+
+	KV_Status (*metadata_read)(KV_Handle handle, KV_Key key, int offset, KV_Value* value, int* size);
+	KV_Status (*metadata_write)(KV_Handle handle, KV_Key key, KV_Value value, int offset, int size);
+	KV_Status (*metadata_create)(KV_Handle handle, KV_Key key, KV_Value value, int offset, int size);
+	KV_Status (*metadata_delete)(KV_Handle handle, KV_Key key);
+
+	KV_Status (*list)(KV_Handle handle);
+	KV_Status (*exists)(KV_Handle handle, KV_Key key);
+	KV_Status (*read)(KV_Handle handle, KV_Key key, int offset, KV_Value* value, int* size);
+	KV_Status (*create)(KV_Handle handle, KV_Key key, KV_Value value, int offset, int size);
+	KV_Status (*write)(KV_Handle handle, KV_Key key, KV_Value value, int offset, int size);
+	KV_Status (*copy)(KV_Handle handle, KV_Key srcKey, KV_Key dstKey);
+	KV_Status (*move)(KV_Handle handle, KV_Key srcKey, KV_Key dstKey);
+	KV_Status (*delete)(KV_Handle handle, KV_Key key);
+	KV_Status (*sync)(KV_Handle handle);
 } KV_Operations;
 
 #endif /* KV_INTERFACE_H_ */
