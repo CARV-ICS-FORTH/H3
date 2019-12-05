@@ -42,7 +42,7 @@ int H3_CreateBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName){
     H3_Context* ctx = (H3_Context*)handle;
     KV_Handle _handle = ctx->handle;
     KV_Operations* op = ctx->operation;
-    int size = 0;
+    size_t size = 0;
 
     // Validate bucketName & extract userId from token
     if( !ValidateBucketName(bucketName) || !GetUserId(token, userId) ){
@@ -50,18 +50,23 @@ int H3_CreateBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName){
     }
 
     // Populate bucket metadata
-    bucketMetadata.timestamp = time(NULL);
+    memcpy(bucketMetadata.userId, userId, sizeof(H3_UserId));
+    bucketMetadata.creation = time(NULL);
+    bucketMetadata.lastAccess = bucketMetadata.creation;
+    bucketMetadata.lastModification = bucketMetadata.creation;
 
     if( op->metadata_create(_handle, bucketName, (KV_Value)&bucketMetadata, 0, sizeof(H3_BucketMetadata)) == KV_SUCCESS){
 
         if( (status = op->metadata_read(_handle, userId, 0, &value, &size)) == KV_SUCCESS){
             // Extend existing user's metadata to fit new bucket-id
             userMetadata = (H3_UserMetadata*)value;
-            userMetadata = realloc(userMetadata, mSizeofUserMetadata(userMetadata) + sizeof(H3_BucketId));
+            if(userMetadata->nBuckets % H3_BUCKET_NAME_BATCH_SIZE == H3_BUCKET_NAME_BATCH_SIZE - 1){
+                userMetadata = realloc(userMetadata, mSizeofUserMetadata(userMetadata) + sizeof(H3_BucketId));
+            }
         }
         else if(status == KV_KEY_NOT_EXIST){
             // Create user's metadata i.e. create the user
-            userMetadata = calloc(1, sizeof(H3_UserMetadata) + sizeof(H3_BucketId));
+            userMetadata = calloc(1, sizeof(H3_UserMetadata) + H3_BUCKET_NAME_BATCH_SIZE * sizeof(H3_BucketId));
         }
         else {
             // Internal store error
@@ -82,6 +87,10 @@ int H3_CreateBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName){
 }
 
 int H3_InfoBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_BucketInfo* bucketInfo){return H3_FAILURE;}
-int H3_DeleteBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName){return H3_FAILURE;}
-int H3_ListBuckets(H3_Handle handle, H3_Token* token, int maxSize, int offset, H3_Name* bucketNames, int* size){return H3_FAILURE;}
+
+int H3_DeleteBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName){
+    return H3_FAILURE;}
+
+
+int H3_ListBuckets(H3_Handle handle, H3_Token* token, size_t maxSize, uint64_t offset, H3_Name* bucketNames, size_t* size){return H3_FAILURE;}
 int H3_ForeachBucket(H3_Handle handle, H3_Token* token, h3_name_iterator_cb function, void* userData){return H3_FAILURE;}

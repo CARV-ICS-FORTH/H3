@@ -15,6 +15,7 @@
 #ifndef KV_INTERFACE_H_
 #define KV_INTERFACE_H_
 
+#include <stdint.h>
 #include <glib.h>
 
 
@@ -57,16 +58,16 @@ typedef struct KV_Operations {
 
 
 
-	KV_Status (*metadata_read)(KV_Handle handle, KV_Key key, int offset, KV_Value* value, int* size);
-	KV_Status (*metadata_write)(KV_Handle handle, KV_Key key, KV_Value value, int offset, int size);
-	KV_Status (*metadata_create)(KV_Handle handle, KV_Key key, KV_Value value, int offset, int size);
+	KV_Status (*metadata_read)(KV_Handle handle, KV_Key key, uint64_t offset, KV_Value* value, size_t* size);
+	KV_Status (*metadata_write)(KV_Handle handle, KV_Key key, KV_Value value, uint64_t offset, size_t size);
+	KV_Status (*metadata_create)(KV_Handle handle, KV_Key key, KV_Value value, uint64_t offset, size_t size);
 	KV_Status (*metadata_delete)(KV_Handle handle, KV_Key key);
 
 	KV_Status (*list)(KV_Handle handle);
 	KV_Status (*exists)(KV_Handle handle, KV_Key key);
-	KV_Status (*read)(KV_Handle handle, KV_Key key, int offset, KV_Value* value, int* size);
-	KV_Status (*create)(KV_Handle handle, KV_Key key, KV_Value value, int offset, int size);
-	KV_Status (*write)(KV_Handle handle, KV_Key key, KV_Value value, int offset, int size);
+	KV_Status (*read)(KV_Handle handle, KV_Key key, uint64_t offset, KV_Value* value, size_t* size);
+	KV_Status (*create)(KV_Handle handle, KV_Key key, KV_Value value, uint64_t offset, size_t size);
+	KV_Status (*write)(KV_Handle handle, KV_Key key, KV_Value value, uint64_t offset, size_t size);
 	KV_Status (*copy)(KV_Handle handle, KV_Key srcKey, KV_Key dstKey);
 	KV_Status (*move)(KV_Handle handle, KV_Key srcKey, KV_Key dstKey);
 	KV_Status (*delete)(KV_Handle handle, KV_Key key);

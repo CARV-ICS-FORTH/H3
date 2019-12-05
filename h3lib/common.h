@@ -14,7 +14,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <regex.h>
 
 #include <glib.h>
@@ -28,6 +27,8 @@
 
 #define H3_BUCKET_NAME_SIZE 64
 #define H3_OBJECT_NAME_SIZE 512
+
+#define H3_BUCKET_NAME_BATCH_SIZE   10
 
 #define H3_USERID_SIZE      (H3_OBJECT_NAME_SIZE - 1)
 
@@ -45,12 +46,15 @@ typedef struct {
 }H3_Context;
 
 typedef struct{
-    int nBuckets;
+    uint nBuckets;
     H3_BucketId bucket[];
 }H3_UserMetadata;
 
 typedef struct{
-    time_t timestamp;
+    H3_UserId userId;
+    time_t creation;
+    time_t lastAccess;
+    time_t lastModification;
 }H3_BucketMetadata;
 
 

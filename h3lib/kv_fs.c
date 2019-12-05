@@ -58,15 +58,15 @@ KV_Status kv_exists_fs(KV_Handle handle, KV_Key key) {
 	return KV_SUCCESS;
 }
 
-KV_Status kv_read_fs(KV_Handle handle, KV_Key key, int offset, KV_Value* value, int* size) {
+KV_Status kv_read_fs(KV_Handle handle, KV_Key key, uint64_t offset, KV_Value* value, size_t* size) {
 	return KV_SUCCESS;
 }
 
-KV_Status kv_create_fs(KV_Handle handle, KV_Key key, KV_Value value, int offset, int size) {
+KV_Status kv_create_fs(KV_Handle handle, KV_Key key, KV_Value value, uint64_t offset, size_t size) {
     return KV_SUCCESS;
 }
 
-KV_Status kv_write_fs(KV_Handle handle, KV_Key key, KV_Value value, int offset, int size) {
+KV_Status kv_write_fs(KV_Handle handle, KV_Key key, KV_Value value, uint64_t offset, size_t size) {
 	return KV_SUCCESS;
 }
 
