@@ -54,6 +54,12 @@ typedef struct KV_Operations {
 	 *
 	 * --- Create Operations ---
 	 * Creates are identical to Writes but fail if key already exists.
+	 *
+	 *
+	 * --- List Operations ---
+	 * This operation accept a pointer to store the list and another to store its size. If
+	 * the list pointer is NULL then no list will be generated, i.e. only interested in the
+	 * number of keys.
 	 */
 
 

@@ -91,9 +91,9 @@ int H3_InfoBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Buck
 int H3_DeleteBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName){
     H3_UserId userId;
     H3_BucketMetadata bucketMetadata;
-    H3_UserMetadata* userMetadata;
     KV_Value value;
     KV_Status status;
+    uint64_t nKeys;
 
     H3_Context* ctx = (H3_Context*)handle;
     KV_Handle _handle = ctx->handle;
@@ -104,6 +104,35 @@ int H3_DeleteBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName){
     if( !ValidateBucketName(bucketName) || !GetUserId(token, userId) ){
         return H3_FAILURE;
     }
+
+    char prefix[H3_BUCKET_NAME_SIZE+1];
+    sprintf(prefix, "%s/", bucketName);
+    if( op->list(_handle, prefix, NULL, &nKeys) == KV_SUCCESS               &&
+        nKeys == 0                                                          &&
+        op->metadata_read(_handle, userId, 0, &value, &size) == KV_SUCCESS      ){
+
+        // Remove bucket from metadata ...
+        H3_UserMetadata* userMetadata = (H3_UserMetadata*)value;
+        int i;
+        for(i=0; i<userMetadata->nBuckets; i++){
+            if(strcmp(userMetadata->bucket[i], bucketName) == 0){
+               memcpy(userMetadata->bucket[i], userMetadata->bucket[--userMetadata->nBuckets], sizeof(H3_BucketId));
+               break;
+            }
+        }
+
+        // ... and shrink array if needed
+        if( userMetadata->nBuckets % H3_BUCKET_NAME_BATCH_SIZE == H3_BUCKET_NAME_BATCH_SIZE - 1){
+            // TODO - Implement shrinking
+        }
+
+        // Push the updated metadata to the store
+        op->metadata_write(_handle, userId, (KV_Value)userMetadata, 0, size);
+        free(userMetadata);
+
+        return H3_SUCCESS;
+    }
+
 
     return H3_FAILURE;
 }
