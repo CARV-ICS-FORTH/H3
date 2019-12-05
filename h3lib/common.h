@@ -59,7 +59,7 @@ typedef struct{
 
 
 
-#define mSizeofUserMetadata(a) (sizeof(H3_UserMetadata) + (a)->nBuckets * sizeof(H3_BucketId))
+//#define mSizeofUserMetadata(a) (sizeof(H3_UserMetadata) + (a)->nBuckets * sizeof(H3_BucketId))
 
 
 

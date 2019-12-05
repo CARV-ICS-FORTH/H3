@@ -50,7 +50,7 @@ void kv_free_fs(KV_Handle handle) {
     return;
 }
 
-KV_Status kv_list_fs(KV_Handle handle) {
+KV_Status kv_list_fs(KV_Handle handle, KV_Key prefix, KV_Key* key, uint64_t* nKeys) {
 	return KV_SUCCESS;
 }
 
