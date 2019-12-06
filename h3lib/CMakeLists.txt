@@ -23,6 +23,12 @@ include(GNUInstallDirs)
 #https://cmake.org/cmake/help/v3.10/variable/CMAKE_C_STANDARD.html?highlight=cmake_c_standard
 set(CMAKE_C_STANDARD 11)
 
+#https://gitlab.kitware.com/cmake/community/wikis/doc/cmake/Useful-Variables
+#https://cmake.org/cmake/help/v3.10/command/add_compile_options.html?highlight=add_compile_options
+add_compile_options(-Wall)
+SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g")
+SET(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3")
+
 
 #https://cmake.org/cmake/help/v3.10/command/add_library.html
 set(SOURCE_FILES h3lib.c bucket.c kv_fs.c )

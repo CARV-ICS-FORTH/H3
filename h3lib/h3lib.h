@@ -67,7 +67,7 @@ H3_Handle H3_Init(H3_StoreType storageType, char* cfgFileName);
 void H3_Free(H3_Handle handle);
 
 // Bucket management
-int H3_ListBuckets(H3_Handle handle, H3_Token* token, size_t maxSize, uint64_t offset, H3_Name* bucketNames, size_t* size);
+int H3_ListBuckets(H3_Handle handle, H3_Token* token, H3_Name* bucketNames, size_t* size);
 int H3_ForeachBucket(H3_Handle handle, H3_Token* token, h3_name_iterator_cb function, void* userData);
 int H3_InfoBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_BucketInfo* bucketInfo);
 int H3_CreateBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName);

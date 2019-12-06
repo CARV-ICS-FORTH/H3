@@ -33,9 +33,9 @@
 #define H3_USERID_SIZE      (H3_OBJECT_NAME_SIZE - 1)
 
 
-typedef unsigned char H3_UserId[H3_USERID_SIZE];
-typedef unsigned char H3_BucketId[H3_BUCKET_NAME_SIZE];
-typedef unsigned char H3_ObjectId[H3_BUCKET_NAME_SIZE + H3_BUCKET_NAME_SIZE + 1];
+typedef char H3_UserId[H3_USERID_SIZE];
+typedef char H3_BucketId[H3_BUCKET_NAME_SIZE];
+typedef char H3_ObjectId[H3_BUCKET_NAME_SIZE + H3_BUCKET_NAME_SIZE + 1];
 
 typedef struct {
     H3_StoreType type;
@@ -66,3 +66,4 @@ typedef struct{
 
 int ValidateBucketName(char* name);
 int GetUserId(H3_Token* token, H3_UserId id);
+int GetBucketIndex(H3_UserMetadata* userMetadata, H3_Name bucketName);

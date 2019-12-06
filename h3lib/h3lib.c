@@ -21,6 +21,12 @@ int GetUserId(H3_Token* token, H3_UserId id){
     return H3_SUCCESS;
 }
 
+int GetBucketIndex(H3_UserMetadata* userMetadata, H3_Name bucketName){
+    int i;
+    for(i=0; i<userMetadata->nBuckets && strcmp(userMetadata->bucket[i], bucketName); i++);
+    return i;
+}
+
 char* H3_Version(){
     static char buffer[BUFF_SIZE];
     snprintf(buffer, BUFF_SIZE, "v%d.%d\n", H3LIB_VERSION_MAJOR, H3LIB_VERSION_MINOR);

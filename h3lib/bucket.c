@@ -39,10 +39,16 @@ int H3_CreateBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName){
     KV_Value value;
     KV_Status status;
 
+    // Argument check
+    if(!handle || !token  || !bucketName){
+        return H3_FAILURE;
+    }
+
     H3_Context* ctx = (H3_Context*)handle;
     KV_Handle _handle = ctx->handle;
     KV_Operations* op = ctx->operation;
     size_t size = 0;
+
 
     // Validate bucketName & extract userId from token
     if( !ValidateBucketName(bucketName) || !GetUserId(token, userId) ){
@@ -86,14 +92,16 @@ int H3_CreateBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName){
     return H3_FAILURE;
 }
 
-int H3_InfoBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_BucketInfo* bucketInfo){return H3_FAILURE;}
-
 int H3_DeleteBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName){
     H3_UserId userId;
-    H3_BucketMetadata bucketMetadata;
     KV_Value value;
-    KV_Status status;
     uint64_t nKeys;
+    int status = H3_FAILURE;
+
+    // Argument check
+    if(!handle || !token  || !bucketName){
+        return H3_FAILURE;
+    }
 
     H3_Context* ctx = (H3_Context*)handle;
     KV_Handle _handle = ctx->handle;
@@ -113,30 +121,147 @@ int H3_DeleteBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName){
 
         // Remove bucket from metadata ...
         H3_UserMetadata* userMetadata = (H3_UserMetadata*)value;
-        int i;
-        for(i=0; i<userMetadata->nBuckets; i++){
-            if(strcmp(userMetadata->bucket[i], bucketName) == 0){
-               memcpy(userMetadata->bucket[i], userMetadata->bucket[--userMetadata->nBuckets], sizeof(H3_BucketId));
-               break;
+        int index = GetBucketIndex(userMetadata, bucketName);
+        if(index < userMetadata->nBuckets){
+            // Remove bucket from metadata ...
+            memcpy(userMetadata->bucket[index], userMetadata->bucket[--userMetadata->nBuckets], sizeof(H3_BucketId));
+
+            // ... and shrink array if needed
+            if( userMetadata->nBuckets % H3_BUCKET_NAME_BATCH_SIZE == H3_BUCKET_NAME_BATCH_SIZE - 1){
+                // TODO - Implement shrinking
             }
-        }
 
-        // ... and shrink array if needed
-        if( userMetadata->nBuckets % H3_BUCKET_NAME_BATCH_SIZE == H3_BUCKET_NAME_BATCH_SIZE - 1){
-            // TODO - Implement shrinking
+            // Push the updated metadata to the store
+            op->metadata_write(_handle, userId, (KV_Value)userMetadata, 0, size);
+            status = H3_SUCCESS;
         }
-
-        // Push the updated metadata to the store
-        op->metadata_write(_handle, userId, (KV_Value)userMetadata, 0, size);
         free(userMetadata);
+    }
+    return status;
+}
 
-        return H3_SUCCESS;
+int H3_ListBuckets(H3_Handle handle, H3_Token* token, H3_Name* bucketNames, size_t* size){
+    H3_UserId userId;
+    H3_UserMetadata* userMetadata;
+    KV_Value value;
+    size_t metaSize;
+
+    // Argument check
+    if(!handle || !token  || !bucketNames || !size){
+        return H3_FAILURE;
     }
 
+    H3_Context* ctx = (H3_Context*)handle;
+    KV_Handle _handle = ctx->handle;
+    KV_Operations* op = ctx->operation;
+
+    if( op->metadata_read(_handle, userId, 0, &value, &metaSize) == KV_SUCCESS){
+        userMetadata = (H3_UserMetadata*)value;
+        *size = userMetadata->nBuckets;
+        bucketNames = (H3_Name*)userMetadata->bucket;
+        return H3_SUCCESS;
+    }
 
     return H3_FAILURE;
 }
 
+int H3_InfoBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_BucketInfo* bucketInfo){
+    H3_UserId userId;
+    KV_Value value;
+    size_t size;
+    int status = H3_FAILURE;
 
-int H3_ListBuckets(H3_Handle handle, H3_Token* token, size_t maxSize, uint64_t offset, H3_Name* bucketNames, size_t* size){return H3_FAILURE;}
-int H3_ForeachBucket(H3_Handle handle, H3_Token* token, h3_name_iterator_cb function, void* userData){return H3_FAILURE;}
+
+    // Argument check
+    if(!handle || !token  || !bucketName || !bucketInfo){
+        return H3_FAILURE;
+    }
+
+    H3_Context* ctx = (H3_Context*)handle;
+    KV_Handle _handle = ctx->handle;
+    KV_Operations* op = ctx->operation;
+
+    // Validate bucketName & extract userId from token
+    if( !ValidateBucketName(bucketName) || !GetUserId(token, userId) ){
+        return H3_FAILURE;
+    }
+
+    // Make sure the token grants access to the bucket
+    if( op->metadata_read(_handle, userId, 0, &value, &size) == KV_SUCCESS){
+        H3_UserMetadata* userMetadata = (H3_UserMetadata*)value;
+        int index = GetBucketIndex(userMetadata, bucketName);
+        if(index < userMetadata->nBuckets){
+
+            bucketInfo->name = strdup(bucketName);
+
+            // Get the bucket's metadata and update its access-time
+            if(op->metadata_read(_handle, bucketName, 0, &value, &size) == KV_SUCCESS){
+                H3_BucketMetadata* bucketMetadata = (H3_BucketMetadata*)value;
+                bucketInfo->creation = bucketMetadata->creation;
+                bucketInfo->lastAccess = bucketMetadata->lastAccess = time(NULL);
+                bucketInfo->lastModification = bucketMetadata->lastModification;
+                op->metadata_write(_handle, bucketName, (KV_Value)userMetadata, 0, size);
+                free(bucketMetadata);
+
+
+                // TODO - Get the list of objects
+                bucketInfo->nObjects = 0;
+                bucketInfo->size = 0;
+
+
+                status = H3_SUCCESS;
+            }
+        }
+        free(userMetadata);
+    }
+
+    return status;
+}
+
+
+int H3_ForeachBucket(H3_Handle handle, H3_Token* token, h3_name_iterator_cb function, void* userData){
+    H3_UserId userId;
+    KV_Value value;
+    size_t size;
+    int status = H3_FAILURE;
+
+    // Argument check
+    if(!handle || !token  || !function){
+        return H3_FAILURE;
+    }
+
+    H3_Context* ctx = (H3_Context*)handle;
+    KV_Handle _handle = ctx->handle;
+    KV_Operations* op = ctx->operation;
+
+    // Validate bucketName & extract userId from token
+    if(!GetUserId(token, userId) ){
+        return H3_FAILURE;
+    }
+
+    if( op->metadata_read(_handle, userId, 0, &value, &size) == KV_SUCCESS){
+        H3_UserMetadata* userMetadata = (H3_UserMetadata*)value;
+        int i;
+        status = H3_SUCCESS;
+        for(i=0; i<userMetadata->nBuckets && status == H3_SUCCESS; i++){
+
+            // Call the user function and update the bucket's access timestamp
+            if(op->metadata_read(_handle, userMetadata->bucket[i], 0, &value, &size) == KV_SUCCESS){
+                H3_BucketMetadata* bucketMetadata = (H3_BucketMetadata*)value;
+                bucketMetadata->lastAccess = time(NULL);
+                if( op->metadata_write(_handle, userMetadata->bucket[i], (KV_Value)userMetadata, 0, size) != KV_SUCCESS){
+                    status = H3_FAILURE;
+                }
+                else
+                    function(userMetadata->bucket[i], userData);
+
+                free(bucketMetadata);
+            }
+            else
+                status = H3_FAILURE;
+        }
+        free(userMetadata);
+    }
+
+    return status;
+}
