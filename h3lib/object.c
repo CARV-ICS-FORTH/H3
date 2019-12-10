@@ -32,7 +32,116 @@ int ValidateObjectName(char* name){
 }
 
 
-static int UploadObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name objectName, char isCreate, void* data, size_t size, size_t offset){
+//static int UploadObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name objectName, char isCreate, void* data, size_t size, size_t offset){
+//    int status = H3_FAILURE;
+//
+//    // Argument check. Note we allow zero-sized objects.
+//    if(!handle || !token  || !bucketName || !objectName ){
+//        return H3_FAILURE;
+//    }
+//
+//    H3_Context* ctx = (H3_Context*)handle;
+//    KV_Handle _handle = ctx->handle;
+//    KV_Operations* op = ctx->operation;
+//    KV_Status storeStatus = KV_SUCCESS;
+//
+//    H3_UserId userId;
+//    H3_ObjectId objId;
+//
+//    UploadData uploadData;
+//    UploadMetadata uploadMetadata;
+//    if(isCreate){
+//        uploadData = op->create;
+//        uploadMetadata = op->metadata_create;
+//    }
+//    else {
+//        uploadData = op->write;
+//        uploadMetadata = op->metadata_write;
+//    }
+//
+//    // Validate bucketName & extract userId from token
+//    if( !ValidateBucketName(bucketName) || !ValidateObjectName(objectName) || !GetUserId(token, userId) ){
+//        return H3_FAILURE;
+//    }
+//
+//    GetObjectId(bucketName, objectName, objId);
+//
+//    // Allocate & populate Object metadata
+//    uint nParts = (offset + size + H3_PART_SIZE - 1)/H3_PART_SIZE;
+//    uint nBatch = (nParts + H3_PART_BATCH_SIZE - 1)/H3_PART_BATCH_SIZE;
+//    size_t objMetaSize = sizeof(H3_ObjectMetadata) + nBatch * sizeof(H3_PartMetadata);
+//    H3_ObjectMetadata* objMeta = calloc(1, objMetaSize);
+//    memcpy(objMeta->userId, userId, sizeof(H3_UserId));
+//    objMeta->nParts = nParts;
+//    objMeta->lastModification = objMeta->lastAccess = objMeta->creation = time(NULL);
+//
+//    //Upload part(s) if any
+//    if(data){
+//        int i;
+//        size_t roffset = offset;
+//        size_t rsize = size;
+//        KV_Value value = calloc(1, H3_PART_SIZE);
+//
+//        for(i=0; i<nParts && storeStatus == KV_SUCCESS; i++){
+//            KV_Key key = GetPartId(objId, i, -1);
+//            size_t partSize = min(roffset+rsize, H3_PART_SIZE);
+//
+//            if(!roffset){
+//                value = &((KV_Value)data)[size - rsize];
+//                rsize -= min(H3_PART_SIZE, rsize);
+//            }
+//            else if(roffset > H3_PART_SIZE){
+//                roffset -= H3_PART_SIZE;
+//            }
+//            else { // roffset < H3_PART_SIZE
+//                size_t dataSize = min(H3_PART_SIZE-roffset, rsize);
+//                memcpy(&value[roffset], data, dataSize);
+//                roffset = 0;
+//                rsize -= dataSize;
+//            }
+//
+//            storeStatus = uploadData(_handle, key, value, 0, partSize);
+//            objMeta->part[i].number = i;
+//            objMeta->part[i].number = -1;
+//            objMeta->part[i].size=partSize;
+//            free(key);
+//        }
+//
+//        free(value);
+//
+//        // Sanity check
+//        if(roffset || rsize){
+//            exit(-1);
+//        }
+//    }
+//
+//    //Upload metadata
+//    if(storeStatus == KV_SUCCESS && uploadMetadata(_handle, objId, (KV_Value)objMeta, 0, objMetaSize) == KV_SUCCESS){
+//        status = H3_SUCCESS;
+//    }
+//
+//    free(objMeta);
+//
+//    return status;
+//}
+//
+//
+//
+//int H3_CreateObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name objectName, void* data, size_t size, size_t offset){
+//    return UploadObject(handle, token, bucketName, objectName, 1, data, size, offset);
+//}
+//
+int H3_WriteObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name objectName, uint64_t offset, void* data, size_t size){
+
+    // TODO - Check if we need to truncate the object
+    // TODO - reset the isBad flag
+
+//    return UploadObject(handle, token, bucketName, objectName, 0, data, size, offset);
+    return H3_FAILURE;
+}
+
+
+int H3_CreateObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name objectName, void* data, size_t size, size_t offset){
     int status = H3_FAILURE;
 
     // Argument check. Note we allow zero-sized objects.
@@ -48,17 +157,6 @@ static int UploadObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H
     H3_UserId userId;
     H3_ObjectId objId;
 
-    UploadData uploadData;
-    UploadMetadata uploadMetadata;
-    if(isCreate){
-        uploadData = op->create;
-        uploadMetadata = op->metadata_create;
-    }
-    else {
-        uploadData = op->write;
-        uploadMetadata = op->metadata_write;
-    }
-
     // Validate bucketName & extract userId from token
     if( !ValidateBucketName(bucketName) || !ValidateObjectName(objectName) || !GetUserId(token, userId) ){
         return H3_FAILURE;
@@ -68,7 +166,8 @@ static int UploadObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H
 
     // Allocate & populate Object metadata
     uint nParts = (offset + size + H3_PART_SIZE - 1)/H3_PART_SIZE;
-    size_t objMetaSize = sizeof(H3_ObjectMetadata) + nParts * sizeof(H3_PartMetadata);
+    uint nBatch = (nParts + H3_PART_BATCH_SIZE - 1)/H3_PART_BATCH_SIZE;
+    size_t objMetaSize = sizeof(H3_ObjectMetadata) + nBatch * H3_PART_BATCH_SIZE * sizeof(H3_PartMetadata);
     H3_ObjectMetadata* objMeta = calloc(1, objMetaSize);
     memcpy(objMeta->userId, userId, sizeof(H3_UserId));
     objMeta->nParts = nParts;
@@ -99,9 +198,8 @@ static int UploadObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H
                 rsize -= dataSize;
             }
 
-            storeStatus = uploadData(_handle, key, value, 0, partSize);
+            storeStatus = op->create(_handle, key, value, 0, partSize);
             objMeta->part[i].number = i;
-            objMeta->part[i].number = -1;
             objMeta->part[i].size=partSize;
             free(key);
         }
@@ -115,26 +213,13 @@ static int UploadObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H
     }
 
     //Upload metadata
-    if(storeStatus == KV_SUCCESS && uploadMetadata(_handle, objId, (KV_Value)objMeta, 0, objMetaSize) == KV_SUCCESS){
+    if(storeStatus == KV_SUCCESS && op->metadata_create(_handle, objId, (KV_Value)objMeta, 0, objMetaSize) == KV_SUCCESS){
         status = H3_SUCCESS;
     }
 
     free(objMeta);
 
     return status;
-}
-
-
-
-int H3_CreateObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name objectName, void* data, size_t size, size_t offset){
-    return UploadObject(handle, token, bucketName, objectName, 1, data, size, offset);
-}
-
-int H3_WriteObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name objectName, uint64_t offset, void* data, size_t size){
-
-    // TODO - Check if we need to truncate the object
-
-    return UploadObject(handle, token, bucketName, objectName, 0, data, size, offset);
 }
 
 int H3_ReadObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name objectName, size_t offset, void* data, size_t* size){
@@ -172,8 +257,13 @@ int H3_ReadObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name
 
         for(i=0; i<objMeta->nParts && (aggregateSize+=objMeta->part[i].size) < offset; i++);
 
+        // The object is corrupt
+        if(objMeta->isBad){
+            status = H3_FAILURE;
+        }
+
         // Offset is out of range
-        if(i == objMeta->nParts){
+        else if(i == objMeta->nParts){
             status = H3_FAILURE;
         }
 
@@ -222,16 +312,118 @@ int H3_ReadObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name
     return H3_FAILURE;
 }
 
+int H3_InfoObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name objectName, H3_ObjectInfo* objectInfo){
+    // Argument check
+    if(!handle || !token  || !bucketName || !objectName || !objectInfo ){
+        return H3_FAILURE;
+    }
+
+    H3_Context* ctx = (H3_Context*)handle;
+    KV_Handle _handle = ctx->handle;
+    KV_Operations* op = ctx->operation;
+
+    H3_UserId userId;
+    H3_ObjectId objId;
+    KV_Value value = NULL;
+    size_t mSize = 0;
+
+    // Validate bucketName & extract userId from token
+    if( !ValidateBucketName(bucketName) || !ValidateObjectName(objectName) || !GetUserId(token, userId) ){
+        return H3_FAILURE;
+    }
+
+    GetObjectId(bucketName, objectName, objId);
+
+    if( op->metadata_read(_handle, objId, 0, &value, &mSize) == KV_SUCCESS){
+        int i;
+        size_t size=0;
+        H3_ObjectMetadata* objMeta = (H3_ObjectMetadata*)value;
+        for(i=0; i<objMeta->nParts; i++){
+            size += objMeta->part[i].size;
+        }
+
+        objectInfo->name = strdup(objId);
+        objectInfo->isBad = objMeta->isBad;
+        objectInfo->lastAccess = objMeta->lastAccess;
+        objectInfo->lastModification = objMeta->lastModification;
+        objectInfo->size = size;
+
+        objMeta->lastAccess = time(NULL);
+        op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, mSize);
+
+        free(objMeta);
+        return H3_SUCCESS;
+    }
+
+    return H3_FAILURE;
+}
+
+int H3_DeleteObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name objectName){
+
+    // Argument check
+    if(!handle || !token  || !bucketName || !objectName){
+        return H3_FAILURE;
+    }
+
+    H3_Context* ctx = (H3_Context*)handle;
+    KV_Handle _handle = ctx->handle;
+    KV_Operations* op = ctx->operation;
+
+    H3_UserId userId;
+    H3_ObjectId objId;
+    KV_Value value = NULL;
+    size_t mSize = 0;
+
+    // Validate bucketName & extract userId from token
+    if( !ValidateBucketName(bucketName) || !ValidateObjectName(objectName) || !GetUserId(token, userId) ){
+        return H3_FAILURE;
+    }
+
+    GetObjectId(bucketName, objectName, objId);
+
+    if( op->metadata_read(_handle, objId, 0, &value, &mSize) == KV_SUCCESS){
+        KV_Status status;
+        H3_ObjectMetadata* objMeta = (H3_ObjectMetadata*)value;
+
+        int i, nBadParts=0;
+        H3_PartMetadata* badPart = malloc(sizeof(H3_PartMetadata) * objMeta->nParts);
+        for(i=0; i<objMeta->nParts; i++){
+            KV_Key key = GetPartId(objId, objMeta->part[i].number, objMeta->part[i].subNumber);
+            if(op->delete(_handle, key) != KV_SUCCESS){
+                memcpy(&badPart[nBadParts++], &objMeta->part[i], sizeof(H3_PartMetadata));
+            }
+            free(key);
+        }
+
+        if(nBadParts){
+            memcpy(objMeta->part, badPart, sizeof(H3_PartMetadata) * nBadParts);
+            objMeta->isBad = 1;
+            objMeta->nParts = nBadParts;
+            objMeta->lastAccess = time(NULL);
+            op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, mSize);
+            status = KV_FAILURE;
+        }
+        else {
+            status = op->metadata_delete(_handle, objId);
+        }
+
+        free(badPart);
+        free(objMeta);
+        return status == KV_SUCCESS?H3_SUCCESS:H3_FAILURE;
+    }
+
+    return H3_FAILURE;
+}
+
 
 
 // Object management
 int H3_ListObjects(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name prefix, size_t maxSize, uint64_t offset, H3_Name* objectNames, size_t* size){return H3_FAILURE;}
 int H3_ForeachObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name prefix, size_t maxSize, uint64_t offset, h3_name_iterator_cb function, void* userData){return H3_FAILURE;}
-int H3_InfoObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name objectName, H3_ObjectInfo* objectInfo){return H3_FAILURE;}
+
 int H3_CopyObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name srcObjectName, H3_Name dstObjectName){return H3_FAILURE;}
 int H3_CopyObjectRange(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name srcObjectName, uint64_t offset, size_t size, H3_Name dstObjectName){return H3_FAILURE;}
 int H3_MoveObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name srcObjectName, H3_Name dstObjectName){return H3_FAILURE;}
-int H3_DeleteObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name objectName){return H3_FAILURE;}
 
 
 
@@ -239,86 +431,8 @@ int H3_DeleteObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Na
 
 
 
-//int H3_CreateObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name objectName, void* data, size_t size, size_t offset){
-//    int status = H3_FAILURE;
-//
-//    // Argument check. Note we allow zero-sized objects.
-//    if(!handle || !token  || !bucketName || !objectName ){
-//        return H3_FAILURE;
-//    }
-//
-//    H3_Context* ctx = (H3_Context*)handle;
-//    KV_Handle _handle = ctx->handle;
-//    KV_Operations* op = ctx->operation;
-//    KV_Status storeStatus = KV_SUCCESS;
-//
-//    H3_UserId userId;
-//    H3_ObjectId objId;
-//
-//
-//    // Validate bucketName & extract userId from token
-//    if( !ValidateBucketName(bucketName) || !ValidateObjectName(objectName) || !GetUserId(token, userId) ){
-//        return H3_FAILURE;
-//    }
-//
-//    GetObjectId(bucketName, objectName, objId);
-//
-//    // Allocate & populate Object metadata
-//    uint nParts = (offset + size + H3_PART_SIZE - 1)/H3_PART_SIZE;
-//    size_t objMetaSize = sizeof(H3_ObjectMetadata) + nParts * sizeof(H3_PartMetadata);
-//    H3_ObjectMetadata* objMeta = calloc(1, objMetaSize);
-//    memcpy(objMeta->userId, userId, sizeof(H3_UserId));
-//    objMeta->nParts = nParts;
-//    objMeta->lastModification = objMeta->lastAccess = objMeta->creation = time(NULL);
-//
-//    //Upload part(s) if any
-//    if(data){
-//        int i;
-//        size_t roffset = offset;
-//        size_t rsize = size;
-//        KV_Value value = calloc(1, H3_PART_SIZE);
-//
-//        for(i=0; i<nParts && storeStatus == KV_SUCCESS; i++){
-//            KV_Key key = GetKey(objId, i, -1);
-//            size_t partSize = min(roffset+rsize, H3_PART_SIZE);
-//
-//            if(!roffset){
-//                value = &((KV_Value)data)[size - rsize];
-//                rsize -= min(H3_PART_SIZE, rsize);
-//            }
-//            else if(roffset > H3_PART_SIZE){
-//                roffset -= H3_PART_SIZE;
-//            }
-//            else { // roffset < H3_PART_SIZE
-//                size_t dataSize = min(H3_PART_SIZE-roffset, rsize);
-//                memcpy(&value[roffset], data, dataSize);
-//                roffset = 0;
-//                rsize -= dataSize;
-//            }
-//
-//            storeStatus = op->create(_handle, key, value, 0, partSize);
-//            objMeta->part[i].number = i;
-//            objMeta->part[i].size=partSize;
-//            free(key);
-//        }
-//
-//        free(value);
-//
-//        // Sanity check
-//        if(roffset || rsize){
-//            exit(-1);
-//        }
-//    }
-//
-//    //Upload metadata
-//    if(storeStatus == KV_SUCCESS && op->metadata_create(_handle, objId, objMeta, 0, objMetaSize) == KV_SUCCESS){
-//        status = H3_SUCCESS;
-//    }
-//
-//    free(objMeta);
-//
-//    return status;
-//}
+
+
 
 
 

@@ -51,6 +51,7 @@ typedef struct {
 
 typedef struct {
 	H3_Name name;
+	char isBad;
 	size_t size;
 	time_t lastAccess;
 	time_t lastModification;

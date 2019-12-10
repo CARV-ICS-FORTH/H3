@@ -66,14 +66,14 @@ int H3_CreateBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName){
         if( (status = op->metadata_read(_handle, userId, 0, &value, &size)) == KV_SUCCESS){
             // Extend existing user's metadata to fit new bucket-id if needed
             userMetadata = (H3_UserMetadata*)value;
-            if(userMetadata->nBuckets % H3_BUCKET_NAME_BATCH_SIZE == H3_BUCKET_NAME_BATCH_SIZE - 1){
-                size = sizeof(H3_UserMetadata) + ((userMetadata->nBuckets / H3_BUCKET_NAME_BATCH_SIZE) + 1) * sizeof(H3_BucketId);
+            if(userMetadata->nBuckets % H3_BUCKET_BATCH_SIZE == H3_BUCKET_BATCH_SIZE - 1){
+                size = sizeof(H3_UserMetadata) + ((userMetadata->nBuckets / H3_BUCKET_BATCH_SIZE) + 1) * sizeof(H3_BucketId);
                 userMetadata = realloc(userMetadata, size);
             }
         }
         else if(status == KV_KEY_NOT_EXIST){
             // Create user's metadata i.e. create the user
-            userMetadata = calloc(1, sizeof(H3_UserMetadata) + H3_BUCKET_NAME_BATCH_SIZE * sizeof(H3_BucketId));
+            userMetadata = calloc(1, sizeof(H3_UserMetadata) + H3_BUCKET_BATCH_SIZE * sizeof(H3_BucketId));
         }
         else {
             // Internal store error
@@ -127,7 +127,7 @@ int H3_DeleteBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName){
             memcpy(userMetadata->bucket[index], userMetadata->bucket[--userMetadata->nBuckets], sizeof(H3_BucketId));
 
             // ... and shrink array if needed
-            if( userMetadata->nBuckets % H3_BUCKET_NAME_BATCH_SIZE == H3_BUCKET_NAME_BATCH_SIZE - 1){
+            if( userMetadata->nBuckets % H3_BUCKET_BATCH_SIZE == H3_BUCKET_BATCH_SIZE - 1){
                 // TODO - Implement shrinking
             }
 
@@ -200,8 +200,9 @@ int H3_InfoBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Buck
             if(op->metadata_read(_handle, bucketName, 0, &value, &size) == KV_SUCCESS){
                 H3_BucketMetadata* bucketMetadata = (H3_BucketMetadata*)value;
                 bucketInfo->creation = bucketMetadata->creation;
-                bucketInfo->lastAccess = bucketMetadata->lastAccess = time(NULL);
+                bucketInfo->lastAccess = bucketMetadata->lastAccess;
                 bucketInfo->lastModification = bucketMetadata->lastModification;
+                bucketMetadata->lastAccess = time(NULL);
                 op->metadata_write(_handle, bucketName, (KV_Value)userMetadata, 0, size);
                 free(bucketMetadata);
 

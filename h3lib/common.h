@@ -28,7 +28,8 @@
 #define BUFF_SIZE 24
 #define H3_SYSTEM_ID    0x00
 
-#define H3_BUCKET_NAME_BATCH_SIZE   10
+#define H3_BUCKET_BATCH_SIZE   10
+#define H3_PART_BATCH_SIZE   10
 
 #define H3_USERID_SIZE      (H3_OBJECT_NAME_SIZE - 1)
 
@@ -69,6 +70,7 @@ typedef struct{
 }H3_PartMetadata;
 
 typedef struct{
+    char isBad;
     H3_UserId userId;
     time_t creation;
     time_t lastAccess;
