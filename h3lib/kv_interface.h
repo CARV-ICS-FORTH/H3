@@ -40,8 +40,9 @@ typedef struct KV_Operations {
 	 * the caller sets it with the chunk size to retrieve (0x00 for all) and the
 	 * storage-backend sets it to the size it managed to retrieve.
 	 *
-	 * Also it is the responsibility of the storage-backend to allocate the buffer
-	 * for the data and the callers to release it.
+	 * If argument "*value" is NULL then the storage-backend will allocate the data
+	 * buffer and the caller is expected to release it. Otherwise the backend will fill
+	 * it with up to "size" data.
 	 *
 	 * --- Write Operations ---
 	 * Write operations create a key if doesn't exist or update its value otherwise. For

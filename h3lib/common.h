@@ -64,6 +64,7 @@ typedef struct{
 
 typedef struct{
     uint number;
+    int subNumber;
     size_t size;
 }H3_PartMetadata;
 
@@ -87,4 +88,4 @@ int ValidateBucketName(char* name);
 int GetUserId(H3_Token* token, H3_UserId id);
 int GetBucketIndex(H3_UserMetadata* userMetadata, H3_Name bucketName);
 void GetObjectId(H3_Name bucketName, H3_Name objectName, H3_ObjectId id);
-char* GetKey(H3_ObjectId objId, int partNumber, int subPartNumber);
+char* GetPartId(H3_ObjectId objId, int partNumber, int subPartNumber);

@@ -36,7 +36,7 @@ int H3_CreateBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName){
     H3_UserId userId;
     H3_BucketMetadata bucketMetadata;
     H3_UserMetadata* userMetadata;
-    KV_Value value;
+    KV_Value value = NULL;
     KV_Status status;
 
     // Argument check
@@ -94,7 +94,7 @@ int H3_CreateBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName){
 
 int H3_DeleteBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName){
     H3_UserId userId;
-    KV_Value value;
+    KV_Value value = NULL;
     uint64_t nKeys;
     int status = H3_FAILURE;
 
@@ -143,8 +143,8 @@ int H3_DeleteBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName){
 int H3_ListBuckets(H3_Handle handle, H3_Token* token, H3_Name* bucketNames, size_t* size){
     H3_UserId userId;
     H3_UserMetadata* userMetadata;
-    KV_Value value;
-    size_t metaSize;
+    KV_Value value = NULL;
+    size_t metaSize = 0;
 
     // Argument check
     if(!handle || !token  || !bucketNames || !size){
@@ -167,8 +167,8 @@ int H3_ListBuckets(H3_Handle handle, H3_Token* token, H3_Name* bucketNames, size
 
 int H3_InfoBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_BucketInfo* bucketInfo){
     H3_UserId userId;
-    KV_Value value;
-    size_t size;
+    KV_Value value = NULL;
+    size_t size = 0;
     int status = H3_FAILURE;
 
 
@@ -195,6 +195,8 @@ int H3_InfoBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Buck
             bucketInfo->name = strdup(bucketName);
 
             // Get the bucket's metadata and update its access-time
+            value = NULL;
+            size = 0;
             if(op->metadata_read(_handle, bucketName, 0, &value, &size) == KV_SUCCESS){
                 H3_BucketMetadata* bucketMetadata = (H3_BucketMetadata*)value;
                 bucketInfo->creation = bucketMetadata->creation;
@@ -205,6 +207,7 @@ int H3_InfoBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Buck
 
 
                 // TODO - Get the list of objects
+                // TODO - Get info for each object in list
                 bucketInfo->nObjects = 0;
                 bucketInfo->size = 0;
 
@@ -221,8 +224,8 @@ int H3_InfoBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Buck
 
 int H3_ForeachBucket(H3_Handle handle, H3_Token* token, h3_name_iterator_cb function, void* userData){
     H3_UserId userId;
-    KV_Value value;
-    size_t size;
+    KV_Value value = NULL;
+    size_t size = 0;
     int status = H3_FAILURE;
 
     // Argument check
@@ -246,6 +249,8 @@ int H3_ForeachBucket(H3_Handle handle, H3_Token* token, h3_name_iterator_cb func
         for(i=0; i<userMetadata->nBuckets && status == H3_SUCCESS; i++){
 
             // Call the user function and update the bucket's access timestamp
+            value = NULL;
+            size = 0;
             if(op->metadata_read(_handle, userMetadata->bucket[i], 0, &value, &size) == KV_SUCCESS){
                 H3_BucketMetadata* bucketMetadata = (H3_BucketMetadata*)value;
                 bucketMetadata->lastAccess = time(NULL);

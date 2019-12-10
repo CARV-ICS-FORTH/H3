@@ -36,7 +36,7 @@ char* H3_Version(){
     return buffer;
 }
 
-char* GetKey(H3_ObjectId objId, int partNumber, int subPartNumber){
+char* GetPartId(H3_ObjectId objId, int partNumber, int subPartNumber){
     char* key = NULL;
     gchar* hash = g_compute_checksum_for_string(G_CHECKSUM_SHA256, objId, -1);
 
