@@ -17,6 +17,8 @@
 #include <string.h>
 #include <regex.h>
 
+#include <uuid/uuid.h>
+
 #include <glib.h>
 #include <glib/gi18n.h>
 
@@ -43,6 +45,10 @@ typedef char H3_UserId[H3_USERID_SIZE];
 typedef char H3_BucketId[H3_BUCKET_NAME_SIZE];
 typedef char H3_ObjectId[H3_BUCKET_NAME_SIZE + H3_BUCKET_NAME_SIZE + 1];
 
+//typedef enum{
+//    H3_MetaType_Bucket, H3_MetaType_Object
+//}H3_MetaType;
+
 typedef struct {
     H3_StoreType type;
 
@@ -59,8 +65,6 @@ typedef struct{
 typedef struct{
     H3_UserId userId;
     time_t creation;
-    time_t lastAccess;
-    time_t lastModification;
 }H3_BucketMetadata;
 
 typedef struct{
@@ -84,6 +88,8 @@ typedef struct{
 //#define mSizeofUserMetadata(a) (sizeof(H3_UserMetadata) + (a)->nBuckets * sizeof(H3_BucketId))
 
 
+//#define mGrantObjectAccess(id,value) ApproveAccess(H3_MetaType_Object, (id), (value))
+//#define mGrantBucketAccess(id,value) ApproveAccess(H3_MetaType_Bucket, (id), (value))
 
 
 int ValidateBucketName(char* name);
@@ -91,3 +97,5 @@ int GetUserId(H3_Token* token, H3_UserId id);
 int GetBucketIndex(H3_UserMetadata* userMetadata, H3_Name bucketName);
 void GetObjectId(H3_Name bucketName, H3_Name objectName, H3_ObjectId id);
 char* GetPartId(H3_ObjectId objId, int partNumber, int subPartNumber);
+int GrantBucketAccess(H3_UserId id, H3_BucketMetadata* meta);
+int GrantObjectAccess(H3_UserId id, H3_ObjectMetadata* meta);

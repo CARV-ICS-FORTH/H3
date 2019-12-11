@@ -38,21 +38,35 @@ char* H3_Version(){
 
 char* GetPartId(H3_ObjectId objId, int partNumber, int subPartNumber){
     char* key = NULL;
-    gchar* hash = g_compute_checksum_for_string(G_CHECKSUM_SHA256, objId, -1);
+//    gchar* hash = g_compute_checksum_for_string(G_CHECKSUM_SHA256, objId, -1);
+
+    // http://man7.org/linux/man-pages/man3/uuid_unparse.3.html
+    uuid_t uuid;
+    char uuidString[37];
+    uuid_generate(uuid);
+    uuid_unparse_lower(uuid, uuidString);
 
     if(partNumber >= 0){
         if(subPartNumber >= 0){
-            asprintf(&key,"_%s#%d.%d", hash, partNumber, subPartNumber);
+            asprintf(&key,"_%s#%d.%d", uuidString, partNumber, subPartNumber);
         }
         else{
-            asprintf(&key,"_%s#%d", hash, partNumber);
+            asprintf(&key,"_%s#%d", uuidString, partNumber);
         }
     }
     else {
-        asprintf(&key,"_%s", hash);
+        asprintf(&key,"_%s", uuidString);
     }
-    g_free(hash);
+//    g_free(hash);
     return key;
+}
+
+int GrantBucketAccess(H3_UserId id, H3_BucketMetadata* meta){
+    return !strncmp(id, meta->userId, sizeof(H3_UserId));
+}
+
+int GrantObjectAccess(H3_UserId id, H3_ObjectMetadata* meta){
+    return !strncmp(id, meta->userId, sizeof(H3_UserId));
 }
 
 

@@ -37,29 +37,27 @@ typedef enum {
 }H3_StoreType;
 
 typedef struct{
-   int userId;
+    int userId;
 }H3_Token;
 
 typedef struct {
-	H3_Name name;
-	size_t size;
-	uint64_t nObjects;
-	time_t creation;
-	time_t lastAccess;
-	time_t lastModification;
+    H3_Name name;
+    size_t size;
+    uint64_t nObjects;
+    time_t creation;
 } H3_BucketInfo;
 
 typedef struct {
-	H3_Name name;
-	char isBad;
-	size_t size;
-	time_t lastAccess;
-	time_t lastModification;
+    H3_Name name;
+    char isBad;
+    size_t size;
+    time_t lastAccess;
+    time_t lastModification;
 } H3_ObjectInfo;
 
 typedef struct {
-	uint32_t partId;
-	size_t size;
+    uint32_t partId;
+    size_t size;
 } H3_MultipartInfo;
 
 typedef void (*h3_name_iterator_cb)(H3_Name name, void* userData);

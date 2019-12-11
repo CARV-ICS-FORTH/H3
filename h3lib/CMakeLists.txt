@@ -43,7 +43,7 @@ target_include_directories( ${PROJECT_NAME} PUBLIC
 find_package(PkgConfig REQUIRED)
 pkg_search_module(GLIB REQUIRED glib-2.0)
 target_include_directories(${PROJECT_NAME} PRIVATE ${GLIB_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} INTERFACE ${GLIB_LDFLAGS})
+target_link_libraries(${PROJECT_NAME} INTERFACE ${GLIB_LDFLAGS} uuid)
                            
 
 #target_include_directories( ${PROJECT_NAME} PUBLIC
