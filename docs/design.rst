@@ -63,7 +63,7 @@ We handle multipart data writes (multipart upload) with special types of objects
 Data
 ^^^^
 
-In the simplest case, where object data is smaller than the value size limitation, we just store the data under a key corresponding to the string representation of the respective name identifier's hash (eg. data for ``mybucket/a`` goes into key ``'_' + hash('mybucket/a')``). The hash function used is SHA-256, which produces a 32-byte (random) key for each object name. The underscore is added at the beginning to ensure that data keys are not intermixed with bucket/object name keys during scan operations.
+In the simplest case, where object data is smaller than the value size limitation, we just store the data under a key corresponding to the string representation of the respective name identifier's hash (eg. data for ``mybucket/a`` goes into key ``'_' + UUID``). The UUID is a 16-byte random value, making part identifiers independent of their parent object thus enabling fast rename operations. The underscore is added at the beginning to ensure that data keys are not intermixed with bucket/object name keys during scan operations.
 
 Object data is broken up into parts if it is larger than the value size limitation, or is provided as such by the user via the multipart API. Part ``i`` of data belonging to ``mybucket/a`` goes into key ``'_' + hash('mybucket/a') + '#' + i``. Parts provided by the user that exceed the maximum value size, can themselves be broken into internal parts, thus it is possible to have a second level of data segmentation, encoded in keys as ``'_' + hash('mybucket/a') + '#' + i + '.' + j``.
 
@@ -81,9 +81,9 @@ The following table outlines in pseudocode how H3 operations are implemented wit
     | ``user_id = '@' + <user_name>``
     | ``bucket_id = <bucket name>``
     | ``object_id = <bucket name> + '/' + <object_name>``
-    | ``object_part_id = '_' + hash(object_id) + '#' + <part_number> + ['.' + <subpart_number>]``
+    | ``object_part_id = '_' + UUID + '#' + <part_number> + ['.' + <subpart_number>]``
     | ``multipart_id = <bucket name> + '$' + <object_name>``
-    | ``multipart_part_id = '_' + hash(multipart_id) + '#' + <part_number> + ['.' + <subpart_number>]``
+    | ``multipart_part_id = '_' + UUID + '#' + <part_number> + ['.' + <subpart_number>]``
 
 
 :Create bucket:
@@ -92,25 +92,35 @@ The following table outlines in pseudocode how H3 operations are implemented wit
     | ``user_metadata += bucket_id``
     | ``put(key=user_id, value=user_metadata)``
 :Delete bucket:
-    | ``get(key=user_id)``
-    | ``if scan(prefix=bucket_id + '/') == empty: delete(key=bucket_id)``
-    | ``put(key=user_id)``
+    | ``user_metadata = get(key=user_id)``
+    | ``if bucket not in user_metadata.buckets: abort``
+    | ``if scan(prefix=bucket_id + '/') == empty: delete(key=bucket_id), user_metadata -= bucket_id``
+    | ``put(key=user_id, value=user_metadata)``
 :List buckets:
-    | ``get(key=user_id)``
+    | ``user_metadata = get(key=user_id)``
+    | ``create list from user_metadata``
 :Get bucket info:
-    | ``get(key=bucket_id)``
-
+    | ``bucket_metadata = get(key=bucket_id)``
+    | ``if use_id != bucket_metadata.user_id: abort``
+    | ``foreach object in scan(prefix=bucket_id + '/'): object_metadata = get(key_object_id)``
+    | ``produce list from all metadata``
 :Create object:
-    | ``get(key=bucket_id)``
+    | ``bucket_metadata = get(key=bucket_id)``
+    | ``if bucket_metadata.user_id != user_id: abort``
     | ``if not exists(key=object_id): create(key=object_id, value=object_metadata)``
 :Delete object:
-    | ``get(key=object_id)``
-    | ``for key in scan(prefix='_' + hash(object_id)): delete(key)``
+    | If some parts fail to be deleted, object enters a bad state
+    | ``object_metadata = get(key=object_id)``
+    | ``if user_id != object_metadata.user_id: abort``
+    | ``for object_part_id in object_metadata.parts: delete(object_part_id)``
     | ``delete(key=object_id)``
 :Read object:
-    | ``get(key=object_id)``
+    | ``object_metadata = get(key=object_id)``
+    | ``if object_metadata.is-bad: abort``
+    | ``if user_id != object_metadata.user_id: abort``
     | ``get(key=object_part_id, offset, length)`` (one or more)
-    | ``put(key=object_id)``
+    | ``update object_metadata timestamps``
+    | ``put(key=object_id, value=object_metadata)``
 :Write object:
     | ``get(key=object_id)``
     | ``put(key=object_part_id, offset, length, data)`` (one or more)

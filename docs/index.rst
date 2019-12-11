@@ -11,6 +11,9 @@ H3 is implemented in the ``h3lib`` library, which provides a cloud-friendly API,
 ``h3lib`` core is written in C. Python and Java wrappers also available.
 We also plan to implement an `Apache jclouds <http://jclouds.apache.org>`_ BlobStore provider plug-in, so you can use `s3proxy <https://github.com/gaul/s3proxy>`_ to provide a fully compatible S3 REST interface over H3. That will also allow layering `s3fs <https://github.com/s3fs-fuse/s3fs-fuse>`_ on top for fileystem semantics, although an H3 FUSE-based filesystem is also in the works, that will provide better performance.
 
+.. image:: Proposed_H3_Stack.png
+   :scale: 50%
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
