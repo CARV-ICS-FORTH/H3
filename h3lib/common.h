@@ -27,13 +27,12 @@
 #include "kv_interface.h"
 
 #define H3_PART_SIZE (1048576 * 2) // = 2Mb - Key - 4Kb kreon metadata
-#define BUFF_SIZE 24
 #define H3_SYSTEM_ID    0x00
 
 #define H3_BUCKET_BATCH_SIZE   10
 #define H3_PART_BATCH_SIZE   10
 
-#define H3_USERID_SIZE      (H3_OBJECT_NAME_SIZE - 1)
+#define H3_USERID_SIZE      128
 
 // Use typeof to make sure each argument is evaluated only once
 // https://gcc.gnu.org/onlinedocs/gcc-4.9.2/gcc/Typeof.html#Typeof
@@ -43,7 +42,7 @@
 
 typedef char H3_UserId[H3_USERID_SIZE];
 typedef char H3_BucketId[H3_BUCKET_NAME_SIZE];
-typedef char H3_ObjectId[H3_BUCKET_NAME_SIZE + H3_BUCKET_NAME_SIZE + 1];
+typedef char H3_ObjectId[H3_BUCKET_NAME_SIZE + H3_OBJECT_NAME_SIZE + 1];
 typedef char H3_PartId[50];                                                 // '_' + UUID[36byte] + '#' + <part_number> + ['.' + <subpart_number>]
 
 //typedef enum{

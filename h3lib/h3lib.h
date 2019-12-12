@@ -76,7 +76,7 @@ int H3_CreateBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName);
 int H3_DeleteBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName);
 
 // Object management
-int H3_ListObjects(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name prefix, size_t maxSize, uint64_t offset, H3_Name* objectNames, size_t* size);
+int H3_ListObjects(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name prefix, size_t offset, H3_Name* objectNames, size_t* size);
 int H3_ForeachObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name prefix, size_t maxSize, uint64_t offset, h3_name_iterator_cb function, void* userData);
 int H3_InfoObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name objectName, H3_ObjectInfo* objectInfo);
 int H3_CreateObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name objectName, void* data, size_t size, size_t offset);

@@ -111,8 +111,8 @@ int H3_DeleteBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName){
         return H3_FAILURE;
     }
 
-    char prefix[H3_BUCKET_NAME_SIZE+1];
-    sprintf(prefix, "%s/", bucketName);
+    H3_ObjectId prefix;
+    GetObjectId(bucketName, NULL, prefix);
     if( op->list(_handle, prefix, NULL, &nKeys) == KV_SUCCESS                   &&
         nKeys == 0                                                              &&
         op->metadata_read(_handle, bucketName, 0, &value, &size) == KV_SUCCESS      ){

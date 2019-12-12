@@ -21,7 +21,14 @@ int GetUserId(H3_Token* token, H3_UserId id){
 }
 
 void GetObjectId(H3_Name bucketName, H3_Name objectName, H3_ObjectId id){
-    snprintf(id,sizeof(H3_ObjectId), "%s/%s", bucketName, objectName);
+
+    // Common usage
+    if(objectName)
+        snprintf(id,sizeof(H3_ObjectId), "%s/%s", bucketName, objectName);
+
+    // Used in ListObjects
+    else
+        snprintf(id,sizeof(H3_ObjectId), "%s/", bucketName);
 }
 
 int GetBucketIndex(H3_UserMetadata* userMetadata, H3_Name bucketName){
@@ -30,9 +37,10 @@ int GetBucketIndex(H3_UserMetadata* userMetadata, H3_Name bucketName){
     return i;
 }
 
+#define H3_VERSION_SIZE 12
 char* H3_Version(){
-    static char buffer[BUFF_SIZE];
-    snprintf(buffer, BUFF_SIZE, "v%d.%d\n", H3LIB_VERSION_MAJOR, H3LIB_VERSION_MINOR);
+    static char buffer[H3_VERSION_SIZE];
+    snprintf(buffer, H3_VERSION_SIZE, "v%d.%d\n", H3LIB_VERSION_MAJOR, H3LIB_VERSION_MINOR);
     return buffer;
 }
 

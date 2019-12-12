@@ -22,9 +22,9 @@
 
 int ValidateObjectName(char* name){
     regex_t regex;
-    if( strnlen(name, H3_OBJECT_NAME_SIZE) == H3_OBJECT_NAME_SIZE   ||          // Too big
-        regcomp(&regex, "(^/)|([^/_0-9a-zA-Z-.])|(/{2,})", 0)       ||          // Contains invalid characters, starts with "/", has back-to-back "/"
-        regexec(&regex, name, 0, NULL, 0) == REG_NOERROR                ){
+    if( name && (strnlen(name, H3_OBJECT_NAME_SIZE) == H3_OBJECT_NAME_SIZE   ||          // Provided name is too big or
+                 regcomp(&regex, "(^/)|([^/_0-9a-zA-Z-.])|(/{2,})", 0)       ||          // contains invalid characters or starts with "/" or has back-to-back "/"
+                 regexec(&regex, name, 0, NULL, 0) == REG_NOERROR               ) ){
 
         return H3_FAILURE;
     }
@@ -446,7 +446,43 @@ int H3_CopyObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name
 
 
 // Object management
-int H3_ListObjects(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name prefix, size_t maxSize, uint64_t offset, H3_Name* objectNames, size_t* size){return H3_FAILURE;}
+int H3_ListObjects(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name prefix, size_t offset, H3_Name* objectNames, size_t* size){
+
+//    // Argument check. Note a 'prefix' is not required.
+//    if(!handle || !token  || !bucketName || !objectNames || !size){
+//        return H3_FAILURE;
+//    }
+//
+//    H3_Context* ctx = (H3_Context*)handle;
+//    KV_Handle _handle = ctx->handle;
+//    KV_Operations* op = ctx->operation;
+//
+//    H3_UserId userId;
+//    H3_ObjectId objId;
+//    KV_Value value = NULL;
+//    KV_Key key;
+//    uint64_t nKeys;
+//    size_t mSize = 0;
+//
+//    // Validate bucketName & extract userId from token
+//    if( !ValidateBucketName(bucketName) || !ValidateObjectName(prefix) || !GetUserId(token, userId) ){
+//        return H3_FAILURE;
+//    }
+//
+//    GetObjectId(bucketName, prefix, objId);
+//    if(op->list(_handle, prefix, &key, &nKeys)){
+//
+//    }
+//
+////    op->
+
+
+    return H3_FAILURE;
+}
+
+
+
+
 int H3_ForeachObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name prefix, size_t maxSize, uint64_t offset, h3_name_iterator_cb function, void* userData){return H3_FAILURE;}
 
 
