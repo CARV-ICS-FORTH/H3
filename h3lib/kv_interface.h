@@ -76,7 +76,7 @@ typedef struct KV_Operations {
 	KV_Status (*create)(KV_Handle handle, KV_Key key, KV_Value value, uint64_t offset, size_t size);
 	KV_Status (*write)(KV_Handle handle, KV_Key key, KV_Value value, uint64_t offset, size_t size);
 	KV_Status (*copy)(KV_Handle handle, KV_Key srcKey, KV_Key dstKey);
-	KV_Status (*move)(KV_Handle handle, KV_Key srcKey, KV_Key dstKey);
+//	KV_Status (*move)(KV_Handle handle, KV_Key srcKey, KV_Key dstKey);
 	KV_Status (*delete)(KV_Handle handle, KV_Key key);
 	KV_Status (*sync)(KV_Handle handle);
 } KV_Operations;

@@ -84,7 +84,6 @@ int H3_CreateObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Na
                 buffer = calloc(1, H3_PART_SIZE);
 
             for(i=0, storeStatus = KV_SUCCESS; i<nParts && storeStatus == KV_SUCCESS; i++){
-                KV_Key key = GetPartId(objId, i, -1);
                 size_t partSize = min(roffset+rsize, H3_PART_SIZE);
 
                 if(!roffset){
@@ -102,10 +101,11 @@ int H3_CreateObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Na
                     rsize -= dataSize;
                 }
 
-                storeStatus = op->create(_handle, key, value, 0, partSize);
                 objMeta->part[i].number = i;
-                objMeta->part[i].size=partSize;
-                free(key);
+                objMeta->part[i].subNumber = -1;
+                objMeta->part[i].size = partSize;
+                CreatePartId(objMeta->part[i].id, objMeta->part[i].number, objMeta->part[i].subNumber);
+                storeStatus = op->create(_handle, objMeta->part[i].id, value, 0, objMeta->part[i].size);
             }
 
             if(offset)
@@ -192,9 +192,8 @@ int H3_ReadObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name
             value = (KV_Value)data;
             size_t partOffset = initialPartOffset;
              for(i=initialPart, storeStatus = KV_SUCCESS; i<objMeta->nParts && remaining && storeStatus == KV_SUCCESS; i++){
-                KV_Key key = GetPartId(objId, objMeta->part[i].number, objMeta->part[i].subNumber);
                 size_t retrieved = remaining;
-                storeStatus = op->read(_handle, key, partOffset, &value, &retrieved);
+                storeStatus = op->read(_handle, objMeta->part[i].id, partOffset, &value, &retrieved);
 
                 // Sanity check
                 if(storeStatus == KV_SUCCESS && retrieved != min(objMeta->part[i].size - partOffset,remaining)){
@@ -204,7 +203,6 @@ int H3_ReadObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name
                 value = &value[retrieved];
                 remaining -= retrieved;
                 partOffset = 0;
-                free(key);
             }
 
             // Update timestamp
@@ -305,11 +303,9 @@ int H3_DeleteObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Na
             int i, nBadParts=0;
             H3_PartMetadata* badPart = malloc(sizeof(H3_PartMetadata) * objMeta->nParts);
             for(i=0; i<objMeta->nParts; i++){
-                KV_Key key = GetPartId(objId, objMeta->part[i].number, objMeta->part[i].subNumber);
-                if(op->delete(_handle, key) != KV_SUCCESS){
+                if(op->delete(_handle, objMeta->part[i].id) != KV_SUCCESS){
                     memcpy(&badPart[nBadParts++], &objMeta->part[i], sizeof(H3_PartMetadata));
                 }
-                free(key);
             }
 
             if(nBadParts){
@@ -375,30 +371,74 @@ int H3_MoveObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name
 }
 
 int H3_CopyObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name srcObjectName, H3_Name dstObjectName){
+    int status = H3_FAILURE;
 
-//    // Argument check
-//    if(!handle || !token  || !bucketName || !srcObjectName || !dstObjectName){
-//        return H3_FAILURE;
-//    }
-//
-//    H3_Context* ctx = (H3_Context*)handle;
-//    KV_Handle _handle = ctx->handle;
-//    KV_Operations* op = ctx->operation;
-//
-//    H3_UserId userId;
-//    H3_ObjectId srcObjId, dstObjId;
-//    KV_Value value = NULL;
-//    size_t mSize = 0;
-//
-//    // Validate bucketName & extract userId from token
-//    if( !ValidateBucketName(bucketName) || !ValidateObjectName(srcObjectName) || !ValidateObjectName(dstObjectName) || !GetUserId(token, userId) ){
-//        return H3_FAILURE;
-//    }
-//
-//    GetObjectId(bucketName, srcObjectName, srcObjId);
-//    GetObjectId(bucketName, dstObjectName, dstObjId);
+    // Argument check
+    if(!handle || !token  || !bucketName || !srcObjectName || !dstObjectName){
+        return H3_FAILURE;
+    }
 
-    return H3_FAILURE;
+    H3_Context* ctx = (H3_Context*)handle;
+    KV_Handle _handle = ctx->handle;
+    KV_Operations* op = ctx->operation;
+
+    H3_UserId userId;
+    H3_ObjectId srcObjId, dstObjId;
+
+    KV_Value value = NULL;
+    size_t mSize = 0;
+
+    // Validate bucketName & extract userId from token
+    if( !ValidateBucketName(bucketName) || !ValidateObjectName(srcObjectName) || !ValidateObjectName(dstObjectName) || !GetUserId(token, userId) ){
+        return H3_FAILURE;
+    }
+
+    GetObjectId(bucketName, srcObjectName, srcObjId);
+    GetObjectId(bucketName, dstObjectName, dstObjId);
+
+    if( op->metadata_read(_handle, srcObjId, 0, &value, &mSize) == KV_SUCCESS){
+
+        // Make sure the user has access to the object
+        H3_ObjectMetadata* srcObjMeta = (H3_ObjectMetadata*)value;
+        if( GrantObjectAccess(userId, srcObjMeta) ){
+            int i;
+            KV_Status storeStatus;
+            H3_ObjectMetadata* dstObjMeta = malloc(mSize);
+            memcpy(dstObjMeta, srcObjMeta, mSize);
+
+            // Reserve the destination object
+            dstObjMeta->isBad = 1;
+            if(op->metadata_create(_handle, dstObjId, (KV_Value)dstObjMeta, 0, mSize) == KV_SUCCESS){
+
+                // Copy the parts
+                for(i=0, storeStatus = KV_SUCCESS; i<srcObjMeta->nParts && storeStatus == KV_SUCCESS; i++){
+                    CreatePartId(dstObjMeta->part[i].id, dstObjMeta->part[i].number, dstObjMeta->part[i].subNumber);
+                    storeStatus = op->copy(_handle, srcObjMeta->part[i].id, dstObjMeta->part[i].id);
+                }
+
+                // Update destination metadata
+                dstObjMeta->lastAccess = dstObjMeta->lastModification = dstObjMeta->creation = time(NULL);
+                if(storeStatus != KV_SUCCESS){
+                    dstObjMeta->nParts = i;
+                }
+                else
+                    dstObjMeta->isBad = 0;
+
+                // Update source metadata
+                srcObjMeta->lastAccess = time(NULL);
+
+                if( op->metadata_write(_handle, dstObjId, (KV_Value)dstObjMeta, 0, mSize)== KV_SUCCESS &&
+                    op->metadata_write(_handle, srcObjId, (KV_Value)srcObjMeta, 0, mSize)== KV_SUCCESS      ){
+                    status =  H3_SUCCESS;
+                }
+            }
+
+            free(dstObjMeta);
+        }
+        free(srcObjMeta);
+    }
+
+    return status;
 }
 
 

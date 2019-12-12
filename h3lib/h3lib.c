@@ -36,9 +36,7 @@ char* H3_Version(){
     return buffer;
 }
 
-char* GetPartId(H3_ObjectId objId, int partNumber, int subPartNumber){
-    char* key = NULL;
-//    gchar* hash = g_compute_checksum_for_string(G_CHECKSUM_SHA256, objId, -1);
+void CreatePartId(H3_PartId partId, int partNumber, int subPartNumber){
 
     // http://man7.org/linux/man-pages/man3/uuid_unparse.3.html
     uuid_t uuid;
@@ -47,19 +45,46 @@ char* GetPartId(H3_ObjectId objId, int partNumber, int subPartNumber){
     uuid_unparse_lower(uuid, uuidString);
 
     if(partNumber >= 0){
-        if(subPartNumber >= 0){
-            asprintf(&key,"_%s#%d.%d", uuidString, partNumber, subPartNumber);
-        }
-        else{
-            asprintf(&key,"_%s#%d", uuidString, partNumber);
-        }
+        if(subPartNumber >= 0)
+            snprintf(partId, sizeof(H3_PartId), "_%s#%d.%d", uuidString, partNumber, subPartNumber);
+        else
+            snprintf(partId, sizeof(H3_PartId), "_%s#%d", uuidString, partNumber);
+
     }
-    else {
-        asprintf(&key,"_%s", uuidString);
-    }
-//    g_free(hash);
-    return key;
+    else
+        snprintf(partId, sizeof(H3_PartId), "_%s", uuidString);
 }
+
+
+
+//void ParsePartId(char* partId, int* partNumber, int* subPartNumber){
+//    char* hash = strrchr(partId,'#');
+//    if(!hash){
+//        *partNumber = -1;
+//        *subPartNumber = -1;
+//    }
+//    else if(sscanf(hash,"%d.%d", partNumber, subPartNumber) == 1){
+//        *subPartNumber = -1;
+//    }
+//}
+
+//char* RefreshPartId(char* srcPartId){
+//    char* partId = NULL;
+//
+//    uuid_t uuid;
+//    char uuidString[37];
+//    uuid_generate(uuid);
+//    uuid_unparse_lower(uuid, uuidString);
+//
+//    char* hash = strrchr(srcPartId,'#');
+//    if(hash){
+//        asprintf(&partId,"_%s%s", uuidString, hash);
+//    }
+//    else
+//        asprintf(&partId,"_%s", uuidString);
+//
+//    return partId;
+//}
 
 int GrantBucketAccess(H3_UserId id, H3_BucketMetadata* meta){
     return !strncmp(id, meta->userId, sizeof(H3_UserId));

@@ -74,9 +74,9 @@ KV_Status kv_copy_fs(KV_Handle handle, KV_Key src_key, KV_Key dest_key) {
 	return KV_SUCCESS;
 }
 
-KV_Status kv_move_fs(KV_Handle handle, KV_Key src_key, KV_Key dest_key) {
-	return KV_SUCCESS;
-}
+//KV_Status kv_move_fs(KV_Handle handle, KV_Key src_key, KV_Key dest_key) {
+//	return KV_SUCCESS;
+//}
 
 KV_Status kv_delete_fs(KV_Handle handle, KV_Key key) {
 	return KV_SUCCESS;
@@ -101,7 +101,7 @@ KV_Operations operationsFilesystem = {
 	.create = kv_create_fs,
 	.write = kv_write_fs,
 	.copy = kv_copy_fs,
-	.move = kv_move_fs,
+//	.move = kv_move_fs,
 	.delete = kv_delete_fs,
 	.sync = kv_sync_fs
 };

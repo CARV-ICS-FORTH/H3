@@ -44,6 +44,7 @@
 typedef char H3_UserId[H3_USERID_SIZE];
 typedef char H3_BucketId[H3_BUCKET_NAME_SIZE];
 typedef char H3_ObjectId[H3_BUCKET_NAME_SIZE + H3_BUCKET_NAME_SIZE + 1];
+typedef char H3_PartId[50];                                                 // '_' + UUID[36byte] + '#' + <part_number> + ['.' + <subpart_number>]
 
 //typedef enum{
 //    H3_MetaType_Bucket, H3_MetaType_Object
@@ -71,6 +72,7 @@ typedef struct{
     uint number;
     int subNumber;
     size_t size;
+    H3_PartId id;
 }H3_PartMetadata;
 
 typedef struct{
@@ -96,6 +98,8 @@ int ValidateBucketName(char* name);
 int GetUserId(H3_Token* token, H3_UserId id);
 int GetBucketIndex(H3_UserMetadata* userMetadata, H3_Name bucketName);
 void GetObjectId(H3_Name bucketName, H3_Name objectName, H3_ObjectId id);
-char* GetPartId(H3_ObjectId objId, int partNumber, int subPartNumber);
+void CreatePartId(H3_PartId partId, int partNumber, int subPartNumber);
+//void ParsePartId(char* partId, int* partNumber, int* subPartNumber);
+//char* RefreshPartId(char* srcPartId);
 int GrantBucketAccess(H3_UserId id, H3_BucketMetadata* meta);
 int GrantObjectAccess(H3_UserId id, H3_ObjectMetadata* meta);
