@@ -1,3 +1,7 @@
+/*!
+ * @file h3lib.h
+ */
+
 // Copyright [2019] [FORTH-ICS]
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,78 +19,155 @@
 #ifndef H3LIB_H_
 #define H3LIB_H_
 
-// Error codes
-#define H3_SUCCESS 1
-#define H3_FAILURE 0
+#include <stdint.h>
+#include <time.h>
 
-#define H3_ERROR_MESSAGE    512
+/** \defgroup Macros
+ *  @{
+ */
+#define H3_BUCKET_NAME_SIZE 64      //!< Maximum number of characters allowed for a bucket
+#define H3_OBJECT_NAME_SIZE 512     //!< Maximum number of characters allowed for an object
+/** @}*/
 
-// Types
-typedef void* H3_Handle;
-typedef char* H3_Name;
-typedef void* H3_MultipartId;
 
+/** \defgroup Typedefs
+ *  @{
+ */
+typedef void* H3_Handle;                                            //!< Opaque pointer to an h3lib handle
+typedef char* H3_Name;                                              //!< Alias to null terminated string
+typedef char* H3_MultipartId;                                       //!< Alias to null terminated string
+typedef void (*h3_name_iterator_cb)(H3_Name name, void* userData);  //!< User function to be invoked for each bucket
+/** @}*/
+
+
+/** \defgroup Enumerations
+ *  @{
+ */
+
+/*! \brief H3 status/error codes */
 typedef enum {
-    H3_STORE_REDIS, H3_STORE_ROCKSDB, H3_STORE_KREON, H3_STORE_FILESYSTEM, H3_STORE_IME, H3_STORE_NumOfStores
-}H3_StoreType;
+    H3_FAILURE = 0,     //!< Operation failed
+    H3_INVALID_ARGS,    //!< Arguments are missing or malformed
+    H3_STORE_ERROR,     //!< External (store provider) error
+    H3_EXISTS,          //!< Bucket or object already exists
+    H3_NOT_EXISTS,      //!< Bucket or object does not exist
+    H3_SUCCESS,         //!< Operation succeeded
+    H3_CONTINUE         //!< Operation succeeded though there are more data to retrieve
+} H3_Status;
 
+/*! \brief Storage providers supported by H3 */
+typedef enum {
+    H3_STORE_CONFIG = 0,    //!< Provider is set in the configuration file
+    H3_STORE_FILESYSTEM,    //!< Mounted filesystem
+    H3_STORE_KREON,         //!< Kreon cluster  (not available)
+    H3_STORE_ROCKSDB,       //!< RocksDB server (not available)
+    H3_STORE_REDIS,         //!< Redis cluster  (not available)
+    H3_STORE_IME,           //!< IME cluster    (not available)
+    H3_STORE_NumOfStores    //!< Not an option, used for iteration purposes.
+} H3_StoreType;
+/** @}*/
+
+/*! \brief User authentication info */
 typedef struct{
-   int userId;
-}H3_Token;
+    uint32_t userId;
+} H3_Auth;
 
+/*! \brief Pointer to user authentication data */
+typedef H3_Auth* H3_Token;
+
+
+/*! \brief Bucket statistics */
 typedef struct {
-	H3_Name name;
-	int byte_size;
-	int item_count;
-	int last_access;
-	int last_modification;
+    size_t size;                //!< The size of all objects contained in the bucket
+    uint64_t nObjects;          //!< Number of objects contained in the bucket
+    time_t lastAccess;          //!< Last time an object was accessed
+    time_t lastModification;    //!< Last time an object was modified
+} H3_BucketStats;
+
+
+/*! \brief Bucket information */
+typedef struct {
+    time_t creation;        //!< Creation timestamp
+    H3_BucketStats stats;   //!< Aggregate object statistics
 } H3_BucketInfo;
 
+
+/*! \brief H3 object information */
 typedef struct {
-	H3_Name name;
-	int byte_size;
-	int last_access;
-	int last_modification;
+    char isBad;                 //!< Data are corrupt
+    size_t size;                //!< Object size
+    time_t creation;            //!< Creation timestamp
+    time_t lastAccess;          //!< Last access timestamp
+    time_t lastModification;    //!< Last modification timestamp
 } H3_ObjectInfo;
 
+
+/*! \brief Information on individual parts of a multi-part object */
 typedef struct {
-	int position;
-	int byte_size;
-} H3_MultipartInfo;
+    uint32_t partNumber;    //!< Part number
+    size_t size;            //!< Part size
+} H3_PartInfo;
 
-typedef void (*h3_name_iterator_cb)(H3_Name name, void* userData);
 
+
+/** \defgroup Functions
+ *  @{
+ */
+
+/*! Return the version string
+ * \return Null terminated string
+ */
 char* H3_Version();
 
-// Handle management
+/** \defgroup handle Handle management
+ *  @{
+ */
 H3_Handle H3_Init(H3_StoreType storageType, char* cfgFileName);
 void H3_Free(H3_Handle handle);
+/** @}*/
 
-// Bucket management
-int H3_ListBuckets(H3_Handle handle, H3_Token* token, int maxSize, int offset, H3_Name* bucketNames, int* size);
-int H3_ForeachBucket(H3_Handle handle, H3_Token* token, h3_name_iterator_cb function, void* userData);
-int H3_InfoBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_BucketInfo* bucketInfo);
-int H3_CreateBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName);
-int H3_DeleteBucket(H3_Handle handle, H3_Token* token, H3_Name bucketName);
 
-// Object management
-int H3_ListObjects(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name prefix, int maxSize, int offset, H3_Name* objectNames, int* size);
-int H3_ForeachObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name prefix, int maxSize, int offset, h3_name_iterator_cb function, void* userData);
-int H3_InfoObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name objectName, H3_ObjectInfo* objectInfo);
-int H3_ReadObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name objectName, int maxSize, int offset, void* data, int* size);
-int H3_WriteObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name objectName, void* data, int offset, int size);
-int H3_CopyObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name srcObjectName, H3_Name dstObjectName);
-int H3_CopyObjectRange(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name srcObjectName, int offset, int size, H3_Name dstObjectName);
-int H3_MoveObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name srcObjectName, H3_Name dstObjectName);
-int H3_DeleteObject(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name objectName);
+/** \defgroup bucket Bucket management
+ *  @{
+ */
+H3_Status H3_ListBuckets(H3_Handle handle, H3_Token token, H3_Name* bucketNameArray, uint32_t* nBuckets);
+H3_Status H3_ForeachBucket(H3_Handle handle, H3_Token token, h3_name_iterator_cb function, void* userData);
+H3_Status H3_InfoBucket(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_BucketInfo* bucketInfo, uint8_t getStats);
+H3_Status H3_CreateBucket(H3_Handle handle, H3_Token token, H3_Name bucketName);
+H3_Status H3_DeleteBucket(H3_Handle handle, H3_Token token, H3_Name bucketName);
+/** @}*/
 
-// Multipart management
-int H3_ListMultiparts(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name prefix, int maxSize, int offset, H3_MultipartId* idArray, int* size);
-int H3_CreateMultipart(H3_Handle handle, H3_Token* token, H3_Name bucketName, H3_Name objectName, H3_MultipartId* id);
-int H3_CompleteMultipart(H3_Handle handle, H3_Token* token, H3_MultipartId id);
-int H3_AbortMultipart(H3_Handle handle, H3_Token* token, H3_MultipartId id);
-int H3_ListParts(H3_Handle handle, H3_Token* token, H3_MultipartId id, int maxSize, int offset, H3_MultipartInfo* info, int* size);
-int H3_UploadPart(H3_Handle handle, H3_Token* token, H3_MultipartId id, int partNumber, void* data, int size);
-int H3_UploadPartCopy(H3_Handle handle, H3_Token* token, H3_Name objectName, int offset, int size, H3_MultipartId id, int partNumber);
+/** \defgroup object Object management
+ *  @{
+ */
+H3_Status H3_ListObjects(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name prefix, uint32_t offset, H3_Name* objectNameArray, uint32_t* nObjects);
+H3_Status H3_ForeachObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name prefix, uint32_t nObjects, off_t offset, h3_name_iterator_cb function, void* userData);
+H3_Status H3_InfoObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, H3_ObjectInfo* objectInfo);
+H3_Status H3_CreateObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, void* data, size_t size);
+H3_Status H3_CreateObjectCopy(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, off_t offset, size_t size, H3_Name dstObjectName);
+H3_Status H3_WriteObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, void* data, size_t size, off_t offset);
+H3_Status H3_WriteObjectCopy(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, off_t srcOffset, size_t size, H3_Name dstObjectName, off_t dstOffset);
+H3_Status H3_ReadObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, off_t offset, void** data, size_t* size);
+H3_Status H3_CopyObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, H3_Name dstObjectName, uint8_t noOverwrite);
+H3_Status H3_MoveObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, H3_Name dstObjectName, uint8_t noOverwrite);
+H3_Status H3_DeleteObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName);
+/** @}*/
+
+
+/** \defgroup multipart Multipart management
+ *  @{
+ */
+H3_Status H3_ListMultiparts(H3_Handle handle, H3_Token token, H3_Name bucketName, uint32_t offset, H3_MultipartId* multipartIdArray, uint32_t* nIds);
+H3_Status H3_CreateMultipart(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, H3_MultipartId* multipartId);
+H3_Status H3_CompleteMultipart(H3_Handle handle, H3_Token token, H3_MultipartId multipartId);
+H3_Status H3_AbortMultipart(H3_Handle handle, H3_Token token, H3_MultipartId multipartId);
+H3_Status H3_ListParts(H3_Handle handle, H3_Token token, H3_MultipartId multipartId, H3_PartInfo** partInfoArray, uint32_t* nParts);
+H3_Status H3_CreatePart(H3_Handle handle, H3_Token token, H3_MultipartId multipartId, uint32_t partNumber, void* data, size_t size);
+H3_Status H3_CreatePartCopy(H3_Handle handle, H3_Token token, H3_Name objectName, off_t offset, size_t size, H3_MultipartId multipartId, uint32_t partNumber);
+/** @}*/
+/** @}*/
+
+
+
 
 #endif /* H3LIB_H_ */
