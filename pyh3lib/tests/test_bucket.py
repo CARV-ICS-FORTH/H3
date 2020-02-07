@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import pytest
-import pyh3
+import pyh3lib
 import random
 
 def test_simple(h3):
@@ -23,7 +23,7 @@ def test_simple(h3):
 
     assert h3.create_bucket('b1') == True
 
-    with pytest.raises(pyh3.h3lib.ExistsError):
+    with pytest.raises(pyh3lib.H3ExistsError):
         h3.create_bucket('b1')
 
     bucket_info = h3.info_bucket('b1')
@@ -39,10 +39,10 @@ def test_simple(h3):
 
     assert h3.delete_bucket('b1') == True
 
-    with pytest.raises(pyh3.h3lib.NotExistsError):
+    with pytest.raises(pyh3lib.H3NotExistsError):
         h3.delete_bucket('b1')
 
-    with pytest.raises(pyh3.h3lib.NotExistsError):
+    with pytest.raises(pyh3lib.H3NotExistsError):
         h3.info_bucket('b1')
 
     assert h3.list_buckets() == []
@@ -51,21 +51,21 @@ def test_arguments(h3):
     """Pass invalid arguments."""
 
     # Empty name
-    with pytest.raises(pyh3.h3lib.InvalidArgsError):
+    with pytest.raises(pyh3lib.H3InvalidArgsError):
         h3.create_bucket('')
 
     with pytest.raises(TypeError):
         h3.create_bucket(None)
 
     # Large name
-    with pytest.raises(pyh3.h3lib.InvalidArgsError):
-        h3.create_bucket('a' * (pyh3.h3lib.H3_BUCKET_NAME_SIZE + 1))
+    with pytest.raises(pyh3lib.H3InvalidArgsError):
+        h3.create_bucket('a' * (h3.BUCKET_NAME_SIZE + 1))
 
     # Invalid name
-    with pytest.raises(pyh3.h3lib.InvalidArgsError):
+    with pytest.raises(pyh3lib.H3InvalidArgsError):
         h3.create_bucket('/bucketId')
         
-    with pytest.raises(pyh3.h3lib.InvalidArgsError):
+    with pytest.raises(pyh3lib.H3InvalidArgsError):
         h3.create_bucket('\bucketId')
 
 def test_many(h3):
@@ -79,7 +79,7 @@ def test_many(h3):
         assert h3.create_bucket('bucket%d' % i) == True
 
     for i in random.sample(range(count), 10):
-        with pytest.raises(pyh3.h3lib.ExistsError):
+        with pytest.raises(pyh3lib.H3ExistsError):
             h3.create_bucket('bucket%d' % i)
 
     for i in range(count):
@@ -93,11 +93,11 @@ def test_many(h3):
         assert h3.delete_bucket('bucket%d' % i) == True
 
     for i in random.sample(range(count), 10):
-        with pytest.raises(pyh3.h3lib.NotExistsError):
+        with pytest.raises(pyh3lib.H3NotExistsError):
             h3.delete_bucket('bucket%d' % i)
 
     for i in random.sample(range(count), 10):
-        with pytest.raises(pyh3.h3lib.NotExistsError):
+        with pytest.raises(pyh3lib.H3NotExistsError):
             h3.info_bucket('bucket%d' % i)
 
     assert h3.list_buckets() == []

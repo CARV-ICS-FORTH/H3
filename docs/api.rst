@@ -4,7 +4,7 @@ Programming APIs
 Python
 ------
 
-.. autoclass:: pyh3.H3
+.. autoclass:: pyh3lib.H3
    :members:
    :undoc-members:
    :member-order: bysource
@@ -14,14 +14,14 @@ Python
 
       Class property, which returns the current ``h3lib`` version.
 
-.. autoclass:: pyh3.H3List
+.. autoclass:: pyh3lib.H3List
 
-.. exception:: pyh3.h3lib.FailureError
+.. exception:: pyh3lib.H3FailureError
 
-.. exception:: pyh3.h3lib.InvalidArgsError
+.. exception:: pyh3lib.H3InvalidArgsError
 
-.. exception:: pyh3.h3lib.StoreError
+.. exception:: pyh3lib.H3StoreError
 
-.. exception:: pyh3.h3lib.ExistsError
+.. exception:: pyh3lib.H3ExistsError
 
-.. exception:: pyh3.h3lib.NotExistsError
+.. exception:: pyh3lib.H3NotExistsError

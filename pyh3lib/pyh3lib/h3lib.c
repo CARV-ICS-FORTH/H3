@@ -53,28 +53,28 @@ static PyStructSequence_Field part_info_fields[] = {
 };
 
 static PyStructSequence_Desc bucket_stats_desc = {
-    "pyh3.h3lib.bucket_stats",
+    "pyh3lib.h3lib.bucket_stats",
     NULL,
     bucket_stats_fields,
     4,
 };
 
 static PyStructSequence_Desc bucket_info_desc = {
-    "pyh3.h3lib.bucket_info",
+    "pyh3lib.h3lib.bucket_info",
     NULL,
     bucket_info_fields,
     2,
 };
 
 static PyStructSequence_Desc object_info_desc = {
-    "pyh3.h3lib.object_info",
+    "pyh3lib.h3lib.object_info",
     NULL,
     object_info_fields,
     5,
 };
 
 static PyStructSequence_Desc part_info_desc = {
-    "pyh3.h3lib.part_info",
+    "pyh3lib.h3lib.part_info",
     NULL,
     part_info_fields,
     2,
@@ -133,8 +133,10 @@ static PyObject* h3lib_init(PyObject* self, PyObject *args, PyObject *kw) {
         return NULL;
 
     H3_Handle handle = H3_Init(storageType, cfgFileName);
-    if (handle == NULL)
+    if (handle == NULL) {
+        PyErr_SetNone(invalid_args_status);
         return NULL;
+    }
 
     return PyCapsule_New((void *)handle, NULL, h3lib_free);
 }
@@ -850,11 +852,11 @@ PyMODINIT_FUNC PyInit_h3lib(void) {
     // PyModule_AddObject(module, "object_info", (PyObject *)&object_info_type);
     // PyModule_AddObject(module, "part_info", (PyObject *)&part_info_type);
 
-    failure_status = PyErr_NewException("pyh3.h3lib.FailureError", NULL, NULL);
-    invalid_args_status = PyErr_NewException("pyh3.h3lib.InvalidArgsError", NULL, NULL);
-    store_error_status = PyErr_NewException("pyh3.h3lib.StoreError", NULL, NULL);
-    exists_status = PyErr_NewException("pyh3.h3lib.ExistsError", NULL, NULL);
-    not_exists_status = PyErr_NewException("pyh3.h3lib.NotExistsError", NULL, NULL);
+    failure_status = PyErr_NewException("pyh3lib.h3lib.FailureError", NULL, NULL);
+    invalid_args_status = PyErr_NewException("pyh3lib.h3lib.InvalidArgsError", NULL, NULL);
+    store_error_status = PyErr_NewException("pyh3lib.h3lib.StoreError", NULL, NULL);
+    exists_status = PyErr_NewException("pyh3lib.h3lib.ExistsError", NULL, NULL);
+    not_exists_status = PyErr_NewException("pyh3lib.h3lib.NotExistsError", NULL, NULL);
     PyModule_AddObject(module, "FailureError", failure_status);
     PyModule_AddObject(module, "InvalidArgsError", invalid_args_status);
     PyModule_AddObject(module, "StoreError", store_error_status);

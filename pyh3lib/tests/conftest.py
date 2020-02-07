@@ -14,7 +14,7 @@
 
 import pytest
 
-from pyh3 import H3
+from pyh3lib import H3
 
 def pytest_addoption(parser):
     parser.addoption('--config', action='store', help="Specify h3lib's configuration file")

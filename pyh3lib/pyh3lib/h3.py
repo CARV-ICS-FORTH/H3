@@ -14,7 +14,6 @@
 
 from . import h3lib
 
-
 class H3List(list):
     """A list that has a ``done`` attribute. If ``done`` is ``False``
     there are more items to be fetched, so repeat the call
@@ -50,9 +49,15 @@ class H3(object, metaclass=H3Version):
     :type user_id: int
 
     .. note::
-       All functions may raise standard exceptions on internal errors, or some ``pyh3.h3lib.*Error``
+       All functions may raise standard exceptions on internal errors, or some ``pyh3lib.*Error``
        in respect to the underlying library's return values.
     """
+
+    BUCKET_NAME_SIZE = h3lib.H3_BUCKET_NAME_SIZE
+    """Maximum bucket name size."""
+
+    OBJECT_NAME_SIZE = h3lib.H3_OBJECT_NAME_SIZE
+    """Maximum object name size."""
 
     STORE_CONFIG = h3lib.H3_STORE_CONFIG
     """Storage type to use whatever is set as ``store`` in the ``H3`` section of the config file (default).
@@ -75,10 +80,10 @@ class H3(object, metaclass=H3Version):
     """Storage type to use `RocksDB <https://rocksdb.org>`_ as the backend."""
 
     # STORE_REDIS = h3lib.H3_STORE_REDIS
-    # """Storage type to use the Kreon as the backend."""
+    # """Storage type to use Redis as the backend."""
 
     # STORE_IME = h3lib.H3_STORE_IME
-    # """Storage type to use the Kreon as the backend."""
+    # """Storage type to use IME as the backend."""
 
     def __init__(self, config_file, storage_type=h3lib.H3_STORE_CONFIG, user_id=0):
         self._handle = h3lib.init(config_file, storage_type)

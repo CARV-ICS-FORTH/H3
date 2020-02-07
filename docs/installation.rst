@@ -36,10 +36,10 @@ Run tests::
 
     make test
 
-pyh3
-----
+pyh3lib
+-------
 
-With ``h3lib`` installed, you can compile and install the Python wrapper library ``pyh3``, by entering into the respective directory and running::
+With ``h3lib`` installed, you can compile and install the Python wrapper library ``pyh3lib``, by entering into the respective directory and running::
 
     python3 setup.py install
 
