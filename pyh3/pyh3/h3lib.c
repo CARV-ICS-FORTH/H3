@@ -104,6 +104,9 @@ static int did_raise_exception(H3_Status status) {
         case H3_NOT_EXISTS:
             PyErr_SetNone(not_exists_status);
             return 1;
+        case H3_CONTINUE:
+            PyErr_SetNone(failure_status);
+            return 1;
         case H3_SUCCESS:
             return 0;
     }
@@ -170,7 +173,7 @@ static PyObject* h3lib_list_buckets(PyObject* self, PyObject *args, PyObject *kw
     PyObject *list = PyList_New(nBuckets);
     uint32_t i;
     H3_Name current_name;
-    off_t current_name_pos = 0;
+    uint32_t current_name_pos = 0;
     size_t current_name_len = 0;
     for (i = 0; i < nBuckets; i ++) {
         current_name = &(bucketNameArray[current_name_pos]);
@@ -295,11 +298,11 @@ static PyObject* h3lib_list_objects(PyObject* self, PyObject *args, PyObject *kw
     PyObject *capsule = NULL;
     H3_Name bucketName;
     char *prefix = "";
-    off_t offset = 0;
+    uint32_t offset = 0;
     uint32_t userId = 0;
 
     static char *kwlist[] = {"handle", "bucket_name", "prefix", "offset", "user_id", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "Os|slI", kwlist, &capsule, &bucketName, &prefix, &offset, &userId))
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "Os|skI", kwlist, &capsule, &bucketName, &prefix, &offset, &userId))
         return NULL;
 
     H3_Handle handle = (H3_Handle)PyCapsule_GetPointer(capsule, NULL);
@@ -317,7 +320,7 @@ static PyObject* h3lib_list_objects(PyObject* self, PyObject *args, PyObject *kw
     PyObject *list = PyList_New(nObjects);
     uint32_t i;
     H3_Name current_name;
-    off_t current_name_pos = 0;
+    uint32_t current_name_pos = 0;
     size_t current_name_len = 0;
     for (i = 0; i < nObjects; i ++) {
         current_name = &(objectNameArray[current_name_pos]);
@@ -359,7 +362,6 @@ static PyObject* h3lib_info_object(PyObject* self, PyObject *args, PyObject *kw)
         PyErr_NoMemory();
         return NULL;
     }
-    PyStructSequence_SET_ITEM(object_info, 0, Py_BuildValue("s", objectInfo.name));
     PyStructSequence_SET_ITEM(object_info, 1, Py_BuildValue("O", (objectInfo.isBad ? Py_True : Py_False)));
     PyStructSequence_SET_ITEM(object_info, 2, Py_BuildValue("k", objectInfo.size));
     PyStructSequence_SET_ITEM(object_info, 3, Py_BuildValue("l", objectInfo.creation));
@@ -582,10 +584,11 @@ static PyObject* h3lib_delete_object(PyObject* self, PyObject *args, PyObject *k
 static PyObject* h3lib_list_multiparts(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
+    uint32_t offset = 0;
     uint32_t userId = 0;
 
-    static char *kwlist[] = {"handle", "bucket_name", "user_id", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "Os|I", kwlist, &capsule, &bucketName, &userId)) 
+    static char *kwlist[] = {"handle", "bucket_name", "offset", "user_id", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "Os|kI", kwlist, &capsule, &bucketName, &offset, &userId)) 
         return NULL;
 
     H3_Handle handle = (H3_Handle)PyCapsule_GetPointer(capsule, NULL);
@@ -597,13 +600,13 @@ static PyObject* h3lib_list_multiparts(PyObject* self, PyObject *args, PyObject 
     uint32_t nIds;
 
     auth.userId = userId;
-    if (did_fail(H3_ListMultiparts(handle, &auth, bucketName, &multipartIdArray, &nIds)))
+    if (did_fail(H3_ListMultiparts(handle, &auth, bucketName, offset, &multipartIdArray, &nIds)))
         return NULL;
 
     PyObject *list = PyList_New(nIds);
     uint32_t i;
     H3_Name current_name;
-    off_t current_name_pos = 0;
+    uint32_t current_name_pos = 0;
     size_t current_name_len = 0;
     for (i = 0; i < nIds; i ++) {
         current_name = &(multipartIdArray[current_name_pos]);

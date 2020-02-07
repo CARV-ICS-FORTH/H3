@@ -267,12 +267,12 @@ H3_Status H3_AbortMultipart(H3_Handle handle, H3_Token token, H3_MultipartId mul
  * Retrieve the ID of all multipart objects in a bucket into an internally allocated array.
  * Note it is the responsibility of the user to dispose the array except in case of error.
  *
- * @param[in]   handle             An h3lib handle
- * @param[in]   token              Authentication information
- * @param[in]   multipartId        The object id
- * @param[in]   offset             The number of IDs to skip
- * @param[out]  multipartIdArray   An array of IDs
- * @param[out]  nIds               The number of IDs
+ * @param[in]     handle             An h3lib handle
+ * @param[in]     token              Authentication information
+ * @param[in]     multipartId        The object id
+ * @param[in]     offset             The number of IDs to skip
+ * @param[out]    multipartIdArray   An array of IDs
+ * @param[inout]  nIds               The number of IDs
  *
  * @result \b H3_SUCCESS            Operation completed successfully (no more IDs exist)
  * @result \b H3_CONTINUE           Operation completed successfully (there could be more IDs)

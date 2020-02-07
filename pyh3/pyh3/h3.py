@@ -291,15 +291,17 @@ class H3(object, metaclass=H3Version):
 
         return h3lib.delete_object(self._handle, bucket_name, object_name, self._user_id)
 
-    def list_multiparts(self, bucket_name):
+    def list_multiparts(self, bucket_name, offset=0):
         """List all multipart IDs for a bucket.
 
         :param bucket_name: the bucket name
+        :param offset: continue list from offset (default is to start from the beginning)
         :type bucket_name: string
+        :type offset: int
         :returns: A list of of multipart ids if the call was successfull
         """
 
-        return h3lib.list_multiparts(self._handle, bucket_name, self._user_id)
+        return h3lib.list_multiparts(self._handle, bucket_name, offset, self._user_id)
 
     def create_multipart(self, bucket_name, object_name):
         """Create a multipart object.

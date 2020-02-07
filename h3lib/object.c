@@ -777,13 +777,13 @@ H3_Status H3_CopyObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
  * with an appropriately set offset in order to retrieve the next batch of names.
  * In case of an error, the buffer will not be created.
  *
- * @param[in]    handle             An h3lib handle
- * @param[in]    token              Authentication information
- * @param[in]    bucketName         The name of the bucket to host the object
- * @param[in]    prefix             The initial part of an object name
- * @param[in]    offset             The number of matching names to skip
- * @param[out]   objectNameArray    Pointer to a C string buffer
- * @param[out]   nObjects           Number of names in buffer
+ * @param[in]     handle             An h3lib handle
+ * @param[in]     token              Authentication information
+ * @param[in]     bucketName         The name of the bucket to host the object
+ * @param[in]     prefix             The initial part of an object name
+ * @param[in]     offset             The number of matching names to skip
+ * @param[out]    objectNameArray    Pointer to a C string buffer
+ * @param[inout]  nObjects           Number of names in buffer
  *
  * @result \b H3_SUCCESS            Operation completed successfully (no more matching names exist)
  * @result \b H3_CONTINUE           Operation completed successfully (there could be more matching names)
@@ -862,7 +862,7 @@ H3_Status H3_ListObjects(H3_Handle handle, H3_Token token, H3_Name bucketName, H
  * @result \b H3_INVALID_ARGS       Missing or malformed arguments
  *
  */
-H3_Status H3_ForeachObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name prefix, uint32_t nObjects, off_t offset, h3_name_iterator_cb function, void* userData){
+H3_Status H3_ForeachObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name prefix, uint32_t nObjects, uint32_t offset, h3_name_iterator_cb function, void* userData){
 
     // Argument check. Note a 'prefix' is not required.
     if(!handle || !token  || !bucketName){

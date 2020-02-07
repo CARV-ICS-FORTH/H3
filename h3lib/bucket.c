@@ -216,7 +216,7 @@ H3_Status H3_DeleteBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
  *
  * @param[in]    handle             An h3lib handle
  * @param[in]    token              Authentication information
- * @param[inout] bucketNameArray    Pointer to a buffer that is to be filled with the buckets names expressed as null-terminated strings
+ * @param[out]   bucketNameArray    Pointer to a buffer that is to be filled with the buckets names expressed as null-terminated strings
  * @param[out]   nBuckets           Number of buckets contained in the buffer
  *
  * @result \b H3_SUCCESS            Operation completed successfully
