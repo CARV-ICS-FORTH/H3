@@ -104,22 +104,11 @@ static int did_raise_exception(H3_Status status) {
         case H3_NOT_EXISTS:
             PyErr_SetNone(not_exists_status);
             return 1;
-        case H3_CONTINUE:
-            PyErr_SetNone(failure_status);
-            return 1;
         case H3_SUCCESS:
             return 0;
+        case H3_CONTINUE:
+            return 0;
     }
-}
-
-// Helper functions
-static int did_fail(int result) {
-    if (!result) {
-        PyErr_SetNone(failure_status);
-        return 1;
-    }
-
-    return 0;
 }
 
 static PyObject *h3lib_version(PyObject *self) {
@@ -314,7 +303,8 @@ static PyObject* h3lib_list_objects(PyObject* self, PyObject *args, PyObject *kw
     uint32_t nObjects;
 
     auth.userId = userId;
-    if (did_raise_exception(H3_ListObjects(handle, &auth, bucketName, prefix, offset, &objectNameArray, &nObjects)))
+    H3_Status return_value = H3_ListObjects(handle, &auth, bucketName, prefix, offset, &objectNameArray, &nObjects);
+    if (did_raise_exception(return_value))
         return NULL;
 
     PyObject *list = PyList_New(nObjects);
@@ -333,7 +323,7 @@ static PyObject* h3lib_list_objects(PyObject* self, PyObject *args, PyObject *kw
     }
     free(objectNameArray);
 
-    return list;
+    return Py_BuildValue("(OO)", list, (return_value == H3_SUCCESS ? Py_True : Py_False));
 }
 
 static PyObject* h3lib_info_object(PyObject* self, PyObject *args, PyObject *kw) {
@@ -600,7 +590,9 @@ static PyObject* h3lib_list_multiparts(PyObject* self, PyObject *args, PyObject 
     uint32_t nIds;
 
     auth.userId = userId;
-    if (did_fail(H3_ListMultiparts(handle, &auth, bucketName, offset, &multipartIdArray, &nIds)))
+    H3_Status return_value;
+    return_value = H3_ListMultiparts(handle, &auth, bucketName, offset, &multipartIdArray, &nIds);
+    if (did_raise_exception(return_value))
         return NULL;
 
     PyObject *list = PyList_New(nIds);
@@ -619,7 +611,7 @@ static PyObject* h3lib_list_multiparts(PyObject* self, PyObject *args, PyObject 
     }
     free(multipartIdArray);
 
-    return list;
+    return Py_BuildValue("(OO)", list, (return_value == H3_SUCCESS ? Py_True : Py_False));
 }
 
 static PyObject* h3lib_create_multipart(PyObject* self, PyObject *args, PyObject *kw) {
@@ -662,7 +654,7 @@ static PyObject* h3lib_complete_multipart(PyObject* self, PyObject *args, PyObje
     H3_Auth auth;
 
     auth.userId = userId;
-    if (did_fail(H3_CompleteMultipart(handle, &auth, multipartId)))
+    if (did_raise_exception(H3_CompleteMultipart(handle, &auth, multipartId)))
         return NULL;
 
     Py_RETURN_TRUE;
@@ -684,7 +676,7 @@ static PyObject* h3lib_abort_multipart(PyObject* self, PyObject *args, PyObject 
     H3_Auth auth;
 
     auth.userId = userId;
-    if (did_fail(H3_AbortMultipart(handle, &auth, multipartId)))
+    if (did_raise_exception(H3_AbortMultipart(handle, &auth, multipartId)))
         return NULL;
 
     Py_RETURN_TRUE;
@@ -708,7 +700,7 @@ static PyObject* h3lib_list_parts(PyObject* self, PyObject *args, PyObject *kw) 
     uint32_t nParts;
 
     auth.userId = userId;
-    if (did_fail(H3_ListParts(handle, &auth, multipartId, &partInfoArray, &nParts)))
+    if (did_raise_exception(H3_ListParts(handle, &auth, multipartId, &partInfoArray, &nParts)))
         return NULL;
 
     PyObject *list = PyList_New(nParts);
@@ -759,7 +751,7 @@ static PyObject* h3lib_create_part(PyObject* self, PyObject *args, PyObject *kw)
     H3_Auth auth;
 
     auth.userId = userId;
-    if (did_fail(H3_CreatePart(handle, &auth, multipartId, partNumber, (void *)data, size)))
+    if (did_raise_exception(H3_CreatePart(handle, &auth, multipartId, partNumber, (void *)data, size)))
         return NULL;
 
     Py_RETURN_TRUE;
@@ -785,7 +777,7 @@ static PyObject* h3lib_create_part_copy(PyObject* self, PyObject *args, PyObject
     H3_Auth auth;
 
     auth.userId = userId;
-    if (did_fail(H3_CreatePartCopy(handle, &auth, objectName, offset, size, multipartId, partNumber)))
+    if (did_raise_exception(H3_CreatePartCopy(handle, &auth, objectName, offset, size, multipartId, partNumber)))
         return NULL;
 
     Py_RETURN_TRUE;

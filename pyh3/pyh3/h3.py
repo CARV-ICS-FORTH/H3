@@ -14,6 +14,26 @@
 
 from . import h3lib
 
+
+class H3List(list):
+    """A list that has a ``done`` attribute. If ``done`` is ``False``
+    there are more items to be fetched, so repeat the call
+    with an appropriate offset to get the next batch.
+    """
+    def __new__(self, *args, **kwargs):
+        return super().__new__(self, args, kwargs)
+
+    def __init__(self, *args, **kwargs):
+        if len(args) == 1 and hasattr(args[0], '__iter__'):
+            list.__init__(self, args[0])
+        else:
+            list.__init__(self, args)
+        self.__dict__.update(kwargs)
+
+    def __call__(self, **kwargs):
+        self.__dict__.update(kwargs)
+        return self
+
 class H3Version(type):
     @property
     def VERSION(self):
@@ -69,7 +89,7 @@ class H3(object, metaclass=H3Version):
     def list_buckets(self):
         """List all buckets.
 
-        :returns: A list of of bucket names if the call was successfull
+        :returns: A list of bucket names if the call was successfull
         """
 
         return h3lib.list_buckets(self._handle, self._user_id)
@@ -136,10 +156,11 @@ class H3(object, metaclass=H3Version):
         :type bucket_name: string
         :type prefix: string
         :type offset: int
-        :returns: A list of of object names if the call was successfull
+        :returns: An H3List of object names if the call was successfull
         """
 
-        return h3lib.list_objects(self._handle, bucket_name, prefix, offset, self._user_id)
+        objects, done = h3lib.list_objects(self._handle, bucket_name, prefix, offset, self._user_id)
+        return H3List(objects, done=done)
 
     def info_object(self, bucket_name, object_name):
         """Get object information.
@@ -298,10 +319,11 @@ class H3(object, metaclass=H3Version):
         :param offset: continue list from offset (default is to start from the beginning)
         :type bucket_name: string
         :type offset: int
-        :returns: A list of of multipart ids if the call was successfull
+        :returns: An H3List of multipart ids if the call was successfull
         """
 
-        return h3lib.list_multiparts(self._handle, bucket_name, offset, self._user_id)
+        multiparts, done = h3lib.list_multiparts(self._handle, bucket_name, offset, self._user_id)
+        return H3List(multiparts, done=done)
 
     def create_multipart(self, bucket_name, object_name):
         """Create a multipart object.

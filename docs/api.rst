@@ -14,6 +14,8 @@ Python
 
       Class property, which returns the current ``h3lib`` version.
 
+.. autoclass:: pyh3.H3List
+
 .. exception:: pyh3.h3lib.FailureError
 
 .. exception:: pyh3.h3lib.InvalidArgsError

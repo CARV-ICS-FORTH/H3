@@ -1,1 +1,1 @@
-from .h3 import H3
+from .h3 import H3List, H3
