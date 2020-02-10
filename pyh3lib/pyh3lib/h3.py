@@ -152,19 +152,21 @@ class H3(object, metaclass=H3Version):
         """
         return h3lib.delete_bucket(self._handle, bucket_name, self._user_id)
 
-    def list_objects(self, bucket_name, prefix='', offset=0):
+    def list_objects(self, bucket_name, prefix='', offset=0, count=10000):
         """List objects in a bucket.
 
         :param bucket_name: the bucket name
         :param prefix: list only objects starting with prefix (default is no prefix)
         :param offset: continue list from offset (default is to start from the beginning)
+        :param count: number of object names to retrieve
         :type bucket_name: string
         :type prefix: string
         :type offset: int
+        :type count: int
         :returns: An H3List of object names if the call was successfull
         """
 
-        objects, done = h3lib.list_objects(self._handle, bucket_name, prefix, offset, self._user_id)
+        objects, done = h3lib.list_objects(self._handle, bucket_name, prefix, offset, count, self._user_id)
         return H3List(objects, done=done)
 
     def info_object(self, bucket_name, object_name):
@@ -221,7 +223,7 @@ class H3(object, metaclass=H3Version):
 
         return h3lib.create_object_copy(self._handle, bucket_name, src_object_name, offset, size, dst_object_name, self._user_id)
 
-    def write_object(self, bucket_name, object_name, data, offset):
+    def write_object(self, bucket_name, object_name, data, offset=0):
         """Write to an object.
 
         :param bucket_name: the bucket name
@@ -257,13 +259,13 @@ class H3(object, metaclass=H3Version):
 
         return h3lib.write_object_copy(self._handle, bucket_name, src_object_name, src_offset, size, dst_object_name, dst_offset, self._user_id)
 
-    def read_object(self, bucket_name, object_name, offset, size):
+    def read_object(self, bucket_name, object_name, offset=0, size=0):
         """Read from an object.
 
         :param bucket_name: the bucket name
         :param object_name: the object name
         :param offset: the offset in the object where reading should start
-        :param size: the size of the data to read
+        :param size: the size of the data to read (default is all)
         :type bucket_name: string
         :type object_name: string
         :type offset: int
@@ -317,17 +319,19 @@ class H3(object, metaclass=H3Version):
 
         return h3lib.delete_object(self._handle, bucket_name, object_name, self._user_id)
 
-    def list_multiparts(self, bucket_name, offset=0):
+    def list_multiparts(self, bucket_name, offset=0, count=10000):
         """List all multipart IDs for a bucket.
 
         :param bucket_name: the bucket name
         :param offset: continue list from offset (default is to start from the beginning)
+        :param count: number of multipart ids to retrieve
         :type bucket_name: string
         :type offset: int
+        :type count: int
         :returns: An H3List of multipart ids if the call was successfull
         """
 
-        multiparts, done = h3lib.list_multiparts(self._handle, bucket_name, offset, self._user_id)
+        multiparts, done = h3lib.list_multiparts(self._handle, bucket_name, offset, count, self._user_id)
         return H3List(multiparts, done=done)
 
     def create_multipart(self, bucket_name, object_name):

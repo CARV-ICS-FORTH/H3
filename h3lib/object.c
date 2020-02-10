@@ -40,6 +40,15 @@ int ValidObjectName(char* name){
     return status;
 }
 
+int ValidPrefix(char* name){
+    if(name){
+        size_t nameSize = strnlen(name, H3_OBJECT_NAME_SIZE+1);
+        if (nameSize == 0)
+            return TRUE;
+    }
+    return ValidObjectName(name);
+}
+
 uint EstimateNumOfParts(H3_ObjectMetadata* objMeta, size_t size, off_t offset){
     int nParts = ((offset % H3_PART_SIZE) +  size + H3_PART_SIZE - 1)/H3_PART_SIZE;
     uint i, regionEnd = offset + size - 1;
@@ -811,7 +820,7 @@ H3_Status H3_ListObjects(H3_Handle handle, H3_Token token, H3_Name bucketName, H
     size_t mSize = 0;
 
     // Validate bucketName & extract userId from token
-    if( !ValidBucketName(bucketName) || !ValidObjectName(prefix) || !GetUserId(token, userId) || !GetBucketId(bucketName, bucketId)){
+    if( !ValidBucketName(bucketName) || !ValidPrefix(prefix) || !GetUserId(token, userId) || !GetBucketId(bucketName, bucketId)){
         return H3_INVALID_ARGS;
     }
 
@@ -881,7 +890,7 @@ H3_Status H3_ForeachObject(H3_Handle handle, H3_Token token, H3_Name bucketName,
     size_t mSize = 0;
 
     // Validate bucketName & extract userId from token
-    if( !ValidBucketName(bucketName) || !ValidObjectName(prefix) || !GetUserId(token, userId) || !GetBucketId(bucketName, bucketId)){
+    if( !ValidBucketName(bucketName) || !ValidPrefix(prefix) || !GetUserId(token, userId) || !GetBucketId(bucketName, bucketId)){
         return H3_INVALID_ARGS;
     }
 
