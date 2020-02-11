@@ -18,6 +18,8 @@
 #include <stdint.h>
 #include <glib.h>
 
+#define KV_LIST_BUFFER_SIZE 64*1024
+
 
 typedef void* KV_Handle;
 typedef char* KV_Key;
@@ -25,7 +27,7 @@ typedef unsigned char* KV_Value;
 
 // Error codes
 typedef enum {
-    KV_FAILURE, KV_KEY_EXIST, KV_KEY_NOT_EXIST, KV_SUCCESS
+    KV_FAILURE, KV_KEY_EXIST, KV_KEY_NOT_EXIST, KV_SUCCESS, KV_CONTINUE
 }KV_Status;
 
 
@@ -44,6 +46,7 @@ typedef struct KV_Operations {
 	 * buffer and the caller is expected to release it. Otherwise the backend will fill
 	 * it with up to "size" data.
 	 *
+	 *
 	 * --- Write Operations ---
 	 * Write operations create a key if doesn't exist or update its value otherwise. For
 	 * functions metadata_write() and write(), argument "size" indicates the size of the
@@ -58,25 +61,38 @@ typedef struct KV_Operations {
 	 *
 	 *
 	 * --- List Operations ---
-	 * This operation accept a pointer to store the list and another to store its size. If
-	 * the list pointer is NULL then no list will be generated, i.e. only interested in the
-	 * number of keys.
+	 * This operation accept a pointer to store the entries and another to store their number.
+	 * The size argument is in/out, i.e. it is set by the caller to indicate the desired number
+	 * of matching entries wishing to retrieve and by the function to indicate the number
+	 * actually retrieved. Setting the number to 0x00 means to retrieve all the objects.
+	 * If the buffer pointer is NULL then we only count the number of matching keys.
+	 * The caller may also indicate the number of entries to be skipped.
+	 *
+	 *
+	 * --- Move/Copy Operations ---
+	 * The destination will be overwritten if exists
+	 *
+	 *
+     * --- Sync Operation ---
+     * This may be useful for the DDN IME store.
 	 */
 
 
 
-	KV_Status (*metadata_read)(KV_Handle handle, KV_Key key, uint64_t offset, KV_Value* value, size_t* size);
-	KV_Status (*metadata_write)(KV_Handle handle, KV_Key key, KV_Value value, uint64_t offset, size_t size);
-	KV_Status (*metadata_create)(KV_Handle handle, KV_Key key, KV_Value value, uint64_t offset, size_t size);
+	KV_Status (*metadata_read)(KV_Handle handle, KV_Key key, off_t offset, KV_Value* value, size_t* size);
+	KV_Status (*metadata_write)(KV_Handle handle, KV_Key key, KV_Value value, off_t offset, size_t size);
+	KV_Status (*metadata_create)(KV_Handle handle, KV_Key key, KV_Value value, off_t offset, size_t size);
 	KV_Status (*metadata_delete)(KV_Handle handle, KV_Key key);
+	KV_Status (*metadata_move)(KV_Handle handle, KV_Key srcKey, KV_Key dstKey);
+	KV_Status (*metadata_exists)(KV_Handle handle, KV_Key key);
 
-	KV_Status (*list)(KV_Handle handle, KV_Key prefix, KV_Key* key, uint64_t* nKeys);
+	KV_Status (*list)(KV_Handle handle, KV_Key prefix, uint8_t nTrim, KV_Key key, uint32_t offset, uint32_t* nKeys);
 	KV_Status (*exists)(KV_Handle handle, KV_Key key);
-	KV_Status (*read)(KV_Handle handle, KV_Key key, uint64_t offset, KV_Value* value, size_t* size);
-	KV_Status (*create)(KV_Handle handle, KV_Key key, KV_Value value, uint64_t offset, size_t size);
-	KV_Status (*write)(KV_Handle handle, KV_Key key, KV_Value value, uint64_t offset, size_t size);
+	KV_Status (*read)(KV_Handle handle, KV_Key key, off_t offset, KV_Value* value, size_t* size);
+	KV_Status (*create)(KV_Handle handle, KV_Key key, KV_Value value, off_t offset, size_t size);
+	KV_Status (*write)(KV_Handle handle, KV_Key key, KV_Value value, off_t offset, size_t size);
 	KV_Status (*copy)(KV_Handle handle, KV_Key srcKey, KV_Key dstKey);
-//	KV_Status (*move)(KV_Handle handle, KV_Key srcKey, KV_Key dstKey);
+	KV_Status (*move)(KV_Handle handle, KV_Key srcKey, KV_Key dstKey);
 	KV_Status (*delete)(KV_Handle handle, KV_Key key);
 	KV_Status (*sync)(KV_Handle handle);
 } KV_Operations;

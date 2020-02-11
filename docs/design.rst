@@ -1,7 +1,7 @@
 Design
 ======
 
-H3 is a thin, stateless layer that provides a cloud-aware application object semantics on top of a high-performance key-value store - a typical service deployed in HPC and Big Data environments. By transitioning to H3 and running in a cluster, we expect applications to enjoy much faster data operations and - if the key-value store is distributed - to easily scale out accross all cluster nodes. In the later case, the object service is not provided centrally, but *everywhere* on the cluster.
+H3 is a thin, stateless layer that provides object semantics on top of a high-performance key-value store - a typical service deployed in HPC and Big Data environments. By from a transitioning cloud-based S3 service to H3 and running in a cluster, we expect applications to enjoy much faster data operations and - if the key-value store is distributed - to easily scale out accross all cluster nodes. In the later case, the object service is not provided centrally, but *everywhere* on the cluster.
 
 Overview
 --------
@@ -10,11 +10,11 @@ H3 provides a flat organization scheme where each data object is linked to a glo
 
 In essence, H3 implements a translation layer between the object namespace and a key-value store, similar to how a filesystem provides a hierarchical namespace of files on top of a block device. However, there are major differences:
 
-- The object namespace is *pseudo hierarchical*, meaning there is no real hierarchy imposed. Object names can contain ``/`` as a delimiter and the list operation supports a prefix parameter to return all respective objects; like issuing a ``find <path>`` command in a filesystem, but not an ``ls <path>``.
-- Buckets can only include data files, not special files, like links, sockets, etc.
-- The key-value store provides a much richer set of data query and manipulation primitives, in contrast to a typical block device. It can handle arbitrary value sizes, scan keys (return all keys starting with a prefix), operate on multiple keys in a single transaction, etc. H3 takes advantage of those primitives in order to minimize code complexity and exploit any optimizations done in the key-value layer.
+* The object namespace is *pseudo hierarchical*, meaning there is no real hierarchy imposed. Object names can contain ``/`` as a delimiter and the list operation supports a prefix parameter to return all respective objects; like issuing a ``find <path>`` command in a filesystem, but not an ``ls <path>``.
+* Buckets can only include data files, not special files, like links, sockets, etc.
+* The key-value store provides a much richer set of data query and manipulation primitives, in contrast to a typical block device. It can handle arbitrary value sizes, scan keys (return all keys starting with a prefix), operate on multiple keys in a single transaction, etc. H3 takes advantage of those primitives in order to minimize code complexity and exploit any optimizations done in the key-value layer.
 
-H3 is provided as C library, called ``h3lib``. ``h3lib`` implements the object API as a series of functions that translate the bucket and object operations to operations in the provided key-value backend. The key-value store interface is abstracted into another library, ``kvlib``, which has implementations for `Redis <https://redis.io>`_, `RocksDB <https://rocksdb.org>`_ and - our own sister project - Kreon.
+H3 is provided as C library, called ``h3lib``. ``h3lib`` implements the object API as a series of functions that translate the bucket and object operations to operations in the provided key-value backend. The key-value store interface is abstracted into a common API with implementations for `RocksDB <https://rocksdb.org>`_, `Redis <https://redis.io>`_, Kreon, and a filesystem.
 
 The ``h3lib`` API is outlined here. [Provide internal link to ``h3lib`` API documentation generated from docstrings.]
 
@@ -63,13 +63,13 @@ We handle multipart data writes (multipart upload) with special types of objects
 Data
 ^^^^
 
-In the simplest case, where object data is smaller than the value size limitation, we just store the data under a key corresponding to the string representation of the respective name identifier's hash (eg. data for ``mybucket/a`` goes into key ``'_' + UUID``). The UUID is a 16-byte random value, making part identifiers independent of their parent object thus enabling fast rename operations. The underscore is added at the beginning to ensure that data keys are not intermixed with bucket/object name keys during scan operations.
+In the simplest case, where object data is smaller than the value size limitation, we just store the data under a UUID (eg. data for ``mybucket/a`` goes into key ``'_' + <UUID>``). The UUID is a 16-byte random value, making part identifiers independent of their parent object thus enabling fast rename operations. The underscore is added at the beginning to ensure that data keys are not intermixed with bucket/object name keys during scan operations.
 
-Object data is broken up into parts if it is larger than the value size limitation, or is provided as such by the user via the multipart API. Part ``i`` of data belonging to ``mybucket/a`` goes into key ``'_' + hash('mybucket/a') + '#' + i``. Parts provided by the user that exceed the maximum value size, can themselves be broken into internal parts, thus it is possible to have a second level of data segmentation, encoded in keys as ``'_' + hash('mybucket/a') + '#' + i + '.' + j``.
+Object data is broken up into parts if it is larger than the value size limitation, or is provided as such by the user via the multipart API. Part ``i`` of data belonging to ``mybucket/a`` goes into key ``'_' + <UUID> + '#' + i``. Parts provided by the user that exceed the maximum value size, can themselves be broken into internal parts, thus it is possible to have a second level of data segmentation, encoded in keys as ``'_' + <UUID> + '#' + i + '.' + j``.
 
 Each read or write operation results in one metadata get at the backend, one or more key reads/writes (depending on how many parts the object consists of and how the read/write boundary overlaps with those part offsets/lengths), and a metadata write. We avoid writing over the current boundary of object data parts, as in Kreon this requires reallocating space for the key-value pair. Instead, we write a new part to enlarge an object.
 
-Multipart data is handled in the exact same way. Part ``i`` of data belonging to ``mybucket$b`` goes into key ``'_' + hash('mybucket$b') + '#' + i``. Any internal parts go into ``... '#' + i + '.' + j``. When a multipart object is complete, it is moved to the "standard" object namespace. The hash of the object key (``hash('mybucket$b')``), is actually used as the multipart identifier returned to the user.
+Multipart data is handled in the exact same way. Part ``i`` of data belonging to ``mybucket$b`` goes into key ``'_' + <UUID> + '#' + i``. Any internal parts go into ``'_' + <UUID> '#' + i + '.' + j``. When a multipart object is complete, it is moved to the "standard" object namespace. The UUID generated, is actually used as the multipart identifier returned to the user and the mapping from UUID to bucket and object name is stored at ``% + <UUID>``.
 
 *Note: There has been a discussion on splitting up data into extents and storing the extents as write-once, content-hashed blocks. This has pros (fast copies, easy versioning, data deduplication, snapshots) and cons (hash lists in metadata management, hash calculation, garbage collection).*
 
@@ -80,11 +80,10 @@ The following table outlines in pseudocode how H3 operations are implemented wit
 
     | ``user_id = '@' + <user_name>``
     | ``bucket_id = <bucket name>``
-    | ``object_id = <bucket name> + '/' + <object_name>``
-    | ``object_part_id = '_' + UUID + '#' + <part_number> + ['.' + <subpart_number>]``
-    | ``multipart_id = <bucket name> + '$' + <object_name>``
-    | ``multipart_part_id = '_' + UUID + '#' + <part_number> + ['.' + <subpart_number>]``
-
+    | ``object_id = <bucket name> + '/' + <object_name>`` (for non-multipart objects)
+    | ``object_id = <bucket name> + '$' + <object_name>`` (for multipart objects)
+    | ``object_part_id = '_' + <UUID> + '#' + <part_number> + ['.' + <subpart_number>]``
+    | ``multipart_id = '%' + <UUID>``
 
 :Create bucket:
     | ``user_metadata = get(key=user_id)``
@@ -98,65 +97,81 @@ The following table outlines in pseudocode how H3 operations are implemented wit
     | ``put(key=user_id, value=user_metadata)``
 :List buckets:
     | ``user_metadata = get(key=user_id)``
-    | ``create list from user_metadata``
+    | ``produce list from user_metadata``
 :Get bucket info:
     | ``bucket_metadata = get(key=bucket_id)``
-    | ``if use_id != bucket_metadata.user_id: abort``
+    | ``if user_id != bucket_metadata.user_id: abort``
+    | ``if not gather_statistics: return``
     | ``foreach object in scan(prefix=bucket_id + '/'): object_metadata = get(key_object_id)``
-    | ``produce list from all metadata``
+    | ``produce statistics from all metadata``
+
 :Create object:
     | ``bucket_metadata = get(key=bucket_id)``
     | ``if bucket_metadata.user_id != user_id: abort``
-    | ``if not exists(key=object_id): create(key=object_id, value=object_metadata)``
+    | ``if exists(key=object_id): abort``
+    | ``create(key=object_id, value=object_metadata)``
+    | If data is provided, as *Write object*.
+:Copy object from object data:
+    | As *Create object*, with data as *Read object*.
 :Delete object:
-    | If some parts fail to be deleted, object enters a bad state
     | ``object_metadata = get(key=object_id)``
     | ``if user_id != object_metadata.user_id: abort``
     | ``for object_part_id in object_metadata.parts: delete(object_part_id)``
+    | ``if error: object_metadata.is_bad = false, abort``
     | ``delete(key=object_id)``
 :Read object:
     | ``object_metadata = get(key=object_id)``
-    | ``if object_metadata.is-bad: abort``
+    | ``if object_metadata.is_bad: abort``
     | ``if user_id != object_metadata.user_id: abort``
     | ``get(key=object_part_id, offset, length)`` (one or more)
     | ``update object_metadata timestamps``
     | ``put(key=object_id, value=object_metadata)``
 :Write object:
-    | ``get(key=object_id)``
+    | ``object_metadata = get(key=object_id)``
+    | ``if user_id != object_metadata.user_id: abort``
     | ``put(key=object_part_id, offset, length, data)`` (one or more)
-    | ``put(key=object_id)``
-:Write object from object:
-    | ``get(key=src_object_id)``
-    | ``get(key=dest_object_id)``
-    | ``put(key=dest_object_part_id, dest_offset, dest_length, get(key=src_object_part_id, src_offset, src_length))`` (one or more)
-    | ``put(key=src_object_id)``
-    | ``put(key=dest_object_id)``
+    | ``if error: object_metadata.is_bad = false else: abort``
+    | ``update object_metadata timestamps``
+    | ``put(key=object_id, value=object_metadata)``
+:Write object from object data:
+    | As *Write object*, with data from another object as *Read object*.
 :Copy object:
-    | ``get(key=src_object_id)``
-    | ``if exists(key=dest_object_id): delete_object(object_id)``
+    | ``object_metadata = get(key=src_object_id)``
+    | ``if user_id != object_metadata.user_id: abort``
+    | ``if exists(key=dest_object_id) and abort_if_exists: abort``
     | ``for key in scan(prefix='_' + hash(src_object_id)): copy(src_key=key, dest_key=change_prefix(key))``
-    | ``create(key=dest_object_id)``
+    | ``create(key=dest_object_id, value=change_metadata(object_metadata))``
 :Move object:
-    | ``get(key=src_object_id)``
-    | ``if exists(key=dest_object_id): delete_object(object_id)``
-    | ``for key in scan(prefix='_' + hash(src_object_id)): move(src_key=key, dest_key=change_prefix(key))``
-    | ``create(key=dest_object_id)``
-    | ``delete(key=src_object_id)``
+    | ``object_metadata = get(key=src_object_id)``
+    | ``if user_id != object_metadata.user_id: abort``
+    | ``if exists(key=dest_object_id) and abort_if_exists: abort``
+    | ``update object_metadata timestamps``
+    | ``put(key=dest_object_id, value=object_metadata)``
 :List objects:
-    | ``get(key=bucket_id)``
+    | ``bucket_metadata = get(key=bucket_id)``
+    | ``if user_id != bucket_metadata.user_id: abort``
     | ``scan(prefix=bucket_id + '/')``
+    | ``produce list from results``
 :Get object info:
-    | ``get(key=object_id)``
+    | ``object_metadata = get(key=sobject_id)``
+    | ``if user_id != object_metadata.user_id: abort``
 
 :Create multipart:
-    As *Create object*.
+    | As *Create object*.
+    | ``put(key=multipart_id, value=multipart_metadata)``
 :Complete multipart:
-    As *Move object*.
+    | ``multipart_metadata = get(key=multipart_id)``
+    | As *Move object*.
 :Abort multipart:
-    As *Delete object*.
+    | ``multipart_metadata = get(key=multipart_id)``
+    | As *Delete object*.
 :List parts:
-    As *Get object info*.
-:Write part:
-    As *Write object*.
-:Write part from object:
-    As *Write object from object*.
+    | ``multipart_metadata = get(key=multipart_id)``
+    | As *Get object info*.
+    | ``produce list from object_metadata``
+:Create part:
+    | ``multipart_metadata = get(key=multipart_id)``
+    | As *Write object*.
+:Create part from object:
+    | ``multipart_metadata = get(key=multipart_id)``
+    | As *Write object from object*.

@@ -2,6 +2,15 @@ cmake_minimum_required(VERSION 3.10)
 
 project(h3lib VERSION 1.0 LANGUAGES C)
 
+# Code checking
+find_program(CMAKE_C_CPPCHECK NAMES cppcheck)
+# if (CMAKE_C_CPPCHECK)
+#     list(
+#         APPEND CMAKE_C_CPPCHECK
+#             "--enable=all"
+#     )
+# endif()
+
 # The configuration file will be auto-generated into the binary tree i.e. build directory
 configure_file(h3lib_config.h.in h3lib_config.h)
 
@@ -25,26 +34,28 @@ set(CMAKE_C_STANDARD 11)
 
 #https://gitlab.kitware.com/cmake/community/wikis/doc/cmake/Useful-Variables
 #https://cmake.org/cmake/help/v3.10/command/add_compile_options.html?highlight=add_compile_options
-add_compile_options(-Wall -Werror)
-SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g")
+#add_compile_options(-Wall -Wno-uninitialized -Wno-unused-result -Werror)
+add_compile_options(-Wall -Wno-uninitialized -Wno-unused-result)
+
+SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -DDEBUG")
 SET(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3")
 
 
 #https://cmake.org/cmake/help/v3.10/command/add_library.html
-set(SOURCE_FILES h3lib.c bucket.c object.c kv_fs.c )
+set(SOURCE_FILES h3lib.c bucket.c object.c multipart.c kv_fs.c util.c )
 add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES})
 
 #https://cmake.org/cmake/help/v3.10/command/target_include_directories.html
 target_include_directories( ${PROJECT_NAME} PUBLIC
                             "${PROJECT_BINARY_DIR}"
                             "${GLIB_HEADERS}")
-                            
+
 
 find_package(PkgConfig REQUIRED)
 pkg_search_module(GLIB REQUIRED glib-2.0)
 target_include_directories(${PROJECT_NAME} PRIVATE ${GLIB_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} INTERFACE ${GLIB_LDFLAGS} uuid)
-                           
+target_link_libraries(${PROJECT_NAME} PRIVATE ${GLIB_LDFLAGS} uuid)
+
 
 #target_include_directories( ${PROJECT_NAME} PUBLIC
 #                            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -67,3 +78,21 @@ install(FILES h3lib.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME} )
 enable_testing()
 add_subdirectory(tests)
 
+#https://cmake.org/cmake/help/v3.16/command/add_custom_command.html?highlight=add_custom_command
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
+                                                             ${CMAKE_SOURCE_DIR}/tests/config.ini
+                                                             ${CMAKE_CURRENT_BINARY_DIR}/tests/config.ini)
+
+set(CPACK_PACKAGE_NAME ${PROJECT_NAME})
+set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
+set(CPACK_PACKAGE_RELEASE 1)
+set(CPACK_PACKAGE_VENDOR "FORTH-ICS")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "An embedded object store")
+set(CPACK_GENERATOR "RPM")
+set(CPACK_RPM_PACKAGE_LICENSE "ASL v2.0")
+set(CPACK_RPM_PACKAGE_GROUP "Development/Libraries")
+set(CPACK_RPM_PACKAGE_REQUIRES "glib2 >= 2.56, libuuid >= 2.23")
+set(CPACK_RPM_PACKAGE_DESCRIPTION "H3 is an embedded High speed, High volume, and High availability object store, backed by a high-performance key-value store (Kreon, RocksDB, etc.) or a filesystem. H3 is implemented in the h3lib library, which provides a cloud-friendly API, similar to Amazon's S3. Python and Java wrappers are also available.")
+set(CPACK_PACKAGING_INSTALL_PREFIX /usr)
+set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_PACKAGE_RELEASE}.${CMAKE_SYSTEM_PROCESSOR}")
+include(CPack)
