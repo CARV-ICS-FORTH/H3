@@ -835,7 +835,8 @@ H3_Status H3_ListObjects(H3_Handle handle, H3_Token token, H3_Name bucketName, H
 
                 H3_ObjectId objId;
                 GetObjectId(bucketName, prefix, objId);
-                if( (storeStatus = op->list(_handle, objId, keyBuffer, offset, nObjects)) != KV_FAILURE){
+                uint8_t trim = strlen(bucketName) + 1; // Remove the bucketName prefix from the matching entries
+                if( (storeStatus = op->list(_handle, objId, trim, keyBuffer, offset, nObjects)) != KV_FAILURE){
                     *objectNameArray = keyBuffer;
                     status = storeStatus==KV_SUCCESS?H3_SUCCESS:H3_CONTINUE;
                 }
@@ -904,7 +905,8 @@ H3_Status H3_ForeachObject(H3_Handle handle, H3_Token token, H3_Name bucketName,
             uint32_t nKeys = 0;
 
             GetObjectId(bucketName, prefix, objId);
-            while((storeStatus = op->list(_handle, objId, keyBuffer, offset, &nKeys)) == KV_CONTINUE || storeStatus == KV_SUCCESS){
+            uint8_t trim = strlen(bucketName) + 1; // Remove the bucketName prefix from the matching entries
+            while((storeStatus = op->list(_handle, objId, trim, keyBuffer, offset, &nKeys)) == KV_CONTINUE || storeStatus == KV_SUCCESS){
 
                 if(!nKeys) break;
                 offset += nKeys;

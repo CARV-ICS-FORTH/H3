@@ -315,7 +315,8 @@ H3_Status H3_ListMultiparts(H3_Handle handle, H3_Token token, H3_Name bucketName
 
                 H3_ObjectId objId;
                 GetMultipartObjectId(bucketName, NULL, objId);
-                if( (kvStatus = op->list(_handle, objId, keyBuffer, offset, nIds)) != KV_FAILURE){
+                uint8_t trim = strlen(bucketName) + 1; // Remove the bucketName prefix from the matching entries
+                if( (kvStatus = op->list(_handle, objId, trim, keyBuffer, offset, nIds)) != KV_FAILURE){
                     *multipartIdArray = keyBuffer;
                     status = kvStatus==KV_SUCCESS?H3_SUCCESS:H3_CONTINUE;
                 }

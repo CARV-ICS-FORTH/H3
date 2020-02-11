@@ -86,7 +86,7 @@ typedef struct KV_Operations {
 	KV_Status (*metadata_move)(KV_Handle handle, KV_Key srcKey, KV_Key dstKey);
 	KV_Status (*metadata_exists)(KV_Handle handle, KV_Key key);
 
-	KV_Status (*list)(KV_Handle handle, KV_Key prefix, KV_Key key, uint32_t offset, uint32_t* nKeys);
+	KV_Status (*list)(KV_Handle handle, KV_Key prefix, uint8_t nTrim, KV_Key key, uint32_t offset, uint32_t* nKeys);
 	KV_Status (*exists)(KV_Handle handle, KV_Key key);
 	KV_Status (*read)(KV_Handle handle, KV_Key key, off_t offset, KV_Value* value, size_t* size);
 	KV_Status (*create)(KV_Handle handle, KV_Key key, KV_Value value, off_t offset, size_t size);

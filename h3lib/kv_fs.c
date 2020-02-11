@@ -144,7 +144,7 @@ void KV_FS_Free(KV_Handle handle) {
 }
 
 
-KV_Status KV_FS_List(KV_Handle handle, KV_Key prefix, KV_Key buffer, uint32_t offset, uint32_t* nKeys){
+KV_Status KV_FS_List(KV_Handle handle, KV_Key prefix, uint8_t nTrim, KV_Key buffer, uint32_t offset, uint32_t* nKeys){
     KV_Filesystem_Handle* fs_handle = (KV_Filesystem_Handle*) handle;
     char* fullPrefix = GetFullKey(fs_handle, prefix);
     int status = KV_FAILURE;
@@ -152,7 +152,7 @@ KV_Status KV_FS_List(KV_Handle handle, KV_Key prefix, KV_Key buffer, uint32_t of
     uint32_t nRequiredKeys = *nKeys>0?*nKeys:UINT32_MAX;
     uint32_t nMatchingKeys = 0;
     size_t prefixLen = strlen(fullPrefix);
-    size_t rootLen = strlen(fs_handle->root);
+    size_t rootLen = strlen(fs_handle->root) + nTrim;
     size_t remaining = KV_LIST_BUFFER_SIZE;
 
     int CopyDirEntry(const char* fpath, const struct stat* sb, int typeflag, struct FTW* ftwbuf) {
@@ -163,6 +163,7 @@ KV_Status KV_FS_List(KV_Handle handle, KV_Key prefix, KV_Key buffer, uint32_t of
             else if( nMatchingKeys < nRequiredKeys ){
                 size_t entrySize = strlen(fpath) + 1 - rootLen;
                 if(remaining >= entrySize) {
+//                    LogActivity(H3_DEBUG_MSG, "%s\n", &fpath[rootLen]);
                     memcpy(&buffer[KV_LIST_BUFFER_SIZE - remaining], &fpath[rootLen], entrySize);
                     remaining -= entrySize;
                     nMatchingKeys++;

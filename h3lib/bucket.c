@@ -172,10 +172,10 @@ H3_Status H3_DeleteBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
         GetObjectId(bucketName, NULL, prefix);
         H3_BucketMetadata* bucketMetadata = (H3_BucketMetadata*)value;
         value = NULL; size = 0;
-        if( GrantBucketAccess(userId, bucketMetadata)                           &&
-            op->list(_handle, prefix, NULL, 0, &nKeys) == KV_SUCCESS && !nKeys  &&
-            op->metadata_read(_handle, userId, 0, &value, &size) == KV_SUCCESS  &&
-            op->metadata_delete(_handle, bucketId) == KV_SUCCESS                   ){
+        if( GrantBucketAccess(userId, bucketMetadata)                              &&
+            op->list(_handle, prefix, 0, NULL, 0, &nKeys) == KV_SUCCESS && !nKeys  &&
+            op->metadata_read(_handle, userId, 0, &value, &size) == KV_SUCCESS     &&
+            op->metadata_delete(_handle, bucketId) == KV_SUCCESS                     ){
 
             H3_UserMetadata* userMetadata = (H3_UserMetadata*)value;
             int index = GetBucketIndex(userMetadata, bucketName);
@@ -319,8 +319,9 @@ H3_Status H3_InfoBucket(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
                 H3_ObjectId prefix;
                 uint32_t keyOffset = 0, nKeys = 0;
 
+                // Apply no trim so we don't need to recreate the object-ID for the entries
                 GetObjectId(bucketName, NULL, prefix);
-                while((kvStatus = op->list(_handle, prefix, keyBuffer, keyOffset, &nKeys)) == KV_CONTINUE || kvStatus == KV_SUCCESS){
+                while((kvStatus = op->list(_handle, prefix, 0, keyBuffer, keyOffset, &nKeys)) == KV_CONTINUE || kvStatus == KV_SUCCESS){
                     uint32_t i = 0;
                     KV_Key objId = keyBuffer;
 
