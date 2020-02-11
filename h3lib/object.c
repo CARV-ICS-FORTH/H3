@@ -15,6 +15,7 @@
 
 
 #include "common.h"
+#include "util.h"
 
 
 int ValidObjectName(char* name){
@@ -616,6 +617,8 @@ H3_Status H3_DeleteObject(H3_Handle handle, H3_Token token, H3_Name bucketName, 
  */
 H3_Status H3_MoveObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, H3_Name dstObjectName, uint8_t noOverwrite){
 
+    LogActivity(H3_DEBUG_MSG, "Enter\n");
+
     // Argument check
     if(!handle || !token  || !bucketName || !srcObjectName || !dstObjectName){
         return H3_INVALID_ARGS;
@@ -666,6 +669,7 @@ H3_Status H3_MoveObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
     else if(storeStatus == KV_KEY_NOT_EXIST)
         status = H3_NOT_EXISTS;
 
+    LogActivity(H3_DEBUG_MSG, "Exit - %d\n", status );
     return status;
 }
 
@@ -956,6 +960,8 @@ H3_Status H3_ForeachObject(H3_Handle handle, H3_Token token, H3_Name bucketName,
  */
 H3_Status H3_WriteObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, void* data, size_t size, off_t offset){
 
+    LogActivity(H3_DEBUG_MSG, "Enter\n");
+
     // Argument check. Note we allow zero-sized objects.
     if(!handle || !token  || !bucketName || !objectName || (size && !data) ){
         return H3_INVALID_ARGS;
@@ -970,6 +976,11 @@ H3_Status H3_WriteObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H
     H3_ObjectId objId;
     KV_Value value = NULL;
     size_t mSize = 0;
+
+    // Validate bucketName & extract userId from token
+    if( !ValidBucketName(bucketName) || !ValidObjectName(objectName) || !GetUserId(token, userId) ){
+        return H3_INVALID_ARGS;
+    }
 
     // TODO - Check the object is not a pending multipart-upload
 
@@ -993,20 +1004,32 @@ H3_Status H3_WriteObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H
         if(objMetaSize > mSize)
             objMeta = realloc(objMeta, objMetaSize);
 
+#ifndef DEBUG
         if( WriteData(ctx, objMeta, data, size, offset, 0, DivideInParts) == KV_SUCCESS         &&
             op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, objMetaSize) == KV_SUCCESS     ){
             status = H3_SUCCESS;
         }
+#else
+        if( WriteData(ctx, objMeta, data, size, offset, 0, DivideInParts) != KV_SUCCESS ){
+            LogActivity(H3_ERROR_MSG, "failed to write data\n");
+        }
+        else if(op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, objMetaSize) != KV_SUCCESS){
+            LogActivity(H3_ERROR_MSG, "failed to update meta-data\n");
+        }
+        else
+            status = H3_SUCCESS;
+#endif
     }
+#ifdef DEBUG
+    else
+        LogActivity(H3_DEBUG_MSG, "failed to grant access userid:%s Vs metadata:%s\n", userId, objMeta->userId);
+#endif
 
     free(objMeta);
 
+    LogActivity(H3_DEBUG_MSG, "Exit - %d\n", status );
     return status;
 }
-
-
-
-
 
 
 /*! \brief  Copy a part of an object into a new one.
