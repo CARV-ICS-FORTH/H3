@@ -490,10 +490,16 @@ static PyObject* h3lib_read_object(PyObject* self, PyObject *args, PyObject *kw)
         return NULL;
 
     H3_Auth auth;
-    void *data;
+    void *data = NULL;
+
+    // h3lib will only allocate a buffer if size = 0 AND data = NULL.
+    // In all other cases it expects an appropriately sized buffer to
+    // be allocated by the caller.
+    if(size)
+        data = malloc(size);
 
     auth.userId = userId;
-    if (did_raise_exception(H3_ReadObject(handle, &auth, bucketName, objectName, offset, &data, &size)))
+    if (did_raise_exception(H3_ReadObject(handle, &auth, bucketName, objectName, offset, &data, &size)) || !data)
         return NULL;
 
     PyObject *result = Py_BuildValue("y#", data, size);
