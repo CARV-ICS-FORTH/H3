@@ -1,46 +1,39 @@
 package gr.forth.ics.JH3lib;
 
-import com.sun.jna.NativeLong;
-import com.sun.jna.Pointer;
-import com.sun.jna.Structure;
-import java.util.Arrays;
-import java.util.List;
 
 /**
- * Brief bucket information
+ * Bucket statistics
  * @author Giorgos Kalaentzis
  * @version 0.1-beta
  */
-public class H3BucketInfo extends Structure {
+public class H3BucketInfo {
 
-    public NativeLong creation;    //!< Creation timestamp
-    public H3BucketStats stats;     //!< Aggregate object statistics
+    private long creation;              // Creation timestamp
+    private H3BucketStats stats;        // Aggregate object statistics
 
-    public H3BucketInfo(){ super(); }
-
-    @Override
-    protected List<String> getFieldOrder() {
-        return Arrays.asList("creation", "stats");
-    }
-
-    /**
-     * @param creation  Creation timestamp
-     * @param stats     Aggregate object statistics
-     */
-    public H3BucketInfo(NativeLong creation, H3BucketStats stats) {
-        super();
+    public H3BucketInfo(long creation, H3BucketStats stats) {
         this.creation = creation;
         this.stats = stats;
     }
 
-    public H3BucketInfo(Pointer peer) { super(peer); }
+    public H3BucketInfo(long creation) {
+        this.creation = creation;
+        this.stats = null;
+    }
 
-    public static class ByReference extends H3BucketInfo implements Structure.ByReference {
+    public long getCreation() {
+        return creation;
+    }
 
-    };
+    public H3BucketStats getStats() {
+        return stats;
+    }
 
-    public static class ByValue extends H3BucketInfo implements Structure.ByValue {
-
-    };
-
+    @Override
+    public String toString() {
+        return "H3BucketInfo{" +
+                "creation=" + creation +
+                ", stats=" + stats +
+                '}';
+    }
 }

@@ -13,8 +13,6 @@
 // limitations under the License.
 #include "common.h"
 
-#include "common.h"
-
 extern KV_Operations operationsFilesystem;
 
 int GetUserId(H3_Token token, H3_UserId id){

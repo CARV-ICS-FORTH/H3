@@ -98,7 +98,7 @@ KV_Status WriteData(H3_Context* ctx, H3_ObjectMetadata* meta, KV_Value value, si
     uint i, partNumber, partIndex, nNewParts = 0;
     int partSubNumber;
     off_t partOffset, inPartOffset;
-    size_t partSize;
+    namesize_t partSize;
 
     meta->isBad = 0;
     while(status == KV_SUCCESS && size && !meta->isBad){

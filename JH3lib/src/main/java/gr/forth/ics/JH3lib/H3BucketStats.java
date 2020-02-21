@@ -1,54 +1,46 @@
 package gr.forth.ics.JH3lib;
 
-import com.sun.jna.NativeLong;
-import com.sun.jna.Pointer;
-import com.sun.jna.Structure;
-
-import java.util.Arrays;
-import java.util.List;
-
 /**
  * Brief bucket statistics
  * @author Giorgos Kalaentzis
  * @version 0.1-beta
  */
+public class H3BucketStats {
+    private long size;                 // The size of all objects contained in the bucket
+    private long nObjects;             // Number of objects contained in the bucket
+    private long lastAccess;           // Last time an object was accessed
+    private long lastModification;     // Last time an object was modified
 
-public class H3BucketStats extends Structure {
-
-    public NativeLong size;                 //!< The size of all objects contained in the bucket
-    public long nObjects;                   //!< Number of objects contained in the bucket
-    public NativeLong lastAccess;           //!< Last time an object was accessed
-    public NativeLong lastModification;     //!< Last time an object was modified
-
-    public H3BucketStats() { super(); }
-
-    /**
-     * @param size                  The size of all objects contained in the bucket <br>
-     * @param nObjects              Number of objects contained in the bucket       <br>
-     * @param lastAccess            Last time an object was accessed                <br>
-     * @param lastModification      Last time an object was modified
-     */
-    public H3BucketStats(NativeLong size, long nObjects,
-                         NativeLong lastAccess, NativeLong lastModification) {
-        super();
+    public H3BucketStats(long size, long nObjects, long lastAccess, long lastModification) {
         this.size = size;
         this.nObjects = nObjects;
         this.lastAccess = lastAccess;
         this.lastModification = lastModification;
     }
 
-    @Override
-    protected List<String> getFieldOrder(){
-        return Arrays.asList("size", "nObjects", "lastAccess", "lastModification");
+    public long getSize() {
+        return size;
     }
-    public H3BucketStats(Pointer peer) { super(peer); }
 
-    public static abstract class ByReference extends H3BucketStats implements Structure.ByReference{
+    public long getNumObjects() {
+        return nObjects;
+    }
 
-    };
+    public long getLastAccess() {
+        return lastAccess;
+    }
 
-    public static abstract class ByValue extends H3BucketStats implements Structure.ByValue{
+    public long getLastModification() {
+        return lastModification;
+    }
 
-    };
-
+    @Override
+    public String toString() {
+        return "H3BucketStats{" +
+                "size=" + size +
+                ", nObjects=" + nObjects +
+                ", lastAccess=" + lastAccess +
+                ", lastModification=" + lastModification +
+                '}';
+    }
 }
