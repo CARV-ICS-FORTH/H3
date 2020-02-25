@@ -691,6 +691,7 @@ H3_Status H3_MoveObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
         H3_ObjectMetadata* srcObjMeta = (H3_ObjectMetadata*)value;
         if( GrantObjectAccess(userId, srcObjMeta) ){
 
+        	value = NULL;
         	switch(op->metadata_read(_handle, dstObjId, 0, &value, &dstMetaSize)){
         		case KV_SUCCESS:{
         			// Make sure the user has access to the destination object
