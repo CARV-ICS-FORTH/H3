@@ -51,6 +51,7 @@ typedef enum {
     H3_STORE_ERROR,     //!< External (store provider) error
     H3_EXISTS,          //!< Bucket or object already exists
     H3_NOT_EXISTS,      //!< Bucket or object does not exist
+	H3_NOT_EMPTY,       //!< Bucket is not empty
     H3_SUCCESS,         //!< Operation succeeded
     H3_CONTINUE         //!< Operation succeeded though there are more data to retrieve
 } H3_Status;
