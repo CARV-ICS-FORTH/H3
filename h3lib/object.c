@@ -647,15 +647,16 @@ H3_Status H3_TruncateObject(H3_Handle handle, H3_Token token, H3_Name bucketName
  * @param[in]    bucketName         The name of the bucket to host the object
  * @param[in]    srcObjectName      The name of the object to be renamed
  * @param[in]    dstObjectName      The new name to be assumed by the object
- * @param[in]    noOverwrite        Overwrite flag.
+ * @param[in]    policy        		Rename policy
  *
  * @result \b H3_SUCCESS            Operation completed successfully
- * @result \b H3_FAILURE            Unable to access object or user has no access or new name is in use and not allowed to overwrite
- * @result \b H3_NOT_EXISTS         Object does not exist
+ * @result \b H3_FAILURE            Unable to access object or user has no access or we tried to swap with non-existent object
+ * @result \b H3_NOT_EXISTS         Source object does not exist
+ * @result \b H3_EXISTS         	Destination object exists and we are not allowed to replace it
  * @result \b H3_INVALID_ARGS       Missing or malformed arguments
  *
  */
-H3_Status H3_MoveObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, H3_Name dstObjectName, uint8_t noOverwrite){
+H3_Status H3_MoveObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, H3_Name dstObjectName, H3_MovePolicy policy){
 
     LogActivity(H3_DEBUG_MSG, "Enter\n");
 
@@ -673,7 +674,8 @@ H3_Status H3_MoveObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
     H3_ObjectId srcObjId, dstObjId;
     KV_Status storeStatus;
     KV_Value value = NULL;
-    size_t mSize = 0;
+    size_t srcMetaSize = 0;
+    size_t dstMetaSize = 0;
 
     // Validate bucketName & extract userId from token
     if( !ValidBucketName(bucketName) || !ValidObjectName(srcObjectName) || !ValidObjectName(dstObjectName) || !GetUserId(token, userId) ){
@@ -683,28 +685,51 @@ H3_Status H3_MoveObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
     GetObjectId(bucketName, srcObjectName, srcObjId);
     GetObjectId(bucketName, dstObjectName, dstObjId);
 
-    if( (storeStatus = op->metadata_read(_handle, srcObjId, 0, &value, &mSize)) == KV_SUCCESS){
+    if( (storeStatus = op->metadata_read(_handle, srcObjId, 0, &value, &srcMetaSize)) == KV_SUCCESS){
 
-        // Make sure the user has access to the object
-        H3_ObjectMetadata* objMeta = (H3_ObjectMetadata*)value;
-        if( GrantObjectAccess(userId, objMeta) ){
+        // Make sure the user has access to the source object
+        H3_ObjectMetadata* srcObjMeta = (H3_ObjectMetadata*)value;
+        if( GrantObjectAccess(userId, srcObjMeta) ){
 
-            switch(op->metadata_exists(_handle, dstObjId)){
-                case KV_KEY_EXIST:
-                    if( !noOverwrite                                                &&
-                        DeleteObject(ctx, userId, dstObjId, 0) == H3_SUCCESS        &&
-                        op->metadata_move(_handle, srcObjId, dstObjId) == KV_SUCCESS    ){ status = H3_SUCCESS; }
-                    break;
+        	switch(op->metadata_read(_handle, dstObjId, 0, &value, &dstMetaSize)){
+        		case KV_SUCCESS:{
+        			// Make sure the user has access to the destination object
+        			H3_ObjectMetadata* dstObjMeta = (H3_ObjectMetadata*)value;
+        			if( GrantObjectAccess(userId, dstObjMeta) ){
+        				switch(policy){
+							case H3_MOVE_REPLACE:
+								if( DeleteObject(ctx, userId, dstObjId, 0) == H3_SUCCESS        	&&
+								    op->metadata_move(_handle, srcObjId, dstObjId) == KV_SUCCESS 		){
+									status = H3_SUCCESS;
+								}
+								break;
 
-                case KV_KEY_NOT_EXIST:
-                    if(op->metadata_move(_handle, srcObjId, dstObjId) == KV_SUCCESS ){ status = H3_SUCCESS; }
-                    break;
+							case H3_MOVE_NOREPLACE:
+								status = H3_EXISTS;
+								break;
 
-                default:
-                    status = H3_FAILURE;
-            }
+							case H3_MOVE_EXCHANGE:
+								if(op->metadata_write(_handle, srcObjId, (KV_Value)dstObjMeta, 0, dstMetaSize) == KV_SUCCESS &&
+								   op->metadata_write(_handle, dstObjId, (KV_Value)srcObjMeta, 0, srcMetaSize) == KV_SUCCESS	){
+									status = H3_SUCCESS;
+								}
+								break;
+        				}
+        			}
+        			free(dstObjMeta);
+        		}
+        		break;
+
+        		case KV_KEY_NOT_EXIST:
+        			if(policy != H3_MOVE_EXCHANGE && op->metadata_move(_handle, srcObjId, dstObjId) == KV_SUCCESS){ status = H3_SUCCESS; }
+        			break;
+
+        		default:
+        			status = H3_FAILURE;
+        			break;
+        	}
         }
-        free(objMeta);
+        free(srcObjMeta);
     }
     else if(storeStatus == KV_KEY_NOT_EXIST)
         status = H3_NOT_EXISTS;
