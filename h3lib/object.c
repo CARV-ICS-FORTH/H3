@@ -518,7 +518,7 @@ H3_Status H3_InfoObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
     return status;
 }
 
-H3_Status DeleteObject(H3_Context* ctx, H3_UserId userId, H3_ObjectId objId){
+H3_Status DeleteObject(H3_Context* ctx, H3_UserId userId, H3_ObjectId objId, char truncate){
     H3_Status status = H3_FAILURE;
     KV_Handle _handle = ctx->handle;
     KV_Operations* op = ctx->operation;
@@ -538,12 +538,13 @@ H3_Status DeleteObject(H3_Context* ctx, H3_UserId userId, H3_ObjectId objId){
                 storeStatus = op->delete(_handle, PartToId(partId, objMeta->uuid, &objMeta->part[i]));
             }
 
+            objMeta->lastAccess = time(NULL);
             if(storeStatus != KV_SUCCESS){
                 objMeta->isBad = 1;
-                objMeta->lastAccess = time(NULL);
                 op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, mSize);
             }
-            else if(op->metadata_delete(_handle, objId) == KV_SUCCESS){
+            else if(( truncate && op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, mSize) == KV_SUCCESS) ||
+            		(!truncate && op->metadata_delete(_handle, objId) == KV_SUCCESS)								){
                 status = H3_SUCCESS;
             }
         }
@@ -591,7 +592,45 @@ H3_Status H3_DeleteObject(H3_Handle handle, H3_Token token, H3_Name bucketName, 
 
     GetObjectId(bucketName, objectName, objId);
 
-    return DeleteObject(ctx, userId, objId);
+    return DeleteObject(ctx, userId, objId, 0);
+}
+
+/*! \brief  Truncate an object
+ *
+ * Permanently deletes an object.
+ *
+ * @param[in]    handle             An h3lib handle
+ * @param[in]    token              Authentication information
+ * @param[in]    bucketName         The name of the bucket to host the object
+ * @param[in]    objectName         The name of the object to be created
+ * @param[in]    size        		Size of truncated object. If the file previously was larger than this size, the extra data is lost.
+ * 									If the file previously was shorter, it is extended, and the extended part reads as null bytes ('\0').
+ *
+ * @result \b H3_SUCCESS            Operation completed successfully
+ * @result \b H3_FAILURE            Unable to retrieve object info or user has no access
+ * @result \b H3_NOT_EXISTS         Object does not exist
+ * @result \b H3_INVALID_ARGS       Missing or malformed arguments or size != 0x00
+ *
+ */
+H3_Status H3_TruncateObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, size_t size){
+    // Argument check
+    if(!handle || !token  || !bucketName || !objectName || size){
+        return H3_INVALID_ARGS;
+    }
+
+    H3_Context* ctx = (H3_Context*)handle;
+
+    H3_UserId userId;
+    H3_ObjectId objId;
+
+    // Validate bucketName & extract userId from token
+    if( !ValidBucketName(bucketName) || !ValidObjectName(objectName) || !GetUserId(token, userId) ){
+        return H3_INVALID_ARGS;
+    }
+
+    GetObjectId(bucketName, objectName, objId);
+
+    return DeleteObject(ctx, userId, objId, 1);
 }
 
 
@@ -653,7 +692,7 @@ H3_Status H3_MoveObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
             switch(op->metadata_exists(_handle, dstObjId)){
                 case KV_KEY_EXIST:
                     if( !noOverwrite                                                &&
-                        DeleteObject(ctx, userId, dstObjId) == H3_SUCCESS           &&
+                        DeleteObject(ctx, userId, dstObjId, 0) == H3_SUCCESS        &&
                         op->metadata_move(_handle, srcObjId, dstObjId) == KV_SUCCESS    ){ status = H3_SUCCESS; }
                     break;
 
@@ -730,7 +769,7 @@ H3_Status H3_CopyObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
             // TODO - Instead of exist do a create
 
             if(( (storeStatus = op->metadata_exists(_handle, dstObjId)) == KV_FAILURE) ||
-                 (storeStatus == KV_KEY_EXIST &&  (noOverwrite || DeleteObject(ctx, userId, dstObjId) == H3_FAILURE))  ){
+                 (storeStatus == KV_KEY_EXIST &&  (noOverwrite || DeleteObject(ctx, userId, dstObjId, 0) == H3_FAILURE))  ){
                 status = H3_FAILURE;
             }
             else {

@@ -135,7 +135,7 @@ H3_Status H3_CreateBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
  * @result \b H3_NOT_EXISTS         Bucket does not exist
  * @result \b H3_NOT_EMPTY         	Bucket is not empty
  * @result \b H3_INVALID_ARGS       Missing or malformed arguments
- * @result \b H3_FAILURE            Storage provider error or the user has no access rights to this bucket  or the bucket is not empty
+ * @result \b H3_FAILURE            Storage provider error or the user has no access rights to this bucket
  *
  */
 H3_Status H3_DeleteBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
