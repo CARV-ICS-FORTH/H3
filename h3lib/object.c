@@ -223,7 +223,7 @@ KV_Status ReadData(H3_Context* ctx, H3_ObjectMetadata* meta, KV_Value value, siz
 }
 
 
-KV_Status CopyData(H3_Context* ctx, H3_UserId userId, H3_ObjectId srcObjId, H3_ObjectId dstObjId, off_t srcOffset, size_t size, uint8_t noOverwrite, off_t dstOffset){
+KV_Status CopyData(H3_Context* ctx, H3_UserId userId, H3_ObjectId srcObjId, H3_ObjectId dstObjId, off_t srcOffset, size_t* size, uint8_t noOverwrite, off_t dstOffset){
     KV_Handle _handle = ctx->handle;
     KV_Operations* op = ctx->operation;
     KV_Status status = KV_FAILURE;
@@ -248,7 +248,7 @@ KV_Status CopyData(H3_Context* ctx, H3_UserId userId, H3_ObjectId srcObjId, H3_O
 
                     // Copy the data in parts
                     KV_Value buffer = malloc(H3_PART_SIZE);
-                    size_t remaining = size;
+                    size_t remaining = *size;
 
                     while(remaining && status == KV_SUCCESS){
 
@@ -261,6 +261,7 @@ KV_Status CopyData(H3_Context* ctx, H3_UserId userId, H3_ObjectId srcObjId, H3_O
                             dstOffset += buffSize;
                         }
                     }// while()
+                    *size -= remaining;
 
                     free(buffer);
                 }
@@ -1051,7 +1052,7 @@ H3_Status H3_WriteObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H
  * @result \b H3_INVALID_ARGS       Missing or malformed arguments
  *
  */
-H3_Status H3_CreateObjectCopy(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, off_t offset, size_t size, H3_Name dstObjectName){
+H3_Status H3_CreateObjectCopy(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, off_t offset, size_t* size, H3_Name dstObjectName){
 
     // Argument check
     if(!handle || !token  || !bucketName || !srcObjectName || !dstObjectName){
@@ -1110,7 +1111,7 @@ H3_Status H3_CreateObjectCopy(H3_Handle handle, H3_Token token, H3_Name bucketNa
  * @result \b H3_INVALID_ARGS       Missing or malformed arguments
  *
  */
-H3_Status H3_WriteObjectCopy(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, off_t srcOffset, size_t size, H3_Name dstObjectName, off_t dstOffset){
+H3_Status H3_WriteObjectCopy(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, off_t srcOffset, size_t* size, H3_Name dstObjectName, off_t dstOffset){
 
     // Argument check
     if(!handle || !token  || !bucketName || !srcObjectName || !dstObjectName){
