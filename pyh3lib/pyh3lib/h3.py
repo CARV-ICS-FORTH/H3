@@ -307,6 +307,20 @@ class H3(object, metaclass=H3Version):
 
         return h3lib.move_object(self._handle, bucket_name, src_object_name, dst_object_name, no_overwrite, self._user_id)
 
+    def truncate_object(self, bucket_name, object_name, size=0):
+        """Read from an object.
+
+        :param bucket_name: the bucket name
+        :param object_name: the object name
+        :param size: the new size of the object (default is 0)
+        :type bucket_name: string
+        :type object_name: string
+        :type size: int
+        :returns: ``True`` if the call was successful
+        """
+
+        return h3lib.truncate_object(self._handle, bucket_name, object_name, size, self._user_id)
+
     def delete_object(self, bucket_name, object_name):
         """Delete an object.
 

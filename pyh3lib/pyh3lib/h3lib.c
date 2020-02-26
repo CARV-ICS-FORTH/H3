@@ -561,6 +561,30 @@ static PyObject* h3lib_move_object(PyObject* self, PyObject *args, PyObject *kw)
     Py_RETURN_TRUE;
 }
 
+static PyObject* h3lib_truncate_object(PyObject* self, PyObject *args, PyObject *kw) {
+    PyObject *capsule = NULL;
+    H3_Name bucketName;
+    H3_Name objectName;
+    size_t size = 0;
+    uint32_t userId = 0;
+
+    static char *kwlist[] = {"handle", "bucket_name", "object_name", "size", "user_id", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "Oss|kI", kwlist, &capsule, &bucketName, &objectName, &size, &userId))
+        return NULL;
+
+    H3_Handle handle = (H3_Handle)PyCapsule_GetPointer(capsule, NULL);
+    if (handle == NULL)
+        return NULL;
+
+    H3_Auth auth;
+
+    auth.userId = userId;
+    if (did_raise_exception(H3_TruncateObject(handle, &auth, bucketName, objectName, size)))
+        return NULL;
+
+    Py_RETURN_TRUE;
+}
+
 static PyObject* h3lib_delete_object(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
@@ -815,6 +839,7 @@ static PyMethodDef module_functions[] = {
     {"read_object",        (PyCFunction)h3lib_read_object,        METH_VARARGS|METH_KEYWORDS, NULL},
     {"copy_object",        (PyCFunction)h3lib_copy_object,        METH_VARARGS|METH_KEYWORDS, NULL},
     {"move_object",        (PyCFunction)h3lib_move_object,        METH_VARARGS|METH_KEYWORDS, NULL},
+    {"truncate_object",    (PyCFunction)h3lib_truncate_object,    METH_VARARGS|METH_KEYWORDS, NULL},
     {"delete_object",      (PyCFunction)h3lib_delete_object,      METH_VARARGS|METH_KEYWORDS, NULL},
 
     {"list_multiparts",    (PyCFunction)h3lib_list_multiparts,    METH_VARARGS|METH_KEYWORDS, NULL},
