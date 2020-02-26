@@ -218,7 +218,7 @@ class H3(object, metaclass=H3Version):
         :type offset: int
         :type size: int
         :type dst_object_name: string
-        :returns: ``True`` if the call was successful
+        :returns: The bytes copied if the call was successful
         """
 
         return h3lib.create_object_copy(self._handle, bucket_name, src_object_name, offset, size, dst_object_name, self._user_id)
@@ -254,7 +254,7 @@ class H3(object, metaclass=H3Version):
         :type size: int
         :type dst_object_name: string
         :type dst_offset: int
-        :returns: ``True`` if the call was successful
+        :returns: The bytes copied if the call was successful
         """
 
         return h3lib.write_object_copy(self._handle, bucket_name, src_object_name, src_offset, size, dst_object_name, dst_offset, self._user_id)

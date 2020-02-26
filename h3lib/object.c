@@ -1109,7 +1109,7 @@ H3_Status H3_WriteObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H
  * @param[in]    srcObjectName      The name of the object to be renamed
  * @param[in]    dstObjectName      The new name to be assumed by the object
  * @param[in]    offset             Offset with respect to the source object's 0x00 byte
- * @param[in]    size               The amount of data to copy
+ * @param[inout] size               The amount of data to copy
  *
  * @result \b H3_SUCCESS            Operation completed successfully
  * @result \b H3_FAILURE            Unable to access object or user has no access or new name is in use
@@ -1168,7 +1168,7 @@ H3_Status H3_CreateObjectCopy(H3_Handle handle, H3_Token token, H3_Name bucketNa
  * @param[in]    dstObjectName      The new name to be assumed by the object
  * @param[in]    srcOffset          Offset with respect to the source object's 0x00 byte
  * @param[in]    dstOffset          Offset with respect to the destination object's 0x00 byte
- * @param[in]    size               The amount of data to copy
+ * @param[inout] size               The amount of data to copy
  *
  * @result \b H3_SUCCESS            Operation completed successfully
  * @result \b H3_FAILURE            Unable to access object or user has no access

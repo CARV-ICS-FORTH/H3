@@ -418,10 +418,10 @@ static PyObject* h3lib_create_object_copy(PyObject* self, PyObject *args, PyObje
     H3_Auth auth;
 
     auth.userId = userId;
-    if (did_raise_exception(H3_CreateObjectCopy(handle, &auth, bucketName, srcObjectName, offset, size, dstObjectName)))
+    if (did_raise_exception(H3_CreateObjectCopy(handle, &auth, bucketName, srcObjectName, offset, &size, dstObjectName)))
         return NULL;
 
-    Py_RETURN_TRUE;
+    return Py_BuildValue("k", size);
 }
 
 static PyObject* h3lib_write_object(PyObject* self, PyObject *args, PyObject *kw) {
@@ -471,10 +471,10 @@ static PyObject* h3lib_write_object_copy(PyObject* self, PyObject *args, PyObjec
     H3_Auth auth;
 
     auth.userId = userId;
-    if (did_raise_exception(H3_WriteObjectCopy(handle, &auth, bucketName, srcObjectName, srcOffset, size, dstObjectName, dstOffset)))
+    if (did_raise_exception(H3_WriteObjectCopy(handle, &auth, bucketName, srcObjectName, srcOffset, &size, dstObjectName, dstOffset)))
         return NULL;
 
-    Py_RETURN_TRUE;
+    return Py_BuildValue("k", size);
 }
 
 static PyObject* h3lib_read_object(PyObject* self, PyObject *args, PyObject *kw) {
