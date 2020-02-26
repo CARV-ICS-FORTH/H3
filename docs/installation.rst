@@ -45,9 +45,9 @@ With ``h3lib`` installed, you can compile and install the Python wrapper library
 
 If you have installed ``h3lib`` in some non-standard path and ``setup.py install`` fails to find it, run the following and retry (the example assumes ``h3lib`` is installed in ``/usr/local/``)::
 
-	export C_INCLUDE_PATH=/usr/local/include
-	export LIBRARY_PATH=/usr/local/lib
+    export C_INCLUDE_PATH=/usr/local/include
+    export LIBRARY_PATH=/usr/local/lib
 
 To package (creates ``tar.gz`` in ``dist``)::
 
-	python3 setup.py bdist
+    python3 setup.py bdist
