@@ -378,7 +378,7 @@ static PyObject* h3lib_create_object(PyObject* self, PyObject *args, PyObject *k
     H3_Name bucketName;
     H3_Name objectName;
     const char *data;
-    Py_ssize_t size;
+    size_t size;
     uint32_t userId = 0;
 
     static char *kwlist[] = {"handle", "bucket_name", "object_name", "data", "user_id", NULL};
@@ -403,7 +403,7 @@ static PyObject* h3lib_create_object_copy(PyObject* self, PyObject *args, PyObje
     H3_Name bucketName;
     H3_Name srcObjectName;
     off_t offset;
-    Py_ssize_t size;
+    size_t size;
     H3_Name dstObjectName;
     uint32_t userId = 0;
 
@@ -429,7 +429,7 @@ static PyObject* h3lib_write_object(PyObject* self, PyObject *args, PyObject *kw
     H3_Name bucketName;
     H3_Name objectName;
     const char *data;
-    Py_ssize_t size;
+    size_t size;
     off_t offset = 0;
     uint32_t userId = 0;
 
@@ -455,7 +455,7 @@ static PyObject* h3lib_write_object_copy(PyObject* self, PyObject *args, PyObjec
     H3_Name bucketName;
     H3_Name srcObjectName;
     off_t srcOffset;
-    Py_ssize_t size;
+    size_t size;
     H3_Name dstObjectName;
     off_t dstOffset;
     uint32_t userId = 0;
@@ -775,7 +775,7 @@ static PyObject* h3lib_create_part(PyObject* self, PyObject *args, PyObject *kw)
     H3_MultipartId multipartId;
     uint32_t partNumber;
     const char *data;
-    Py_ssize_t size;
+    size_t size;
     uint32_t userId = 0;
 
     static char *kwlist[] = {"handle", "multipart_id", "part_number", "data", "user_id", NULL};
