@@ -25,3 +25,5 @@ Python
 .. exception:: pyh3lib.H3ExistsError
 
 .. exception:: pyh3lib.H3NotExistsError
+
+.. exception:: pyh3lib.H3NotEmptyError

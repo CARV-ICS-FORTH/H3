@@ -86,6 +86,7 @@ static PyObject *invalid_args_status;
 static PyObject *store_error_status;
 static PyObject *exists_status;
 static PyObject *not_exists_status;
+static PyObject *not_empty_status;
 
 static int did_raise_exception(H3_Status status) {
     switch (status) {
@@ -103,6 +104,9 @@ static int did_raise_exception(H3_Status status) {
             return 1;
         case H3_NOT_EXISTS:
             PyErr_SetNone(not_exists_status);
+            return 1;
+        case H3_NOT_EMPTY:
+            PyErr_SetNone(not_empty_status);
             return 1;
         case H3_SUCCESS:
             return 0;
@@ -865,11 +869,13 @@ PyMODINIT_FUNC PyInit_h3lib(void) {
     store_error_status = PyErr_NewException("pyh3lib.h3lib.StoreError", NULL, NULL);
     exists_status = PyErr_NewException("pyh3lib.h3lib.ExistsError", NULL, NULL);
     not_exists_status = PyErr_NewException("pyh3lib.h3lib.NotExistsError", NULL, NULL);
+    not_empty_status = PyErr_NewException("pyh3lib.h3lib.NotEmptyError", NULL, NULL);
     PyModule_AddObject(module, "FailureError", failure_status);
     PyModule_AddObject(module, "InvalidArgsError", invalid_args_status);
     PyModule_AddObject(module, "StoreError", store_error_status);
     PyModule_AddObject(module, "ExistsError", exists_status);
     PyModule_AddObject(module, "NotExistsError", not_exists_status);
+    PyModule_AddObject(module, "NotEmptyError", not_empty_status);
 
     return module;
 }
