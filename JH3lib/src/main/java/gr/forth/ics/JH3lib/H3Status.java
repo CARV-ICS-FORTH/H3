@@ -4,15 +4,27 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * The status of a h3lib operation.
+ * @author Giorgos Kalaentzis
+ * @version 0.1-beta
+ */
 public enum H3Status {
 
-    H3_FAILURE (JH3libInterface.H3_FAILURE),            //!< Operation failed
-    H3_INVALID_ARGS (JH3libInterface.H3_INVALID_ARGS),  //!< Arguments are missing or malformed
-    H3_STORE_ERROR (JH3libInterface.H3_STORE_ERROR),    //!< External (store provider) error
-    H3_EXISTS (JH3libInterface.H3_EXISTS),              //!< Bucket or object already exists
-    H3_NOT_EXISTS (JH3libInterface.H3_NOT_EXISTS),      //!< Bucket or object does not exist
-    H3_SUCCESS (JH3libInterface.H3_SUCCESS),            //!< Operation succeeded
-    H3_CONTINUE (JH3libInterface.H3_CONTINUE);          //!< Operation succeeded though there are more data to retrieve
+    /** Operation failed. */
+    H3_FAILURE (JH3libInterface.Status.H3_FAILURE),
+    /** Arguments are missing or malformed. */
+    H3_INVALID_ARGS (JH3libInterface.Status.H3_INVALID_ARGS),
+    /** External (store provider) error. */
+    H3_STORE_ERROR (JH3libInterface.Status.H3_STORE_ERROR),
+    /** Bucket or object already exists. */
+    H3_EXISTS (JH3libInterface.Status.H3_EXISTS),
+    /** Bucket or object does not exist. */
+    H3_NOT_EXISTS (JH3libInterface.Status.H3_NOT_EXISTS),
+    /** Operation succeeded. */
+    H3_SUCCESS (JH3libInterface.Status.H3_SUCCESS),
+    /** Operation succeeded though there are more data to retrieve. */
+    H3_CONTINUE (JH3libInterface.Status.H3_CONTINUE);
 
     private final int status;
     private static final Map<Integer,H3Status> lookup = new HashMap<>();
@@ -33,6 +45,11 @@ public enum H3Status {
         return status;
     }
 
+    /**
+     * Get a H3Status enum from its integer representation.
+     * @param id    Integer representation of the status
+     * @return      The status as enum
+     */
     public static H3Status fromInt(int id) {
        return lookup.get(id);
     }

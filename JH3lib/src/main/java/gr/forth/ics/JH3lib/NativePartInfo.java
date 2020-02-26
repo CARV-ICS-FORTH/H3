@@ -26,8 +26,8 @@ public class NativePartInfo extends Structure {
     }
 
     /**
-     *
-     * @param partNumber    Part number <br>
+     * Create native part info.
+     * @param partNumber    Part number
      * @param size          Part size
      */
     public NativePartInfo(int partNumber, NativeLong size) {
@@ -35,9 +35,15 @@ public class NativePartInfo extends Structure {
         this.partNumber = partNumber;
         this.size = size;
     }
+
+    /**
+     * Create native part info from the real native pointer.
+     * @param peer Pointer value of the real native pointer
+     */
     public NativePartInfo(Pointer peer) {
         super(peer);
     }
+
     public static class ByReference extends NativePartInfo implements Structure.ByReference {
 
     };

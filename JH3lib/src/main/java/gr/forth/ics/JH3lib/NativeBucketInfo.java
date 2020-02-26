@@ -13,8 +13,8 @@ import java.util.List;
  */
 public class NativeBucketInfo extends Structure {
 
-    public NativeLong creation;    //!< Creation timestamp
-    public NativeBucketStats stats;     //!< Aggregate object statistics
+    public NativeLong creation;
+    public NativeBucketStats stats;
 
     public NativeBucketInfo(){ super(); }
 
@@ -32,6 +32,7 @@ public class NativeBucketInfo extends Structure {
     }
 
     /**
+     * Create native bucket info
      * @param creation  Creation timestamp
      * @param stats     Aggregate object statistics
      */
@@ -41,6 +42,10 @@ public class NativeBucketInfo extends Structure {
         this.stats = stats;
     }
 
+    /**
+     * Create native bucket info from the real native pointer
+     * @param peer Pointer value of the real native pointer
+     */
     public NativeBucketInfo(Pointer peer) { super(peer); }
 
     public static class ByReference extends NativeBucketInfo implements Structure.ByReference {

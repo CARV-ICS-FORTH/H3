@@ -25,3 +25,12 @@ Python
 .. exception:: pyh3lib.H3ExistsError
 
 .. exception:: pyh3lib.H3NotExistsError
+
+Java
+----
+
+.. toctree::
+   :maxdepth: 2
+
+   packages   
+

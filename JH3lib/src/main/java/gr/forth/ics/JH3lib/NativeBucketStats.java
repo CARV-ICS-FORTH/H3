@@ -15,17 +15,18 @@ import java.util.List;
 
 public class NativeBucketStats extends Structure {
 
-    public NativeLong size;                 //!< The size of all objects contained in the bucket
-    public long nObjects;                   //!< Number of objects contained in the bucket
-    public NativeLong lastAccess;           //!< Last time an object was accessed
-    public NativeLong lastModification;     //!< Last time an object was modified
+    public NativeLong size;
+    public long nObjects;
+    public NativeLong lastAccess;
+    public NativeLong lastModification;
 
     public NativeBucketStats() { super(); }
 
     /**
-     * @param size                  The size of all objects contained in the bucket <br>
-     * @param nObjects              Number of objects contained in the bucket       <br>
-     * @param lastAccess            Last time an object was accessed                <br>
+     * Create native bucket stats.
+     * @param size                  The size of all objects contained in the bucket
+     * @param nObjects              Number of objects contained in the bucket
+     * @param lastAccess            Last time an object was accessed
      * @param lastModification      Last time an object was modified
      */
     public NativeBucketStats(NativeLong size, long nObjects,
@@ -41,6 +42,11 @@ public class NativeBucketStats extends Structure {
     protected List<String> getFieldOrder(){
         return Arrays.asList("size", "nObjects", "lastAccess", "lastModification");
     }
+
+    /**
+     * Create native bucket stats from the real native pointer.
+     * @param peer Pointer value of the real native pointer
+     */
     public NativeBucketStats(Pointer peer) { super(peer); }
 
     public static abstract class ByReference extends NativeBucketStats implements Structure.ByReference{

@@ -1,34 +1,34 @@
 package gr.forth.ics.JH3lib;
 
-import com.sun.jna.Pointer;
-import com.sun.jna.Structure;
+/**
+ * User authentication info.
+ * @author Giorgos Kalaentzis
+ * @version 0.1-beta
+ */
+public class H3Auth {
 
-import java.util.Arrays;
-import java.util.List;
+    private int userId;
 
-public class H3Auth extends Structure {
-    public int userId;
-
-    public H3Auth() { super(); }
-
-    @Override
-    protected List<String> getFieldOrder() {
-        return Arrays.asList("userId");
-    }
-
-    public H3Auth(int userId){
-        super();
+    /**
+     * Create user authentication info.
+     * @param userId The id of the user
+     */
+    public H3Auth(int userId) {
         this.userId = userId;
     }
 
-    public H3Auth(Pointer peer) { super(peer); }
+    /**
+     * Get the ID of the user.
+     * @return The ID of the user.
+     */
+    public int getUserId() {
+        return userId;
+    }
 
-    public static class ByReference extends H3Auth implements Structure.ByReference{
-
-    };
-
-    public static class ByValue extends H3Auth implements Structure.ByValue{
-
-    };
-
+    @Override
+    public String toString() {
+        return "H3Auth{" +
+                "userId=" + userId +
+                '}';
+    }
 }

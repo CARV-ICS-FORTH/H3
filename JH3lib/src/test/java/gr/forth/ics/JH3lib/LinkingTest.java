@@ -4,9 +4,7 @@ import com.sun.jna.Memory;
 import com.sun.jna.NativeLong;
 import com.sun.jna.Pointer;
 import com.sun.jna.ptr.PointerByReference;
-import org.junit.Before;
 import org.junit.Ignore;
-import org.junit.Test;
 
 import java.io.File;
 import java.nio.IntBuffer;
@@ -18,7 +16,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
 /**
- * Call each function from native h3lib
+ * Call each function from native h3lib.
+ * @author Giorgos Kalaentzis
+ * @version 0.1-beta
  */
 public class LinkingTest
 {
@@ -33,7 +33,7 @@ public class LinkingTest
     }
     private String configPath = "config.ini";
     private String dir = "/tmp/h3";
-    private H3Auth myToken = new H3Auth(17);        // Dummy authorization
+    private NativeAuth myToken = new NativeAuth(17);        // Dummy authorization
     // Dummy callback function
     private JH3libInterface.h3_name_iterator_cb println = new JH3libInterface.h3_name_iterator_cb() {
         @Override
@@ -75,7 +75,7 @@ public class LinkingTest
     }
 
     /**
-     * Basic test of h3lib handle
+     * Basic test of h3lib handle.
      */
     @Ignore
     public void testHandle(){
@@ -87,7 +87,7 @@ public class LinkingTest
         log.info("Using Configuration File: " + cfgFileName.getString(0));
 
         // Get h3lib handle
-        Pointer handle = JH3libInterface.INSTANCE.H3_Init(JH3libInterface.H3_STORE_CONFIG, cfgFileName);
+        Pointer handle = JH3libInterface.INSTANCE.H3_Init(JH3libInterface.StoreType.H3_STORE_CONFIG, cfgFileName);
         assertNotEquals(null, handle);
         log.info("Initialized h3lib handle successfully");
 
@@ -96,7 +96,7 @@ public class LinkingTest
     }
 
     /**
-     * Test basic create/delete/list bucket operations
+     * Test basic create/delete/list bucket operations.
      */
     @Ignore
     public void basicBucketCalls() {
@@ -105,7 +105,7 @@ public class LinkingTest
             // Get h3lib handle
             Pointer cfgFileName = new Memory(configPath.length() + 1);
             cfgFileName.setString(0, configPath);
-            Pointer handle = JH3libInterface.INSTANCE.H3_Init(JH3libInterface.H3_STORE_CONFIG, cfgFileName);
+            Pointer handle = JH3libInterface.INSTANCE.H3_Init(JH3libInterface.StoreType.H3_STORE_CONFIG, cfgFileName);
             assertNotEquals(null, handle);
 
             // Create a bucket
@@ -162,7 +162,7 @@ public class LinkingTest
     }
 
     /**
-     * Test basic create/list/delete object operations
+     * Test basic create/list/delete object operations.
      */
     @Ignore
     public void basicObjectCalls(){
@@ -171,7 +171,7 @@ public class LinkingTest
             // Get h3lib handle
             Pointer cfgFileName = new Memory(configPath.length() + 1);
             cfgFileName.setString(0, configPath);
-            Pointer handle = JH3libInterface.INSTANCE.H3_Init(JH3libInterface.H3_STORE_CONFIG, cfgFileName);
+            Pointer handle = JH3libInterface.INSTANCE.H3_Init(JH3libInterface.StoreType.H3_STORE_CONFIG, cfgFileName);
             assertNotEquals(null, handle);
 
             String b1 = "bucket1";

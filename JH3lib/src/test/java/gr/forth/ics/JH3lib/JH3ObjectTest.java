@@ -112,7 +112,7 @@ public class JH3ObjectTest {
             // List objects
             ArrayList<String> expected = new ArrayList<>();
             expected.add("o1");
-            objects = client.listObjects("b1");
+            objects = client.listObjects("b1", 0);
             assertEquals(H3Status.H3_SUCCESS, client.getStatus());
             Collections.sort(objects);
             assertEquals(expected, objects);
@@ -141,7 +141,7 @@ public class JH3ObjectTest {
 
             // List objects
             expected.add("o2");
-            objects = client.listObjects("b1");
+            objects = client.listObjects("b1", 0);
             Collections.sort(objects);
             assertEquals(H3Status.H3_SUCCESS, client.getStatus());
             assertEquals(expected, objects);
@@ -181,7 +181,7 @@ public class JH3ObjectTest {
             assertEquals(MEGABYTE, readObj.getSize());
 
             // List objects
-            objects = client.listObjects("b1");
+            objects = client.listObjects("b1", 0);
             assertEquals(H3Status.H3_SUCCESS, client.getStatus());
             Collections.sort(objects);
             assertEquals(expected, objects);
@@ -202,7 +202,7 @@ public class JH3ObjectTest {
             expected.remove("o1");
 
             // List objects
-            objects = client.listObjects("b1");
+            objects = client.listObjects("b1", 0);
             assertEquals(H3Status.H3_SUCCESS, client.getStatus());
             Collections.sort(objects);
             assertEquals(expected, objects);
@@ -217,7 +217,7 @@ public class JH3ObjectTest {
             assertEquals(H3Status.H3_FAILURE, client.getStatus());
 
             // Make sure third object still exists
-            assertTrue(client.listObjects("b1").contains("o3"));
+            assertTrue(client.listObjects("b1", 0).contains("o3"));
 
             // Move second object to third
             assertTrue(client.moveObject("b1", "o2", "o3"));
@@ -271,7 +271,7 @@ public class JH3ObjectTest {
 
             expected.add("o3");
             // List Objects
-            objects = client.listObjects("b1");
+            objects = client.listObjects("b1", 0);
             assertEquals(H3Status.H3_SUCCESS, client.getStatus());
             Collections.sort(objects);
             assertEquals(expected, objects);
@@ -281,14 +281,14 @@ public class JH3ObjectTest {
             assertEquals(H3Status.H3_SUCCESS, client.getStatus());
 
             expected.remove("o3");
-            assertEquals(expected, client.listObjects("b1"));
+            assertEquals(expected, client.listObjects("b1", 0));
             assertEquals(H3Status.H3_SUCCESS, client.getStatus());
 
             // Delete second object
             assertTrue(client.deleteObject("b1", "o2"));
 
             expected.remove("o2");
-            assertEquals(expected, client.listObjects("b1"));
+            assertEquals(expected, client.listObjects("b1",0));
             assertEquals(H3Status.H3_SUCCESS, client.getStatus());
 
             // Delete bucket

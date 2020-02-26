@@ -8,16 +8,16 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * JNA representation of H3_ObjectInfo
+ * JNA representation of H3_ObjectInfo.
  * @author  Giorgos Kalaentzis
  * @version 0.1-beta
  */
 public class NativeObjectInfo extends Structure {
-    public byte isBad;                      //!< Data are corrupt
-    public NativeLong size;                 //!< Object size
-    public NativeLong creation;             //!< Creation timestamp
-    public NativeLong lastAccess;           //!< Last access timestamp
-    public NativeLong lastModification;     //!< Last modification timestamp
+    public byte isBad;
+    public NativeLong size;
+    public NativeLong creation;
+    public NativeLong lastAccess;
+    public NativeLong lastModification;
 
     public NativeObjectInfo() { super(); }
 
@@ -27,11 +27,11 @@ public class NativeObjectInfo extends Structure {
     }
 
     /**
-     *
-     * @param isBad                 Data are corrupt                <br>
-     * @param size                  Object size                     <br>
-     * @param creation              Creation timestamp              <br>
-     * @param lastAccess            Last access timestamp           <br>
+     * Create native object info.
+     * @param isBad                 Data are corrupt
+     * @param size                  Object size
+     * @param creation              Creation timestamp
+     * @param lastAccess            Last access timestamp
      * @param lastModification      Last modification timestamp
      */
     public NativeObjectInfo(byte isBad, NativeLong size, NativeLong creation,
@@ -44,9 +44,14 @@ public class NativeObjectInfo extends Structure {
         this.lastModification = lastModification;
     }
 
+    /**
+     * Create native object info from the real native pointer.
+     * @param peer Pointer value of the real native pointer
+     */
     public NativeObjectInfo(Pointer peer) {
         super(peer);
     }
+
     public static class ByReference extends NativeObjectInfo implements Structure.ByReference {
 
     };
