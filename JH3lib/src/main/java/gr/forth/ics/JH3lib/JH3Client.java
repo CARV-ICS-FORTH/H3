@@ -969,11 +969,17 @@ public class JH3Client implements Serializable{
         Pointer multipart = new Memory(multipartId.getMultipartId().length() + 1);
         IntBuffer nParts = IntBuffer.allocate(1);
         multipart.setString(0, multipartId.getMultipartId());
-        NativePartInfo.ByReference[] partInfoArray = null;
+        PointerByReference partInfoPointer = new PointerByReference();
 
-        status = H3Status.fromInt(JH3libInterface.INSTANCE.H3_ListParts(handle, token, multipart, partInfoArray, nParts));
+        status = H3Status.fromInt(JH3libInterface.INSTANCE.H3_ListParts(handle, token, multipart, partInfoPointer, nParts));
         if(!operationSucceeded(status))
             return null;
+
+        // This can be extremely slow for large arrays
+        // https://www.eshayne.com/jnaex/index.html?example=7
+        NativePartInfo partInfo = new NativePartInfo(partInfoPointer.getValue());
+        partInfo.read();
+        NativePartInfo[] partInfoArray = (NativePartInfo[])  partInfo.toArray(nParts.get(0));
 
         ArrayList<H3PartInfo> list = new ArrayList<>();
         for(int i = 0; i < nParts.get(0); i++) {

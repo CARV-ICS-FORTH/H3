@@ -431,7 +431,7 @@ public interface JH3libInterface extends Library {
      *
      * @return H3_SUCCESS on success, or H3_NOT_EXISTS/H3_INVALID_ARGS/H3_FAILURE on failure
      */
-    int H3_ListParts(Pointer handle, NativeAuth token, Pointer multipartId, NativePartInfo.ByReference[] partInfoArray, IntBuffer nParts);
+    int H3_ListParts(Pointer handle, NativeAuth token, Pointer multipartId, PointerByReference partInfoArray, IntBuffer nParts);
 
     /**
      * Create a single part of a multipart object from user data.

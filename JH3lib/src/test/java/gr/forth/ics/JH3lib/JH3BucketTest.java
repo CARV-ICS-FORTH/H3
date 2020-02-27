@@ -1,9 +1,10 @@
 package gr.forth.ics.JH3lib;
 
-import org.junit.Rule;
+import org.junit.Before;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 
+import java.io.File;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Random;
 
@@ -14,9 +15,28 @@ public class JH3BucketTest {
     private String config = "config.ini";                                   // Path of configuration file
     private H3StoreType storeType = H3StoreType.H3_STORE_CONFIG;            // Use local filesystem
     private int userId = 0;                                                 // Dummy userId
+    private String dir = "/tmp/h3";
 
-    @Rule
-    public ExpectedException exceptionRule = ExpectedException.none();
+    void deleteDir(File file) {
+        File[] contents = file.listFiles();
+        if (contents != null) {
+            for (File f : contents) {
+                if (!Files.isSymbolicLink(f.toPath())) {
+                    deleteDir(f);
+                }
+            }
+        }
+        file.delete();
+    }
+    /**
+     * Delete any files in /tmp/h3
+     */
+    @Before
+    public void cleanup() {
+        deleteDir(new File(dir));
+    }
+
+
     /**
      * List / create / delete a bucket
      */

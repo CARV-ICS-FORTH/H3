@@ -1,7 +1,10 @@
 package gr.forth.ics.JH3lib;
 
+import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -14,6 +17,28 @@ public class JH3ObjectTest {
     private H3StoreType storeType = H3StoreType.H3_STORE_CONFIG;            // Use local filesystem
     private int userId = 0;                                                 // Dummy userId
     private int MEGABYTE = 1048576;
+    private String dir = "/tmp/h3";
+
+    void deleteDir(File file) {
+        File[] contents = file.listFiles();
+        if (contents != null) {
+            for (File f : contents) {
+                if (!Files.isSymbolicLink(f.toPath())) {
+                    deleteDir(f);
+                }
+            }
+        }
+        file.delete();
+    }
+    /**
+     * Delete any files in /tmp/h3
+     */
+    @Before
+    public void cleanup() {
+        deleteDir(new File(dir));
+    }
+
+
     /**
      * Create / Delete an object
      */
