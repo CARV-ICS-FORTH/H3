@@ -101,7 +101,7 @@ public class JH3Client implements Serializable{
     /* Bucket Management methods */
 
     /**
-     * Create a bucket. The status of the operation is set and can be retrieved by {@link H3Status getStatus()}.
+     * Create a bucket. The status of the operation is set and can be retrieved by {@link JH3Client#getStatus() getStatus()}.
      * Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
@@ -126,7 +126,7 @@ public class JH3Client implements Serializable{
 
     /**
      * Delete a bucket. The bucket must be empty and the token must grant access to it in order to be deleted. The
-     * status of the operation is set and can be retrieved by {@link H3Status getStatus()}.
+     * status of the operation is set and can be retrieved by {@link JH3Client#getStatus() getStatus()}.
      * Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
@@ -152,7 +152,7 @@ public class JH3Client implements Serializable{
 
     /**
      * List buckets associated with a user. The status of the operation is set and can be retrieved by
-     * {@link H3Status getStatus()}. Expected status from operation:
+     * {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
@@ -188,7 +188,7 @@ public class JH3Client implements Serializable{
 
     /**
      * Retrieve information about a bucket. The status of the operation is set and can be retrieved by
-     * {@link H3Status getStatus()}. Expected status from operation:
+     * {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
@@ -225,7 +225,7 @@ public class JH3Client implements Serializable{
 
     /**
      * Retrieve information about a bucket. No aggregate object information is produced. The status of the operation is
-     * set and can be retrieved by {@link H3Status getStatus()}. Expected status from operation:
+     * set and can be retrieved by {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
@@ -257,7 +257,7 @@ public class JH3Client implements Serializable{
      *     <li> Must not start with a slash.
      *     <li> A slash must not be followed by another one.
      * </ol>
-     * The status of the operation is set and can be retrieved by {@link H3Status getStatus()}.
+     * The status of the operation is set and can be retrieved by {@link JH3Client#getStatus() getStatus()}.
      * Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
@@ -291,7 +291,7 @@ public class JH3Client implements Serializable{
 
     /**
      * Copy a part of an object into a new one. Not that both objects will rest within the same bucket. The status of
-     * the operation is set and can be retrieved by {@link H3Status getStatus()}.
+     * the operation is set and can be retrieved by {@link JH3Client#getStatus() getStatus()}.
      * Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
@@ -328,7 +328,7 @@ public class JH3Client implements Serializable{
 
     /**
      * Delete an object from specified bucket.The status of the operation is set and can be retrieved by
-     * {@link H3Status getStatus()}. Expected status from operation:
+     * {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
@@ -360,7 +360,7 @@ public class JH3Client implements Serializable{
      * must adhere to the object naming conventions. In case that there are more objects to be listed (indicated by the
      * operation status) the user may invoke again the function with an appropriately set offset in order to retrieve
      * the next batch of names. The status of the operation is set and can be retrieved by
-     * {@link H3Status getStatus()}. Expected status from operation:
+     * {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful (no more matching names exist).
      * <p>
@@ -411,7 +411,7 @@ public class JH3Client implements Serializable{
      * List all objects in a bucket. In case that there are more objects to be listed (indicated by the
      * operation status) the user may invoke again the function with an appropriately set offset in order to retrieve
      * the next batch of names. The status of the operation is set and can be retrieved by
-     * {@link H3Status getStatus()}. Expected status from operation:
+     * {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful (no more matching names exist).
      * <p>
@@ -439,7 +439,7 @@ public class JH3Client implements Serializable{
 
     /**
      * Get the object's information. Retrieve an object's size, timestamps, health status and creation.
-     * The status of the operation is set and can be retrieved by {@link H3Status getStatus()}.
+     * The status of the operation is set and can be retrieved by {@link JH3Client#getStatus() getStatus()}.
      * Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
@@ -477,7 +477,7 @@ public class JH3Client implements Serializable{
     /**
      * Retrieve data from an object, starting at an offset. The size of the data to be retrieved cannot exceed
      * <code>MAX_INTEGER</code> due to Java's array restrictions. The status of the operation is set and can be retrieved
-     * by {@link H3Status getStatus()}. Expected status from operation:
+     * by {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
@@ -522,7 +522,7 @@ public class JH3Client implements Serializable{
 
     /**
      * Retrieve full data from an object. Object must not exceed 2GB in order to retrieve it.The status of the
-     * operation is set and can be retrieved by {@link H3Status getStatus()}. Expected status from operation:
+     * operation is set and can be retrieved by {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
@@ -552,7 +552,7 @@ public class JH3Client implements Serializable{
      * </ol>
      *
      * The status of the operation is set and can be retrieved by
-     * {@link H3Status getStatus()}. Expected status from operation:
+     * {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
@@ -592,7 +592,7 @@ public class JH3Client implements Serializable{
      * </ol>
      *
      * The status of the operation is set and can be retrieved by
-     * {@link H3Status getStatus()}. Expected status from operation:
+     * {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
@@ -613,7 +613,7 @@ public class JH3Client implements Serializable{
     /**
      * Copy a part of an object into a new or existing one, at a user provided offset.
      * Note that both objects will rest within the same bucket. The status of the operation is set and can be
-     * retrieved by {@link H3Status getStatus()}. Expected status from operation:
+     * retrieved by {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
@@ -653,7 +653,7 @@ public class JH3Client implements Serializable{
     /**
      * Copies an object provided the new name is not taken by another object unless it is explicitly allowed
      * by the user in which case the previous object will be overwritten. Note that both objects will rest within
-     * the same bucket. The status of the operation is set and can be retrieved by {@link H3Status getStatus()}.
+     * the same bucket. The status of the operation is set and can be retrieved by {@link JH3Client#getStatus() getStatus()}.
      * Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
@@ -691,7 +691,7 @@ public class JH3Client implements Serializable{
     /**
      * Copies an object provided to the destination name, always allowing overwrite, even if the destination object
      * already exists.Note that both objects will rest within the same bucket. The status of the operation is set and
-     * can be retrieved by {@link H3Status getStatus()}. Expected status from operation:
+     * can be retrieved by {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
@@ -715,7 +715,7 @@ public class JH3Client implements Serializable{
     /**
      * Renames an object provided the destination name is not taken by another object unless it is explicitly allowed
      * by the user in which case the previous object will be overwritten. Note that both objects will rest within
-     * the same bucket.  The status of the operation is set and can be retrieved by {@link H3Status getStatus()}.
+     * the same bucket.  The status of the operation is set and can be retrieved by {@link JH3Client#getStatus() getStatus()}.
      * Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
@@ -754,7 +754,7 @@ public class JH3Client implements Serializable{
     /**
      * Renames an object to the destination name, always allowing overwrite, even if the destination object already
      * exists. Note that both objects will rest within the same bucket. The status of the operation is set and can be
-     * retrieved by {@link H3Status getStatus()}. Expected status from operation:
+     * retrieved by {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
@@ -789,7 +789,7 @@ public class JH3Client implements Serializable{
      *  <li> A slash must not be followed by another one.
      *</ol>
      *
-     * The status of the operation is set and can be retrieved by {@link H3Status getStatus()}.
+     * The status of the operation is set and can be retrieved by {@link JH3Client#getStatus() getStatus()}.
      * Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
@@ -825,7 +825,7 @@ public class JH3Client implements Serializable{
      * Converts a multipart object into an ordinary one by coalescing uploaded parts ordered by their part-ID.
      * If another object with that name already exists it is overwritten. Once completed, the multipart-ID is
      * invalidated thus the multipart API becomes in-applicable for the object. The status of the operation is set and
-     * can be retrieved by {@link H3Status getStatus()}. Expected status from operation:
+     * can be retrieved by {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
@@ -851,7 +851,7 @@ public class JH3Client implements Serializable{
 
     /**
      * Deletes a multipart object along with all uploaded parts if any. Once deleted, the multipart-ID is
-     * invalidated. The status of the operation is set and can be retrieved by {@link H3Status getStatus()}.
+     * invalidated. The status of the operation is set and can be retrieved by {@link JH3Client#getStatus() getStatus()}.
      * Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
@@ -879,7 +879,7 @@ public class JH3Client implements Serializable{
      * Retrieve the ID of all multipart objects in specified bucket. In case that there are more multipart objects to
      * be listed (indicated by the operation status) the user may invoke again the function with an appropriately set
      * offset in order to retrieve the next batch of multiparts. The status of the operation is set and can be
-     * retrieved by {@link H3Status getStatus()}. Expected status from operation:
+     * retrieved by {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful (no more matching names exist).
      * <p>
@@ -922,8 +922,35 @@ public class JH3Client implements Serializable{
     }
 
     /**
+     * Retrieve the ID of all multipart objects in specified bucket. In case that there are more multipart objects to
+     * be listed (indicated by the operation status) the user may invoke
+     * {@link JH3Client#listMultiparts(String,int) listMultiparts(String bucketName, int offset)} with an appropriately set
+     * offset in order to retrieve the next batch of multiparts. The status of the operation is set and can be
+     * retrieved by {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
+     * <p>
+     * {@link H3Status#H3_SUCCESS} - The operation was successful (no more matching names exist).
+     * <p>
+     * {@link H3Status#H3_CONTINUE} - The operation was successful (there could be more matching names).
+     * <p>
+     * {@link H3Status#H3_FAILURE} - Unable to access bucket or user has no access.
+     * <p>
+     * {@link H3Status#H3_NOT_EXISTS} - The bucket doesn't exist.
+     * <p>
+     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     *
+     * @param bucketName        The name of the bucket.
+     *
+     * @return                  The list of multipart objects if the operation was successful, <code>null</code>
+     * otherwise.
+     * @throws H3Exception      If an unknown status is received.
+     */
+    public ArrayList<H3MultipartId> listMultiparts(String bucketName) throws H3Exception {
+        return listMultiparts(bucketName, 0);
+    }
+
+    /**
      * Retrieves information for each part of a multipart object. The status of the operation is set and can be
-     * retrieved by {@link H3Status getStatus()}. Expected status from operation:
+     * retrieved by {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
@@ -959,8 +986,8 @@ public class JH3Client implements Serializable{
 
     /**
      * Creates a part of a multipart object designated by a number. If a part with the same number exists it is
-     * replaced by the new one. The status of the operation is set and can be retrieved by {@link H3Status getStatus()}.
-     * Expected status from operation:
+     * replaced by the new one. The status of the operation is set and can be retrieved by
+     * {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
@@ -992,8 +1019,8 @@ public class JH3Client implements Serializable{
     /**
      * Creates a part of a multipart object from a pre-existing object. If a part with the same number exists it is
      * replaced by the new one. The data is sourced from an ordinary object expected to be hosted in the same  bucket
-     * as the multipart one. The status of the operation is set and can be retrieved by {@link H3Status getStatus()}.
-     * Expected status from operation:
+     * as the multipart one. The status of the operation is set and can be retrieved by
+     * {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
