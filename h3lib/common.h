@@ -45,6 +45,7 @@
 #endif
 
 #define H3_PART_SIZE (1048576 * 2) // = 2Mb - Key - 4Kb kreon metadata
+#define H3_CHUNK	 (H3_PART_SIZE * 16)
 #define H3_SYSTEM_ID    0x00
 
 #define H3_BUCKET_BATCH_SIZE   10
@@ -69,6 +70,12 @@ typedef char H3_PartId[50];                                                 // '
 typedef enum {
     DivideInParts, DivideInSubParts
 }H3_PartitionPolicy;
+
+typedef enum {
+	MoveReplace,	// Overwrite destination if exists
+	MoveNoReplace,	// Do not overwrite destination if exists
+	MoveExchange	// Swap data with destination (must exist)
+}H3_MovePolicy;
 
 typedef struct {
     H3_StoreType type;

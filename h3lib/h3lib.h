@@ -67,15 +67,6 @@ typedef enum {
     H3_STORE_NumOfStores    //!< Not an option, used for iteration purposes.
 } H3_StoreType;
 
-
-/*! \brief object rename policies supported by H3 */
-typedef enum {
-	H3_MOVE_REPLACE,	//!< Overwrite destination if exists
-	H3_MOVE_NOREPLACE,	//!< Do not overwrite destination if exists
-	H3_MOVE_EXCHANGE	//!< Swap data with destination (must exist)
-}H3_MovePolicy;
-
-
 /** @}*/
 
 /*! \brief User authentication info */
@@ -160,7 +151,8 @@ H3_Status H3_WriteObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H
 H3_Status H3_WriteObjectCopy(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, off_t srcOffset, size_t* size, H3_Name dstObjectName, off_t dstOffset);
 H3_Status H3_ReadObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, off_t offset, void** data, size_t* size);
 H3_Status H3_CopyObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, H3_Name dstObjectName, uint8_t noOverwrite);
-H3_Status H3_MoveObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, H3_Name dstObjectName, H3_MovePolicy policy);
+H3_Status H3_MoveObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, H3_Name dstObjectName, uint8_t noOverwrite);
+H3_Status H3_ExchangeObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, H3_Name dstObjectName);
 H3_Status H3_TruncateObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, size_t size);
 H3_Status H3_DeleteObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName);
 /** @}*/
