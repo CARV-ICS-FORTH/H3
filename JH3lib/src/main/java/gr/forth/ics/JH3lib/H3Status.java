@@ -21,6 +21,8 @@ public enum H3Status {
     H3_EXISTS (JH3libInterface.Status.H3_EXISTS),
     /** Bucket or object does not exist. */
     H3_NOT_EXISTS (JH3libInterface.Status.H3_NOT_EXISTS),
+    /** Bucket is not empty. */
+    H3_NOT_EMPTY (JH3libInterface.Status.H3_NOT_EMPTY),
     /** Operation succeeded. */
     H3_SUCCESS (JH3libInterface.Status.H3_SUCCESS),
     /** Operation succeeded though there are more data to retrieve. */

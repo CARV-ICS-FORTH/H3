@@ -481,6 +481,8 @@ public class JH3Client implements Serializable{
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
+     * {@link H3Status#H3_CONTINUE} - The operation was successful, though more data are available.
+     * <p>
      * {@link H3Status#H3_FAILURE} - Unable to access bucket or user has no access, or internal buffer allocation error.
      * <p>
      * {@link H3Status#H3_NOT_EXISTS} - The object doesn't exist.
@@ -525,6 +527,8 @@ public class JH3Client implements Serializable{
      * operation is set and can be retrieved by {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
+     * <p>
+     * {@link H3Status#H3_CONTINUE} - The operation was successful, though more data are available.
      * <p>
      * {@link H3Status#H3_FAILURE} - Unable to access bucket or user has no access, or internal buffer allocation error.
      * <p>
@@ -725,6 +729,8 @@ public class JH3Client implements Serializable{
      * <p>
      * {@link H3Status#H3_NOT_EXISTS} - The object doesn't exist.
      * <p>
+     * {@link H3Status#H3_EXISTS} - The destination object exists and we are not allowed to replace it.
+     * <p>
      * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
      *
      * @param    bucketName         The name of the bucket to host the object.
@@ -762,6 +768,8 @@ public class JH3Client implements Serializable{
      * not allowed to overwrite.
      * <p>
      * {@link H3Status#H3_NOT_EXISTS} - The object doesn't exist.
+     * <p>
+     * {@link H3Status#H3_EXISTS} - The destination object exists and we are not allowed to replace it.
      * <p>
      * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
      *
@@ -1072,6 +1080,7 @@ public class JH3Client implements Serializable{
             case H3_STORE_ERROR:
             case H3_EXISTS:
             case H3_NOT_EXISTS:
+            case H3_NOT_EMPTY:
                 return false;
             case H3_SUCCESS:
             case H3_CONTINUE:

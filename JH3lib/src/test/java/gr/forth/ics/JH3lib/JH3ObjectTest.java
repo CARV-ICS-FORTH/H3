@@ -116,14 +116,14 @@ public class JH3ObjectTest {
 
             // Read part of object without offset
             readObj = client.readObject("b1", "o1", 0, MEGABYTE);
-            assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+            assertEquals(H3Status.H3_CONTINUE, client.getStatus());
             assertNotNull(readObj);
             assertTrue(Arrays.equals(Arrays.copyOfRange(data, 0, MEGABYTE), readObj.getData()));
             assertEquals(MEGABYTE, readObj.getSize());
 
             // Read part of object with offsets
             readObj = client.readObject("b1", "o1", MEGABYTE, MEGABYTE);
-            assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+            assertEquals(H3Status.H3_CONTINUE, client.getStatus());
             assertNotNull(readObj);
             assertTrue(Arrays.equals(Arrays.copyOfRange(data, MEGABYTE, 2*MEGABYTE), readObj.getData()));
             assertEquals(MEGABYTE, readObj.getSize());
@@ -187,14 +187,14 @@ public class JH3ObjectTest {
 
             // Read part of object without offset
             readObj = client.readObject("b1", "o2", 0, MEGABYTE);
-            assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+            assertEquals(H3Status.H3_CONTINUE, client.getStatus());
             assertNotNull(readObj);
             assertTrue(Arrays.equals(Arrays.copyOfRange(data, 0, MEGABYTE), readObj.getData()));
             assertEquals(MEGABYTE, readObj.getSize());
 
             // Read part of object with offsets
             readObj = client.readObject("b1", "o2", MEGABYTE, MEGABYTE);
-            assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+            assertEquals(H3Status.H3_CONTINUE, client.getStatus());
             assertNotNull(readObj);
             assertTrue(Arrays.equals(Arrays.copyOfRange(data, MEGABYTE, 2*MEGABYTE), readObj.getData()));
             assertEquals(MEGABYTE, readObj.getSize());
@@ -239,7 +239,7 @@ public class JH3ObjectTest {
 
             // Move second object to third; don't overwrite
             assertFalse(client.moveObject("b1", "o2", "o3", true));
-            assertEquals(H3Status.H3_FAILURE, client.getStatus());
+            assertEquals(H3Status.H3_EXISTS, client.getStatus());
 
             // Make sure third object still exists
             assertTrue(client.listObjects("b1", 0).contains("o3"));
@@ -276,14 +276,14 @@ public class JH3ObjectTest {
 
             // Read part of object without offset
             readObj = client.readObject("b1", "o2", 0, MEGABYTE);
-            assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+            assertEquals(H3Status.H3_CONTINUE, client.getStatus());
             assertNotNull(readObj);
             assertTrue(Arrays.equals(Arrays.copyOfRange(data, 0, MEGABYTE), readObj.getData()));
             assertEquals(MEGABYTE, readObj.getSize());
 
             // Read part of object with offsets
             readObj = client.readObject("b1", "o2", MEGABYTE, MEGABYTE);
-            assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+            assertEquals(H3Status.H3_CONTINUE, client.getStatus());
             assertNotNull(readObj);
             assertTrue(Arrays.equals(Arrays.copyOfRange(data, MEGABYTE, 2*MEGABYTE), readObj.getData()));
             assertEquals(MEGABYTE, readObj.getSize());

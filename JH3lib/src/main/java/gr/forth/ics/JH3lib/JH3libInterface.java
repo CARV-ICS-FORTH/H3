@@ -55,10 +55,12 @@ public interface JH3libInterface extends Library {
         int H3_EXISTS = 3;
         /** Bucket or object does not exist. */
         int H3_NOT_EXISTS = 4;
+        /** Bucket is not empty. */
+        int H3_NOT_EMPTY = 5;
         /** Operation succeeded. */
-        int H3_SUCCESS = 5;
+        int H3_SUCCESS = 6;
         /** Operation succeeded though there are more data to retrieve */
-        int H3_CONTINUE = 6;
+        int H3_CONTINUE = 7;
     }
     /**  Callback function to be invoked for each bucket or object. */
     interface h3_name_iterator_cb extends Callback {
