@@ -26,6 +26,8 @@ Python
 
 .. exception:: pyh3lib.H3NotExistsError
 
+.. exception:: pyh3lib.H3NotEmptyError
+
 Java
 ----
 
@@ -34,3 +36,4 @@ Java
 
    packages   
 
+=======

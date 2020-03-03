@@ -185,7 +185,7 @@ H3_Status H3_CompleteMultipart(H3_Handle handle, H3_Token token, H3_MultipartId 
 
                 // Create ordinary object (delete pre-existing ordinary object with same ID if any)
                 if( (kvStatus = op->metadata_create(_handle, objId, (KV_Value)objMeta, 0, mSize)) == KV_SUCCESS  ||
-                    (kvStatus == KV_KEY_EXIST && DeleteObject(ctx, userId, objId) == H3_SUCCESS &&
+                    (kvStatus == KV_KEY_EXIST && DeleteObject(ctx, userId, objId, 0) == H3_SUCCESS &&
                      op->metadata_create(_handle, objId, (KV_Value)objMeta, 0, mSize) == KV_SUCCESS               )   ){
 
                     // Delete temporary object metadata and indirector
@@ -249,9 +249,9 @@ H3_Status H3_AbortMultipart(H3_Handle handle, H3_Token token, H3_MultipartId mul
 
     // Make sure user has access to the multipart-object
     H3_MultipartMetadata* multiMeta = (H3_MultipartMetadata*)value;
-    if( GrantMultipartAccess(userId, multiMeta)                         &&
-        DeleteObject(ctx, userId, multiMeta->objectId) == H3_SUCCESS    &&
-        op->metadata_delete(_handle, multipartId) == KV_SUCCESS             ){
+    if( GrantMultipartAccess(userId, multiMeta)                            &&
+        DeleteObject(ctx, userId, multiMeta->objectId, 0) == H3_SUCCESS    &&
+        op->metadata_delete(_handle, multipartId) == KV_SUCCESS               ){
         status = H3_SUCCESS;
     }
 

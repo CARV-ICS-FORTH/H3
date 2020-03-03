@@ -45,6 +45,7 @@
 #endif
 
 #define H3_PART_SIZE (1048576 * 2) // = 2Mb - Key - 4Kb kreon metadata
+#define H3_CHUNK	 (H3_PART_SIZE * 16)
 #define H3_SYSTEM_ID    0x00
 
 #define H3_BUCKET_BATCH_SIZE   10
@@ -69,6 +70,12 @@ typedef char H3_PartId[50];                                                 // '
 typedef enum {
     DivideInParts, DivideInSubParts
 }H3_PartitionPolicy;
+
+typedef enum {
+	MoveReplace,	// Overwrite destination if exists
+	MoveNoReplace,	// Do not overwrite destination if exists
+	MoveExchange	// Swap data with destination (must exist)
+}H3_MovePolicy;
 
 typedef struct {
     H3_StoreType type;
@@ -128,7 +135,7 @@ int GrantBucketAccess(H3_UserId id, H3_BucketMetadata* meta);
 int GrantObjectAccess(H3_UserId id, H3_ObjectMetadata* meta);
 int GrantMultipartAccess(H3_UserId id, H3_MultipartMetadata* meta);
 char* ConvertToOdrinary(H3_ObjectId id);
-H3_Status DeleteObject(H3_Context* ctx, H3_UserId userId, H3_ObjectId objId);
+H3_Status DeleteObject(H3_Context* ctx, H3_UserId userId, H3_ObjectId objId, char truncate);
 KV_Status WriteData(H3_Context* ctx, H3_ObjectMetadata* meta, KV_Value value, size_t size, off_t offset, uint initialPartNumber, H3_PartitionPolicy policy);
 KV_Status ReadData(H3_Context* ctx, H3_ObjectMetadata* meta, KV_Value value, size_t* size, off_t offset);
-KV_Status CopyData(H3_Context* ctx, H3_UserId userId, H3_ObjectId srcObjId, H3_ObjectId dstObjId, off_t srcOffset, size_t size, uint8_t noOverwrite, off_t dstOffset);
+KV_Status CopyData(H3_Context* ctx, H3_UserId userId, H3_ObjectId srcObjId, H3_ObjectId dstObjId, off_t srcOffset, size_t* size, uint8_t noOverwrite, off_t dstOffset);
