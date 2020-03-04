@@ -65,7 +65,7 @@ class H3(object, metaclass=H3Version):
 
     STORE_FILESYSTEM = h3lib.H3_STORE_FILESYSTEM
     """Storage type to use the filesystem as the backend.
-    
+
     The config file should contain a ``FILESYSTEM`` section, with the following variables:
 
     ========  =================
@@ -306,6 +306,20 @@ class H3(object, metaclass=H3Version):
         """
 
         return h3lib.move_object(self._handle, bucket_name, src_object_name, dst_object_name, no_overwrite, self._user_id)
+
+    def exchange_object(self, bucket_name, src_object_name, dst_object_name):
+        """Exchange data between objects.
+
+        :param bucket_name: the bucket name
+        :param src_object_name: the source object name
+        :param dst_object_name: the destination object name
+        :type bucket_name: string
+        :type src_object_name: string
+        :type dst_object_name: string
+        :returns: ``True`` if the call was successful
+        """
+
+        return h3lib.exchange_object(self._handle, bucket_name, src_object_name, dst_object_name, self._user_id)
 
     def truncate_object(self, bucket_name, object_name, size=0):
         """Read from an object.
