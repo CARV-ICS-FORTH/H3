@@ -793,6 +793,61 @@ public class JH3Client implements Serializable{
         return moveObject(bucketName, srcObjectName, dstObjectName, false);
     }
 
+    /**
+     * Reduces the size of the object by permanently removing excess data. The status of the operation is set and can be
+     * retrieved by {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
+     * <p>
+     * {@link H3Status#H3_SUCCESS} - The operation was successful.
+     * <p>
+     * {@link H3Status#H3_FAILURE} - Unable to retrieve object info or user has no access.
+     * <p>
+     * {@link H3Status#H3_NOT_EXISTS} - The object doesn't exist.
+     * <p>
+     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     *
+     * @param bucketName            The name of the bucket hosting the object.
+     * @param objectName            The name of the object to be truncated.
+     * @param size                  Size of truncated object. If the object was previously larger than this size, the
+     *                              extra data is lost. If the object was previously shorter, it is extended, and the
+     *                              extended part reads as null bytes ('\0').
+     * @return              <code>true</code> if the operation was successful, <code>false</code> otherwise.
+     * @throws H3Exception  If an unknown status is received.
+     */
+    public boolean truncateObject(String bucketName, String objectName, long size) throws H3Exception {
+        Pointer bucket = new Memory(bucketName.length() +1);
+        Pointer name = new Memory(objectName.length() +1);
+        NativeLong nSize = new NativeLong(size);
+
+        bucket.setString(0, bucketName);
+        name.setString(0, objectName);
+
+        status = H3Status.fromInt(JH3libInterface.INSTANCE.H3_TruncateObject(handle, token, bucket, name, nSize));
+
+        return operationSucceeded(status);
+    }
+
+    /**
+     * Reduces the size of the object to zero by permanently removing all data in object. The status of the operation
+     * is set and can be retrieved by {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
+     * <p>
+     * {@link H3Status#H3_SUCCESS} - The operation was successful.
+     * <p>
+     * {@link H3Status#H3_FAILURE} - Unable to retrieve object info or user has no access.
+     * <p>
+     * {@link H3Status#H3_NOT_EXISTS} - The object doesn't exist.
+     * <p>
+     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     *
+     * @param bucketName            The name of the bucket hosting the object.
+     * @param objectName            The name of the object to be truncated.
+
+     * @return              <code>true</code> if the operation was successful, <code>false</code> otherwise.
+     * @throws H3Exception  If an unknown status is received.
+     */
+    public boolean truncateObject(String bucketName, String objectName) throws H3Exception {
+        return truncateObject(bucketName, objectName, 0);
+    }
+
     /* Multipart Management methods */
 
     /**

@@ -353,6 +353,21 @@ public interface JH3libInterface extends Library {
      */
     int H3_MoveObject(Pointer handle, NativeAuth token, Pointer bucketName, Pointer srcObjectName, Pointer dstObjectName, byte noOverwrite);
 
+    /**
+     * Truncate an object.
+     * Reduces size of an object.
+     * @param handle            An h3lib handle
+     * @param token             Authentication information
+     * @param bucketName        The name of the bucket to host the object
+     * @param objectName        The name of the object to be created
+     * @param size              Size of truncated object. If the object previously was larger than this size, the extra
+     *                          data is lost. If the object previously was shorter, it is extended, and the extended part
+     *                          reads as null bytes ('\0')
+     * @return H3_SUCCESS on success, or H3_FAILURE/H3_NOT_EXISTS/H3_INVALID_ARGS on failure
+     */
+    int H3_TruncateObject(Pointer handle, NativeAuth token, Pointer bucketName, Pointer objectName, NativeLong size);
+
+
     //--------------------- Multipart Management ---------------------
 
     /**

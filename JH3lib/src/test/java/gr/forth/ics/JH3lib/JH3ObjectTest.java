@@ -317,6 +317,44 @@ public class JH3ObjectTest {
             assertEquals(expected, client.listObjects("b1",0));
             assertEquals(H3Status.H3_SUCCESS, client.getStatus());
 
+            // Create an object again
+            assertTrue(client.createObject("b1", "o1", dataObj));
+            assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+
+            // Truncate object; reduce size to 1MB
+            //assertTrue(client.truncateObject("b1", "o1", MEGABYTE));
+            //assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+
+            // Get info of object
+            //objectInfo = client.infoObject("b1", "o1");
+            //assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+            //assertNotNull(objectInfo);
+            //assertEquals(MEGABYTE, objectInfo.getSize());
+
+            // Truncate object; extend size to 10MB
+            //assertTrue(client.truncateObject("b1", "o1", 10 * MEGABYTE));
+            //assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+
+            // Get info
+            //objectInfo = client.infoObject("b1", "o1");
+            //assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+            //assertNotNull(objectInfo);
+            //assertEquals(10 * MEGABYTE, objectInfo.getSize());
+
+            // truncate object; reduce size to 0
+            //assertTrue(client.truncateObject("b1", "o1"));
+            //assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+
+            // Get info
+            //objectInfo = client.infoObject("b1", "o1");
+            //assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+            //assertNotNull(objectInfo);
+            //assertEquals(0, objectInfo.getSize());
+
+            // Delete object
+            assertTrue(client.deleteObject("b1", "o1"));
+            assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+
             // Delete bucket
             assertTrue(client.deleteBucket("b1"));
             assertEquals(H3Status.H3_SUCCESS, client.getStatus());
@@ -404,11 +442,11 @@ public class JH3ObjectTest {
             assertFalse(objectInfo.isCorrupt());
             assertEquals(0, objectInfo.getSize());
 
-           // objectInfo = client.infoObject("b1", "o3");
-           // assertEquals(H3Status.H3_SUCCESS, client.getStatus());
-           // assertNotNull(objectInfo);
-           // assertFalse(objectInfo.isCorrupt());
-           // assertEquals(MEGABYTE, objectInfo.getSize());
+            // objectInfo = client.infoObject("b1", "o3");
+            // assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+            // assertNotNull(objectInfo);
+            // assertFalse(objectInfo.isCorrupt());
+            // assertEquals(MEGABYTE, objectInfo.getSize());
 
 
             // Write object from non-existent bucket
