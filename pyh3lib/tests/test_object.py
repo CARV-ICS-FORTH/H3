@@ -90,7 +90,7 @@ def test_simple(h3):
     object_data = h3.read_object('b1', 'o2')
     assert object_data == data
 
-    assert h3.list_objects('b1') == ['o1', 'o2']
+    assert set(h3.list_objects('b1')) == set(['o1', 'o2'])
 
     # Overwrite second object.
     h3.write_object('b1', 'o2', data)
@@ -105,7 +105,7 @@ def test_simple(h3):
     object_data = h3.read_object('b1', 'o2')
     assert object_data == data
 
-    assert h3.list_objects('b1') == ['o1', 'o2']
+    assert set(h3.list_objects('b1')) == set(['o1', 'o2'])
 
     # Partial overwrite second object.
     h3.write_object('b1', 'o2', data[:MEGABYTE], offset=MEGABYTE)
@@ -126,7 +126,7 @@ def test_simple(h3):
     object_data = h3.read_object('b1', 'o1', offset=(2 * MEGABYTE), size=MEGABYTE)
     assert object_data == data[(2 * MEGABYTE):]
 
-    assert h3.list_objects('b1') == ['o1', 'o2']
+    assert set(h3.list_objects('b1')) == set(['o1', 'o2'])
 
     # Check bucket statistics.
     bucket_info = h3.info_bucket('b1', get_stats=True)
@@ -144,7 +144,7 @@ def test_simple(h3):
 
     # Move second object to third.
     h3.write_object('b1', 'o3', data)
-    with pytest.raises(pyh3lib.H3FailureError):
+    with pytest.raises(pyh3lib.H3ExistsError):
         h3.move_object('b1', 'o2', 'o3', no_overwrite=True)
 
     assert 'o3' in h3.list_objects('b1')
@@ -178,7 +178,7 @@ def test_simple(h3):
     object_data = h3.read_object('b1', 'o2', offset=(2 * MEGABYTE), size=MEGABYTE)
     assert object_data == data[(2 * MEGABYTE):]
 
-    assert h3.list_objects('b1') == ['o2', 'o3']
+    assert set(h3.list_objects('b1')) == set(['o2', 'o3'])
 
     h3.delete_object('b1', 'o3')
 

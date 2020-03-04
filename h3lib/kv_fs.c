@@ -38,6 +38,22 @@ typedef struct {
     int root_path_len;
 }KV_Filesystem_Handle;
 
+static void StripSlashes(char* path){
+    int size = strlen(path);
+    for(int i=0; i<size - 1; i++) {
+        if(path[i] == '/' && path[i+1] == '/') {
+            for(int j=i; j<size; j++) {
+                    path[j] = path[j + 1];
+            }
+        }
+    }
+    for(int i=size-1; size>0; size--) {
+        if(path[i] == '/') {
+            path[i] = '\0';
+        }
+    }
+}
+
 static int DoMkdir(const char *path, mode_t mode) {
     struct stat st;
     int error = 0;
@@ -79,7 +95,7 @@ static int MakePath(const char* fullKey, mode_t mode) {
 static char* GetFullKey(KV_Filesystem_Handle* handle, KV_Key key){
    char* fullKey = NULL;
    if(handle && key)
-       asprintf(&fullKey, "%s%s", handle->root, key);
+       asprintf(&fullKey, "%s/%s", handle->root, key);
    return fullKey;
 }
 
@@ -127,10 +143,9 @@ KV_Handle KV_FS_Init(GKeyFile* cfgFile) {
     if(handle->root == NULL){
         // Key 'root' is not defined, or section 'FILESYSTEM' is missing, use default value instead
         handle->root = strdup("/tmp/h3");
-        handle->root_path_len = strlen(handle->root);
-    } else {
-        handle->root_path_len = strlen(handle->root);
     }
+    StripSlashes(handle->root);
+    handle->root_path_len = strlen(handle->root);
 
     return (KV_Handle)handle;
 }
@@ -152,7 +167,7 @@ KV_Status KV_FS_List(KV_Handle handle, KV_Key prefix, uint8_t nTrim, KV_Key buff
     uint32_t nRequiredKeys = *nKeys>0?*nKeys:UINT32_MAX;
     uint32_t nMatchingKeys = 0;
     size_t prefixLen = strlen(fullPrefix);
-    size_t rootLen = strlen(fs_handle->root) + nTrim;
+    size_t rootLen = strlen(fs_handle->root) + nTrim + 1;
     size_t remaining = KV_LIST_BUFFER_SIZE;
 
     int CopyDirEntry(const char* fpath, const struct stat* sb, int typeflag, struct FTW* ftwbuf) {
@@ -181,7 +196,6 @@ KV_Status KV_FS_List(KV_Handle handle, KV_Key prefix, uint8_t nTrim, KV_Key buff
 
     int CountDirEntry(const char* fpath, const struct stat* sb, int typeflag, struct FTW* ftwbuf) {
         if(strncmp(fpath, fullPrefix, prefixLen) == 0){
-            //        printf("%s - %s\n", __FUNCTION__, fpath);
             if(offset)
                 offset--;
             else if (nMatchingKeys < nRequiredKeys)
