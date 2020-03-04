@@ -33,6 +33,16 @@ class H3List(list):
         self.__dict__.update(kwargs)
         return self
 
+class H3Bytes(bytes):
+    """A bytes object with a ``done`` attribute. If ``done`` is ``False``
+    there is more data to be read, so repeat the call
+    with an appropriate offset to get the next batch.
+    """
+    def __new__(self, *args, **kwargs):
+        obj = super().__new__(self, *args)
+        obj.__dict__.update(kwargs)
+        return obj
+
 class H3Version(type):
     @property
     def VERSION(self):
@@ -273,7 +283,8 @@ class H3(object, metaclass=H3Version):
         :returns: The bytes read if the call was successful
         """
 
-        return h3lib.read_object(self._handle, bucket_name, object_name, offset, size, self._user_id)
+        data, done = h3lib.read_object(self._handle, bucket_name, object_name, offset, size, self._user_id)
+        return H3Bytes(data, done=done)
 
     def copy_object(self, bucket_name, src_object_name, dst_object_name, no_overwrite=False):
         """Copy an object to another object.

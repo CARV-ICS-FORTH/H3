@@ -128,7 +128,7 @@ void h3lib_free(PyObject *capsule) {
     H3_Free(handle);
 }
 
-static PyObject* h3lib_init(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_init(PyObject* self, PyObject *args, PyObject *kw) {
     char *cfgFileName;
     H3_StoreType storageType = H3_STORE_CONFIG;
 
@@ -145,7 +145,7 @@ static PyObject* h3lib_init(PyObject* self, PyObject *args, PyObject *kw) {
     return PyCapsule_New((void *)handle, NULL, h3lib_free);
 }
 
-static PyObject* h3lib_list_buckets(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_list_buckets(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     uint32_t userId = 0;
 
@@ -184,7 +184,7 @@ static PyObject* h3lib_list_buckets(PyObject* self, PyObject *args, PyObject *kw
     return list;
 }
 
-static PyObject* h3lib_info_bucket(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_info_bucket(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
     uint8_t getStats = 0;
@@ -245,7 +245,7 @@ static PyObject* h3lib_info_bucket(PyObject* self, PyObject *args, PyObject *kw)
     return bucket_info;
 }
 
-static PyObject* h3lib_create_bucket(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_create_bucket(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
     uint32_t userId = 0;
@@ -267,7 +267,7 @@ static PyObject* h3lib_create_bucket(PyObject* self, PyObject *args, PyObject *k
     Py_RETURN_TRUE;
 }
 
-static PyObject* h3lib_delete_bucket(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_delete_bucket(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
     uint32_t userId = 0;
@@ -289,7 +289,7 @@ static PyObject* h3lib_delete_bucket(PyObject* self, PyObject *args, PyObject *k
     Py_RETURN_TRUE;
 }
 
-static PyObject* h3lib_list_objects(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_list_objects(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
     char *prefix = "";
@@ -333,7 +333,7 @@ static PyObject* h3lib_list_objects(PyObject* self, PyObject *args, PyObject *kw
     return Py_BuildValue("(OO)", list, (return_value == H3_SUCCESS ? Py_True : Py_False));
 }
 
-static PyObject* h3lib_info_object(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_info_object(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
     H3_Name objectName;
@@ -373,7 +373,7 @@ static PyObject* h3lib_info_object(PyObject* self, PyObject *args, PyObject *kw)
     return object_info;
 }
 
-static PyObject* h3lib_create_object(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_create_object(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
     H3_Name objectName;
@@ -398,7 +398,7 @@ static PyObject* h3lib_create_object(PyObject* self, PyObject *args, PyObject *k
     Py_RETURN_TRUE;
 }
 
-static PyObject* h3lib_create_object_copy(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_create_object_copy(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
     H3_Name srcObjectName;
@@ -424,7 +424,7 @@ static PyObject* h3lib_create_object_copy(PyObject* self, PyObject *args, PyObje
     return Py_BuildValue("k", size);
 }
 
-static PyObject* h3lib_write_object(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_write_object(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
     H3_Name objectName;
@@ -450,7 +450,7 @@ static PyObject* h3lib_write_object(PyObject* self, PyObject *args, PyObject *kw
     Py_RETURN_TRUE;
 }
 
-static PyObject* h3lib_write_object_copy(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_write_object_copy(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
     H3_Name srcObjectName;
@@ -477,7 +477,7 @@ static PyObject* h3lib_write_object_copy(PyObject* self, PyObject *args, PyObjec
     return Py_BuildValue("k", size);
 }
 
-static PyObject* h3lib_read_object(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_read_object(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
     H3_Name objectName;
@@ -499,19 +499,23 @@ static PyObject* h3lib_read_object(PyObject* self, PyObject *args, PyObject *kw)
     // h3lib will only allocate a buffer if size = 0 AND data = NULL.
     // In all other cases it expects an appropriately sized buffer to
     // be allocated by the caller.
-    if(size)
+    if (size)
         data = malloc(size);
+    if (!data)
+        return PyErr_NoMemory();
 
     auth.userId = userId;
-    if (did_raise_exception(H3_ReadObject(handle, &auth, bucketName, objectName, offset, &data, &size)) || !data)
+    H3_Status return_value = H3_ReadObject(handle, &auth, bucketName, objectName, offset, &data, &size);
+    if (did_raise_exception(return_value))
         return NULL;
 
-    PyObject *result = Py_BuildValue("y#", data, size);
+    PyObject *data_object = Py_BuildValue("y#", data, size);
     free(data);
-    return result;
+
+    return Py_BuildValue("(OO)", data_object, (return_value == H3_SUCCESS ? Py_True : Py_False));
 }
 
-static PyObject* h3lib_copy_object(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_copy_object(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
     H3_Name srcObjectName;
@@ -536,7 +540,7 @@ static PyObject* h3lib_copy_object(PyObject* self, PyObject *args, PyObject *kw)
     Py_RETURN_TRUE;
 }
 
-static PyObject* h3lib_move_object(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_move_object(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
     H3_Name srcObjectName;
@@ -561,7 +565,7 @@ static PyObject* h3lib_move_object(PyObject* self, PyObject *args, PyObject *kw)
     Py_RETURN_TRUE;
 }
 
-static PyObject* h3lib_exchange_object(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_exchange_object(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
     H3_Name srcObjectName;
@@ -585,7 +589,7 @@ static PyObject* h3lib_exchange_object(PyObject* self, PyObject *args, PyObject 
     Py_RETURN_TRUE;
 }
 
-static PyObject* h3lib_truncate_object(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_truncate_object(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
     H3_Name objectName;
@@ -609,7 +613,7 @@ static PyObject* h3lib_truncate_object(PyObject* self, PyObject *args, PyObject 
     Py_RETURN_TRUE;
 }
 
-static PyObject* h3lib_delete_object(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_delete_object(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
     H3_Name objectName;
@@ -632,7 +636,7 @@ static PyObject* h3lib_delete_object(PyObject* self, PyObject *args, PyObject *k
     Py_RETURN_TRUE;
 }
 
-static PyObject* h3lib_list_multiparts(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_list_multiparts(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
     uint32_t offset = 0;
@@ -676,7 +680,7 @@ static PyObject* h3lib_list_multiparts(PyObject* self, PyObject *args, PyObject 
     return Py_BuildValue("(OO)", list, (return_value == H3_SUCCESS ? Py_True : Py_False));
 }
 
-static PyObject* h3lib_create_multipart(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_create_multipart(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
     H3_Name objectName;
@@ -700,7 +704,7 @@ static PyObject* h3lib_create_multipart(PyObject* self, PyObject *args, PyObject
     return Py_BuildValue("s", multipartId);
 }
 
-static PyObject* h3lib_complete_multipart(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_complete_multipart(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_MultipartId multipartId;
     uint32_t userId = 0;
@@ -722,7 +726,7 @@ static PyObject* h3lib_complete_multipart(PyObject* self, PyObject *args, PyObje
     Py_RETURN_TRUE;
 }
 
-static PyObject* h3lib_abort_multipart(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_abort_multipart(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_MultipartId multipartId;
     uint32_t userId = 0;
@@ -744,7 +748,7 @@ static PyObject* h3lib_abort_multipart(PyObject* self, PyObject *args, PyObject 
     Py_RETURN_TRUE;
 }
 
-static PyObject* h3lib_list_parts(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_list_parts(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_MultipartId multipartId;
     uint32_t userId = 0;
@@ -794,7 +798,7 @@ static PyObject* h3lib_list_parts(PyObject* self, PyObject *args, PyObject *kw) 
     return list;
 }
 
-static PyObject* h3lib_create_part(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_create_part(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_MultipartId multipartId;
     uint32_t partNumber;
@@ -819,7 +823,7 @@ static PyObject* h3lib_create_part(PyObject* self, PyObject *args, PyObject *kw)
     Py_RETURN_TRUE;
 }
 
-static PyObject* h3lib_create_part_copy(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_create_part_copy(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name objectName;
     off_t offset;
