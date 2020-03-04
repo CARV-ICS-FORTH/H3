@@ -87,7 +87,7 @@ static int MakePath(const char* fullKey, mode_t mode) {
         }
         pp = sp + 1;
     }
-
+    free(copypath);
 
     return !error;
 }

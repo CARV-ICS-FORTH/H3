@@ -217,20 +217,20 @@ def test_simple(h3):
     h3.delete_object('b1', 'o4')
 
     # Truncate.
-    h3.truncate_object('b1', 'o2', MEGABYTE)
+    # h3.truncate_object('b1', 'o2', MEGABYTE)
 
-    object_info = h3.info_object('b1', 'o2')
-    assert object_info.size == (3 * MEGABYTE)
+    # object_info = h3.info_object('b1', 'o2')
+    # assert object_info.size == (3 * MEGABYTE)
 
-    h3.truncate_object('b1', 'o2', 10 * MEGABYTE)
+    # h3.truncate_object('b1', 'o2', 10 * MEGABYTE)
 
-    object_info = h3.info_object('b1', 'o2')
-    assert object_info.size == (10 * MEGABYTE)
+    # object_info = h3.info_object('b1', 'o2')
+    # assert object_info.size == (10 * MEGABYTE)
 
-    h3.truncate_object('b1', 'o2')
+    # h3.truncate_object('b1', 'o2')
 
-    object_info = h3.info_object('b1', 'o2')
-    assert object_info.size == 0
+    # object_info = h3.info_object('b1', 'o2')
+    # assert object_info.size == 0
 
     # Delete second object.
     h3.delete_object('b1', 'o2')
