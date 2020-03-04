@@ -223,7 +223,7 @@ KV_Status ReadData(H3_Context* ctx, H3_ObjectMetadata* meta, KV_Value value, siz
 }
 
 
-KV_Status CopyData(H3_Context* ctx, H3_UserId userId, H3_ObjectId srcObjId, H3_ObjectId dstObjId, off_t srcOffset, size_t size, uint8_t noOverwrite, off_t dstOffset){
+KV_Status CopyData(H3_Context* ctx, H3_UserId userId, H3_ObjectId srcObjId, H3_ObjectId dstObjId, off_t srcOffset, size_t* size, uint8_t noOverwrite, off_t dstOffset){
     KV_Handle _handle = ctx->handle;
     KV_Operations* op = ctx->operation;
     KV_Status status = KV_FAILURE;
@@ -248,7 +248,7 @@ KV_Status CopyData(H3_Context* ctx, H3_UserId userId, H3_ObjectId srcObjId, H3_O
 
                     // Copy the data in parts
                     KV_Value buffer = malloc(H3_PART_SIZE);
-                    size_t remaining = size;
+                    size_t remaining = *size;
 
                     while(remaining && status == KV_SUCCESS){
 
@@ -261,6 +261,7 @@ KV_Status CopyData(H3_Context* ctx, H3_UserId userId, H3_ObjectId srcObjId, H3_O
                             dstOffset += buffSize;
                         }
                     }// while()
+                    *size -= remaining;
 
                     free(buffer);
                 }
@@ -381,6 +382,7 @@ H3_Status H3_CreateObject(H3_Handle handle, H3_Token token, H3_Name bucketName, 
  * @param[inout] size               Size of data to retrieve or have been retrieved
  *
  * @result \b H3_SUCCESS            Operation completed successfully
+ * @result \b H3_CONTINUE           Operation completed successfully, though more data are available
  * @result \b H3_FAILURE            Bucket does not exist or user has no access or unable to allocate a buffer to fit the entire object
  * @result \b H3_NOT_EXISTS         Object does not exist
  * @result \b H3_INVALID_ARGS       Missing or malformed arguments
@@ -420,9 +422,12 @@ H3_Status H3_ReadObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
         // User has access, the object is healthy and the offset is reasonable
         if(GrantObjectAccess(userId, objMeta) && !objMeta->isBad && offset < objectSize){
 
+        	// NOTE Although the back-end is able to allocate the memory to retrieve the value of a KV pair
+        	// (i.e. a part) here we are concerned with the OBJECT size thus we allocate a buffer (if needed)
+        	// to hold several parts.
             uint freeOnFail = 0;
             if(*size == 0 && *data == NULL){
-                *size = objectSize - offset;
+                *size = min(objectSize - offset, H3_CHUNK);
                 *data = malloc(*size);
                 freeOnFail = 1;
             }
@@ -432,7 +437,10 @@ H3_Status H3_ReadObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
                 if( ReadData(ctx, objMeta, *data, size, offset) == KV_SUCCESS                      &&
                     op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, mSize) == KV_SUCCESS     ){
 
-                    status = H3_SUCCESS;
+                	if((objectSize - offset) > *size)
+                		status = H3_CONTINUE;
+                	else
+                		status = H3_SUCCESS;
                 }
                 else if(freeOnFail)
                     free(*data);
@@ -517,7 +525,7 @@ H3_Status H3_InfoObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
     return status;
 }
 
-H3_Status DeleteObject(H3_Context* ctx, H3_UserId userId, H3_ObjectId objId){
+H3_Status DeleteObject(H3_Context* ctx, H3_UserId userId, H3_ObjectId objId, char truncate){
     H3_Status status = H3_FAILURE;
     KV_Handle _handle = ctx->handle;
     KV_Operations* op = ctx->operation;
@@ -537,12 +545,13 @@ H3_Status DeleteObject(H3_Context* ctx, H3_UserId userId, H3_ObjectId objId){
                 storeStatus = op->delete(_handle, PartToId(partId, objMeta->uuid, &objMeta->part[i]));
             }
 
+            objMeta->lastAccess = time(NULL);
             if(storeStatus != KV_SUCCESS){
                 objMeta->isBad = 1;
-                objMeta->lastAccess = time(NULL);
                 op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, mSize);
             }
-            else if(op->metadata_delete(_handle, objId) == KV_SUCCESS){
+            else if(( truncate && op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, mSize) == KV_SUCCESS) ||
+            		(!truncate && op->metadata_delete(_handle, objId) == KV_SUCCESS)								){
                 status = H3_SUCCESS;
             }
         }
@@ -590,32 +599,49 @@ H3_Status H3_DeleteObject(H3_Handle handle, H3_Token token, H3_Name bucketName, 
 
     GetObjectId(bucketName, objectName, objId);
 
-    return DeleteObject(ctx, userId, objId);
+    return DeleteObject(ctx, userId, objId, 0);
 }
 
-
-
-
-/*! \brief  Rename an object
+/*! \brief  Truncate an object
  *
- * Renames and object provided the new name is not taken by another object unless it is explicitly allowed
- * by the user in which case the previous object will be overwritten. Note that both objects will rest within
- * the same bucket.
+ * Permanently deletes an object.
  *
  * @param[in]    handle             An h3lib handle
  * @param[in]    token              Authentication information
  * @param[in]    bucketName         The name of the bucket to host the object
- * @param[in]    srcObjectName      The name of the object to be renamed
- * @param[in]    dstObjectName      The new name to be assumed by the object
- * @param[in]    noOverwrite        Overwrite flag.
+ * @param[in]    objectName         The name of the object to be created
+ * @param[in]    size        		Size of truncated object. If the file previously was larger than this size, the extra data is lost.
+ * 									If the file previously was shorter, it is extended, and the extended part reads as null bytes ('\0').
  *
  * @result \b H3_SUCCESS            Operation completed successfully
- * @result \b H3_FAILURE            Unable to access object or user has no access or new name is in use and not allowed to overwrite
+ * @result \b H3_FAILURE            Unable to retrieve object info or user has no access
  * @result \b H3_NOT_EXISTS         Object does not exist
- * @result \b H3_INVALID_ARGS       Missing or malformed arguments
+ * @result \b H3_INVALID_ARGS       Missing or malformed arguments or size != 0x00
  *
  */
-H3_Status H3_MoveObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, H3_Name dstObjectName, uint8_t noOverwrite){
+H3_Status H3_TruncateObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, size_t size){
+    // Argument check
+    if(!handle || !token  || !bucketName || !objectName || size){
+        return H3_INVALID_ARGS;
+    }
+
+    H3_Context* ctx = (H3_Context*)handle;
+
+    H3_UserId userId;
+    H3_ObjectId objId;
+
+    // Validate bucketName & extract userId from token
+    if( !ValidBucketName(bucketName) || !ValidObjectName(objectName) || !GetUserId(token, userId) ){
+        return H3_INVALID_ARGS;
+    }
+
+    GetObjectId(bucketName, objectName, objId);
+
+    return DeleteObject(ctx, userId, objId, 1);
+}
+
+
+H3_Status MoveObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, H3_Name dstObjectName, H3_MovePolicy policy){
 
     LogActivity(H3_DEBUG_MSG, "Enter\n");
 
@@ -633,7 +659,8 @@ H3_Status H3_MoveObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
     H3_ObjectId srcObjId, dstObjId;
     KV_Status storeStatus;
     KV_Value value = NULL;
-    size_t mSize = 0;
+    size_t srcMetaSize = 0;
+    size_t dstMetaSize = 0;
 
     // Validate bucketName & extract userId from token
     if( !ValidBucketName(bucketName) || !ValidObjectName(srcObjectName) || !ValidObjectName(dstObjectName) || !GetUserId(token, userId) ){
@@ -643,34 +670,106 @@ H3_Status H3_MoveObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
     GetObjectId(bucketName, srcObjectName, srcObjId);
     GetObjectId(bucketName, dstObjectName, dstObjId);
 
-    if( (storeStatus = op->metadata_read(_handle, srcObjId, 0, &value, &mSize)) == KV_SUCCESS){
+    if( (storeStatus = op->metadata_read(_handle, srcObjId, 0, &value, &srcMetaSize)) == KV_SUCCESS){
 
-        // Make sure the user has access to the object
-        H3_ObjectMetadata* objMeta = (H3_ObjectMetadata*)value;
-        if( GrantObjectAccess(userId, objMeta) ){
+        // Make sure the user has access to the source object
+        H3_ObjectMetadata* srcObjMeta = (H3_ObjectMetadata*)value;
+        if( GrantObjectAccess(userId, srcObjMeta) ){
 
-            switch(op->metadata_exists(_handle, dstObjId)){
-                case KV_KEY_EXIST:
-                    if( !noOverwrite                                                &&
-                        DeleteObject(ctx, userId, dstObjId) == H3_SUCCESS           &&
-                        op->metadata_move(_handle, srcObjId, dstObjId) == KV_SUCCESS    ){ status = H3_SUCCESS; }
-                    break;
+        	value = NULL;
+        	switch(op->metadata_read(_handle, dstObjId, 0, &value, &dstMetaSize)){
+        		case KV_SUCCESS:{
+        			// Make sure the user has access to the destination object
+        			H3_ObjectMetadata* dstObjMeta = (H3_ObjectMetadata*)value;
+        			if( GrantObjectAccess(userId, dstObjMeta) ){
+        				switch(policy){
+							case MoveReplace:
+								if( DeleteObject(ctx, userId, dstObjId, 0) == H3_SUCCESS        	&&
+								    op->metadata_move(_handle, srcObjId, dstObjId) == KV_SUCCESS 		){
+									status = H3_SUCCESS;
+								}
+								break;
 
-                case KV_KEY_NOT_EXIST:
-                    if(op->metadata_move(_handle, srcObjId, dstObjId) == KV_SUCCESS ){ status = H3_SUCCESS; }
-                    break;
+							case MoveNoReplace:
+								status = H3_EXISTS;
+								break;
 
-                default:
-                    status = H3_FAILURE;
-            }
+							case MoveExchange:
+								if(op->metadata_write(_handle, srcObjId, (KV_Value)dstObjMeta, 0, dstMetaSize) == KV_SUCCESS &&
+								   op->metadata_write(_handle, dstObjId, (KV_Value)srcObjMeta, 0, srcMetaSize) == KV_SUCCESS	){
+									status = H3_SUCCESS;
+								}
+								break;
+        				}
+        			}
+        			free(dstObjMeta);
+        		}
+        		break;
+
+        		case KV_KEY_NOT_EXIST:
+        			if(policy != MoveExchange && op->metadata_move(_handle, srcObjId, dstObjId) == KV_SUCCESS){ status = H3_SUCCESS; }
+        			break;
+
+        		default:
+        			status = H3_FAILURE;
+        			break;
+        	}
         }
-        free(objMeta);
+        free(srcObjMeta);
     }
     else if(storeStatus == KV_KEY_NOT_EXIST)
         status = H3_NOT_EXISTS;
 
     LogActivity(H3_DEBUG_MSG, "Exit - %d\n", status );
     return status;
+}
+
+
+/*! \brief  Rename an object
+ *
+ * Renames and object provided the new name is not taken by another object unless it is explicitly allowed
+ * by the user in which case the previous object will be overwritten. Note that both objects will rest within
+ * the same bucket.
+ *
+ * @param[in]    handle             An h3lib handle
+ * @param[in]    token              Authentication information
+ * @param[in]    bucketName         The name of the bucket to host the object
+ * @param[in]    srcObjectName      The name of the object to be renamed
+ * @param[in]    dstObjectName      The new name to be assumed by the object
+ * @param[in]    noOverwrite        Indicates whether replacing is permitted
+ *
+ * @result \b H3_SUCCESS            Operation completed successfully
+ * @result \b H3_FAILURE            Unable to access object or user has no access
+ * @result \b H3_NOT_EXISTS         Source object does not exist
+ * @result \b H3_EXISTS         	Destination object exists and we are not allowed to replace it
+ * @result \b H3_INVALID_ARGS       Missing or malformed arguments
+ *
+ */
+H3_Status H3_MoveObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, H3_Name dstObjectName, uint8_t noOverwrite){
+	return MoveObject(handle, token, bucketName, srcObjectName, dstObjectName, noOverwrite?MoveNoReplace:MoveReplace);
+}
+
+/*! \brief  Swap two objects
+ *
+ * Renames and object provided the new name is not taken by another object unless it is explicitly allowed
+ * by the user in which case the previous object will be overwritten. Note that both objects will rest within
+ * the same bucket.
+ *
+ * @param[in]    handle             An h3lib handle
+ * @param[in]    token              Authentication information
+ * @param[in]    bucketName         The name of the bucket to host the object
+ * @param[in]    srcObjectName      The name of the object to be renamed
+ * @param[in]    dstObjectName      The new name to be assumed by the object
+ *
+ * @result \b H3_SUCCESS            Operation completed successfully
+ * @result \b H3_FAILURE            Unable to access object or user has no access or destination object does not exist
+ * @result \b H3_NOT_EXISTS         Source object does not exist
+ * @result \b H3_EXISTS         	Destination object exists and we are not allowed to replace it
+ * @result \b H3_INVALID_ARGS       Missing or malformed arguments
+ *
+ */
+H3_Status H3_ExchangeObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, H3_Name dstObjectName){
+	return MoveObject(handle, token, bucketName, srcObjectName, dstObjectName, MoveExchange);
 }
 
 
@@ -729,7 +828,7 @@ H3_Status H3_CopyObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
             // TODO - Instead of exist do a create
 
             if(( (storeStatus = op->metadata_exists(_handle, dstObjId)) == KV_FAILURE) ||
-                 (storeStatus == KV_KEY_EXIST &&  (noOverwrite || DeleteObject(ctx, userId, dstObjId) == H3_FAILURE))  ){
+                 (storeStatus == KV_KEY_EXIST &&  (noOverwrite || DeleteObject(ctx, userId, dstObjId, 0) == H3_FAILURE))  ){
                 status = H3_FAILURE;
             }
             else {
@@ -1043,7 +1142,7 @@ H3_Status H3_WriteObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H
  * @param[in]    srcObjectName      The name of the object to be renamed
  * @param[in]    dstObjectName      The new name to be assumed by the object
  * @param[in]    offset             Offset with respect to the source object's 0x00 byte
- * @param[in]    size               The amount of data to copy
+ * @param[inout] size               The amount of data to copy
  *
  * @result \b H3_SUCCESS            Operation completed successfully
  * @result \b H3_FAILURE            Unable to access object or user has no access or new name is in use
@@ -1051,7 +1150,7 @@ H3_Status H3_WriteObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H
  * @result \b H3_INVALID_ARGS       Missing or malformed arguments
  *
  */
-H3_Status H3_CreateObjectCopy(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, off_t offset, size_t size, H3_Name dstObjectName){
+H3_Status H3_CreateObjectCopy(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, off_t offset, size_t* size, H3_Name dstObjectName){
 
     // Argument check
     if(!handle || !token  || !bucketName || !srcObjectName || !dstObjectName){
@@ -1102,7 +1201,7 @@ H3_Status H3_CreateObjectCopy(H3_Handle handle, H3_Token token, H3_Name bucketNa
  * @param[in]    dstObjectName      The new name to be assumed by the object
  * @param[in]    srcOffset          Offset with respect to the source object's 0x00 byte
  * @param[in]    dstOffset          Offset with respect to the destination object's 0x00 byte
- * @param[in]    size               The amount of data to copy
+ * @param[inout] size               The amount of data to copy
  *
  * @result \b H3_SUCCESS            Operation completed successfully
  * @result \b H3_FAILURE            Unable to access object or user has no access
@@ -1110,7 +1209,7 @@ H3_Status H3_CreateObjectCopy(H3_Handle handle, H3_Token token, H3_Name bucketNa
  * @result \b H3_INVALID_ARGS       Missing or malformed arguments
  *
  */
-H3_Status H3_WriteObjectCopy(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, off_t srcOffset, size_t size, H3_Name dstObjectName, off_t dstOffset){
+H3_Status H3_WriteObjectCopy(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, off_t srcOffset, size_t* size, H3_Name dstObjectName, off_t dstOffset){
 
     // Argument check
     if(!handle || !token  || !bucketName || !srcObjectName || !dstObjectName){

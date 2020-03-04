@@ -86,6 +86,7 @@ static PyObject *invalid_args_status;
 static PyObject *store_error_status;
 static PyObject *exists_status;
 static PyObject *not_exists_status;
+static PyObject *not_empty_status;
 
 static int did_raise_exception(H3_Status status) {
     switch (status) {
@@ -103,6 +104,9 @@ static int did_raise_exception(H3_Status status) {
             return 1;
         case H3_NOT_EXISTS:
             PyErr_SetNone(not_exists_status);
+            return 1;
+        case H3_NOT_EMPTY:
+            PyErr_SetNone(not_empty_status);
             return 1;
         case H3_SUCCESS:
             return 0;
@@ -124,7 +128,7 @@ void h3lib_free(PyObject *capsule) {
     H3_Free(handle);
 }
 
-static PyObject* h3lib_init(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_init(PyObject* self, PyObject *args, PyObject *kw) {
     char *cfgFileName;
     H3_StoreType storageType = H3_STORE_CONFIG;
 
@@ -141,7 +145,7 @@ static PyObject* h3lib_init(PyObject* self, PyObject *args, PyObject *kw) {
     return PyCapsule_New((void *)handle, NULL, h3lib_free);
 }
 
-static PyObject* h3lib_list_buckets(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_list_buckets(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     uint32_t userId = 0;
 
@@ -180,14 +184,14 @@ static PyObject* h3lib_list_buckets(PyObject* self, PyObject *args, PyObject *kw
     return list;
 }
 
-static PyObject* h3lib_info_bucket(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_info_bucket(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
     uint8_t getStats = 0;
     uint32_t userId = 0;
 
     static char *kwlist[] = {"handle", "bucket_name", "get_stats", "user_id", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "Os|bI", kwlist, &capsule, &bucketName, &getStats, &userId)) 
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "Os|bI", kwlist, &capsule, &bucketName, &getStats, &userId))
         return NULL;
 
     H3_Handle handle = (H3_Handle)PyCapsule_GetPointer(capsule, NULL);
@@ -241,13 +245,13 @@ static PyObject* h3lib_info_bucket(PyObject* self, PyObject *args, PyObject *kw)
     return bucket_info;
 }
 
-static PyObject* h3lib_create_bucket(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_create_bucket(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
     uint32_t userId = 0;
 
     static char *kwlist[] = {"handle", "bucket_name", "user_id", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "Os|I", kwlist, &capsule, &bucketName, &userId)) 
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "Os|I", kwlist, &capsule, &bucketName, &userId))
         return NULL;
 
     H3_Handle handle = (H3_Handle)PyCapsule_GetPointer(capsule, NULL);
@@ -263,13 +267,13 @@ static PyObject* h3lib_create_bucket(PyObject* self, PyObject *args, PyObject *k
     Py_RETURN_TRUE;
 }
 
-static PyObject* h3lib_delete_bucket(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_delete_bucket(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
     uint32_t userId = 0;
 
     static char *kwlist[] = {"handle", "bucket_name", "user_id", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "Os|I", kwlist, &capsule, &bucketName, &userId)) 
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "Os|I", kwlist, &capsule, &bucketName, &userId))
         return NULL;
 
     H3_Handle handle = (H3_Handle)PyCapsule_GetPointer(capsule, NULL);
@@ -285,7 +289,7 @@ static PyObject* h3lib_delete_bucket(PyObject* self, PyObject *args, PyObject *k
     Py_RETURN_TRUE;
 }
 
-static PyObject* h3lib_list_objects(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_list_objects(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
     char *prefix = "";
@@ -329,7 +333,7 @@ static PyObject* h3lib_list_objects(PyObject* self, PyObject *args, PyObject *kw
     return Py_BuildValue("(OO)", list, (return_value == H3_SUCCESS ? Py_True : Py_False));
 }
 
-static PyObject* h3lib_info_object(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_info_object(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
     H3_Name objectName;
@@ -369,12 +373,12 @@ static PyObject* h3lib_info_object(PyObject* self, PyObject *args, PyObject *kw)
     return object_info;
 }
 
-static PyObject* h3lib_create_object(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_create_object(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
     H3_Name objectName;
     const char *data;
-    Py_ssize_t size;
+    size_t size;
     uint32_t userId = 0;
 
     static char *kwlist[] = {"handle", "bucket_name", "object_name", "data", "user_id", NULL};
@@ -394,12 +398,12 @@ static PyObject* h3lib_create_object(PyObject* self, PyObject *args, PyObject *k
     Py_RETURN_TRUE;
 }
 
-static PyObject* h3lib_create_object_copy(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_create_object_copy(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
     H3_Name srcObjectName;
     off_t offset;
-    Py_ssize_t size;
+    size_t size;
     H3_Name dstObjectName;
     uint32_t userId = 0;
 
@@ -414,18 +418,18 @@ static PyObject* h3lib_create_object_copy(PyObject* self, PyObject *args, PyObje
     H3_Auth auth;
 
     auth.userId = userId;
-    if (did_raise_exception(H3_CreateObjectCopy(handle, &auth, bucketName, srcObjectName, offset, size, dstObjectName)))
+    if (did_raise_exception(H3_CreateObjectCopy(handle, &auth, bucketName, srcObjectName, offset, &size, dstObjectName)))
         return NULL;
 
-    Py_RETURN_TRUE;
+    return Py_BuildValue("k", size);
 }
 
-static PyObject* h3lib_write_object(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_write_object(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
     H3_Name objectName;
     const char *data;
-    Py_ssize_t size;
+    size_t size;
     off_t offset = 0;
     uint32_t userId = 0;
 
@@ -446,12 +450,12 @@ static PyObject* h3lib_write_object(PyObject* self, PyObject *args, PyObject *kw
     Py_RETURN_TRUE;
 }
 
-static PyObject* h3lib_write_object_copy(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_write_object_copy(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
     H3_Name srcObjectName;
     off_t srcOffset;
-    Py_ssize_t size;
+    size_t size;
     H3_Name dstObjectName;
     off_t dstOffset;
     uint32_t userId = 0;
@@ -467,13 +471,13 @@ static PyObject* h3lib_write_object_copy(PyObject* self, PyObject *args, PyObjec
     H3_Auth auth;
 
     auth.userId = userId;
-    if (did_raise_exception(H3_WriteObjectCopy(handle, &auth, bucketName, srcObjectName, srcOffset, size, dstObjectName, dstOffset)))
+    if (did_raise_exception(H3_WriteObjectCopy(handle, &auth, bucketName, srcObjectName, srcOffset, &size, dstObjectName, dstOffset)))
         return NULL;
 
-    Py_RETURN_TRUE;
+    return Py_BuildValue("k", size);
 }
 
-static PyObject* h3lib_read_object(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_read_object(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
     H3_Name objectName;
@@ -495,19 +499,24 @@ static PyObject* h3lib_read_object(PyObject* self, PyObject *args, PyObject *kw)
     // h3lib will only allocate a buffer if size = 0 AND data = NULL.
     // In all other cases it expects an appropriately sized buffer to
     // be allocated by the caller.
-    if(size)
+    if (size) {
         data = malloc(size);
+        if (!data)
+            return PyErr_NoMemory();
+    }
 
     auth.userId = userId;
-    if (did_raise_exception(H3_ReadObject(handle, &auth, bucketName, objectName, offset, &data, &size)) || !data)
+    H3_Status return_value = H3_ReadObject(handle, &auth, bucketName, objectName, offset, &data, &size);
+    if (did_raise_exception(return_value))
         return NULL;
 
-    PyObject *result = Py_BuildValue("y#", data, size);
+    PyObject *data_object = Py_BuildValue("y#", data, size);
     free(data);
-    return result;
+
+    return Py_BuildValue("(OO)", data_object, (return_value == H3_SUCCESS ? Py_True : Py_False));
 }
 
-static PyObject* h3lib_copy_object(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_copy_object(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
     H3_Name srcObjectName;
@@ -516,7 +525,7 @@ static PyObject* h3lib_copy_object(PyObject* self, PyObject *args, PyObject *kw)
     uint32_t userId = 0;
 
     static char *kwlist[] = {"handle", "bucket_name", "src_object_name", "dst_object_name", "no_overwrite", "user_id", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "Osss|bI", kwlist, &capsule, &bucketName, &srcObjectName, &dstObjectName, &noOverwrite, &userId)) 
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "Osss|bI", kwlist, &capsule, &bucketName, &srcObjectName, &dstObjectName, &noOverwrite, &userId))
         return NULL;
 
     H3_Handle handle = (H3_Handle)PyCapsule_GetPointer(capsule, NULL);
@@ -532,7 +541,7 @@ static PyObject* h3lib_copy_object(PyObject* self, PyObject *args, PyObject *kw)
     Py_RETURN_TRUE;
 }
 
-static PyObject* h3lib_move_object(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_move_object(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
     H3_Name srcObjectName;
@@ -541,7 +550,7 @@ static PyObject* h3lib_move_object(PyObject* self, PyObject *args, PyObject *kw)
     uint32_t userId = 0;
 
     static char *kwlist[] = {"handle", "bucket_name", "src_object_name", "dst_object_name", "no_overwrite", "user_id", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "Osss|bI", kwlist, &capsule, &bucketName, &srcObjectName, &dstObjectName, &noOverwrite, &userId)) 
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "Osss|bI", kwlist, &capsule, &bucketName, &srcObjectName, &dstObjectName, &noOverwrite, &userId))
         return NULL;
 
     H3_Handle handle = (H3_Handle)PyCapsule_GetPointer(capsule, NULL);
@@ -557,14 +566,62 @@ static PyObject* h3lib_move_object(PyObject* self, PyObject *args, PyObject *kw)
     Py_RETURN_TRUE;
 }
 
-static PyObject* h3lib_delete_object(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_exchange_object(PyObject* self, PyObject *args, PyObject *kw) {
+    PyObject *capsule = NULL;
+    H3_Name bucketName;
+    H3_Name srcObjectName;
+    H3_Name dstObjectName;
+    uint32_t userId = 0;
+
+    static char *kwlist[] = {"handle", "bucket_name", "src_object_name", "dst_object_name", "user_id", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "Osss|I", kwlist, &capsule, &bucketName, &srcObjectName, &dstObjectName, &userId))
+        return NULL;
+
+    H3_Handle handle = (H3_Handle)PyCapsule_GetPointer(capsule, NULL);
+    if (handle == NULL)
+        return NULL;
+
+    H3_Auth auth;
+
+    auth.userId = userId;
+    if (did_raise_exception(H3_ExchangeObject(handle, &auth, bucketName, srcObjectName, dstObjectName)))
+        return NULL;
+
+    Py_RETURN_TRUE;
+}
+
+static PyObject *h3lib_truncate_object(PyObject* self, PyObject *args, PyObject *kw) {
+    PyObject *capsule = NULL;
+    H3_Name bucketName;
+    H3_Name objectName;
+    size_t size = 0;
+    uint32_t userId = 0;
+
+    static char *kwlist[] = {"handle", "bucket_name", "object_name", "size", "user_id", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "Oss|kI", kwlist, &capsule, &bucketName, &objectName, &size, &userId))
+        return NULL;
+
+    H3_Handle handle = (H3_Handle)PyCapsule_GetPointer(capsule, NULL);
+    if (handle == NULL)
+        return NULL;
+
+    H3_Auth auth;
+
+    auth.userId = userId;
+    if (did_raise_exception(H3_TruncateObject(handle, &auth, bucketName, objectName, size)))
+        return NULL;
+
+    Py_RETURN_TRUE;
+}
+
+static PyObject *h3lib_delete_object(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
     H3_Name objectName;
     uint32_t userId = 0;
 
     static char *kwlist[] = {"handle", "bucket_name", "object_name", "user_id", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "Oss|I", kwlist, &capsule, &bucketName, &objectName, &userId)) 
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "Oss|I", kwlist, &capsule, &bucketName, &objectName, &userId))
         return NULL;
 
     H3_Handle handle = (H3_Handle)PyCapsule_GetPointer(capsule, NULL);
@@ -580,7 +637,7 @@ static PyObject* h3lib_delete_object(PyObject* self, PyObject *args, PyObject *k
     Py_RETURN_TRUE;
 }
 
-static PyObject* h3lib_list_multiparts(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_list_multiparts(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
     uint32_t offset = 0;
@@ -624,14 +681,14 @@ static PyObject* h3lib_list_multiparts(PyObject* self, PyObject *args, PyObject 
     return Py_BuildValue("(OO)", list, (return_value == H3_SUCCESS ? Py_True : Py_False));
 }
 
-static PyObject* h3lib_create_multipart(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_create_multipart(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
     H3_Name objectName;
     uint32_t userId = 0;
 
     static char *kwlist[] = {"handle", "bucket_name", "object_name", "user_id", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "Oss|I", kwlist, &capsule, &bucketName, &objectName, &userId)) 
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "Oss|I", kwlist, &capsule, &bucketName, &objectName, &userId))
         return NULL;
 
     H3_Handle handle = (H3_Handle)PyCapsule_GetPointer(capsule, NULL);
@@ -648,13 +705,13 @@ static PyObject* h3lib_create_multipart(PyObject* self, PyObject *args, PyObject
     return Py_BuildValue("s", multipartId);
 }
 
-static PyObject* h3lib_complete_multipart(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_complete_multipart(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_MultipartId multipartId;
     uint32_t userId = 0;
 
     static char *kwlist[] = {"handle", "multipart_id", "user_id", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "Os|I", kwlist, &capsule, &multipartId, &userId)) 
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "Os|I", kwlist, &capsule, &multipartId, &userId))
         return NULL;
 
     H3_Handle handle = (H3_Handle)PyCapsule_GetPointer(capsule, NULL);
@@ -670,13 +727,13 @@ static PyObject* h3lib_complete_multipart(PyObject* self, PyObject *args, PyObje
     Py_RETURN_TRUE;
 }
 
-static PyObject* h3lib_abort_multipart(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_abort_multipart(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_MultipartId multipartId;
     uint32_t userId = 0;
 
     static char *kwlist[] = {"handle", "multipart_id", "user_id", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "Os|I", kwlist, &capsule, &multipartId, &userId)) 
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "Os|I", kwlist, &capsule, &multipartId, &userId))
         return NULL;
 
     H3_Handle handle = (H3_Handle)PyCapsule_GetPointer(capsule, NULL);
@@ -692,13 +749,13 @@ static PyObject* h3lib_abort_multipart(PyObject* self, PyObject *args, PyObject 
     Py_RETURN_TRUE;
 }
 
-static PyObject* h3lib_list_parts(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_list_parts(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_MultipartId multipartId;
     uint32_t userId = 0;
 
     static char *kwlist[] = {"handle", "multipart_id", "user_id", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "Os|I", kwlist, &capsule, &multipartId, &userId)) 
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "Os|I", kwlist, &capsule, &multipartId, &userId))
         return NULL;
 
     H3_Handle handle = (H3_Handle)PyCapsule_GetPointer(capsule, NULL);
@@ -742,16 +799,16 @@ static PyObject* h3lib_list_parts(PyObject* self, PyObject *args, PyObject *kw) 
     return list;
 }
 
-static PyObject* h3lib_create_part(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_create_part(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_MultipartId multipartId;
     uint32_t partNumber;
     const char *data;
-    Py_ssize_t size;
+    size_t size;
     uint32_t userId = 0;
 
     static char *kwlist[] = {"handle", "multipart_id", "part_number", "data", "user_id", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "OsIy#|I", kwlist, &capsule, &multipartId, &partNumber, &data, &size, &userId)) 
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "OsIy#|I", kwlist, &capsule, &multipartId, &partNumber, &data, &size, &userId))
         return NULL;
 
     H3_Handle handle = (H3_Handle)PyCapsule_GetPointer(capsule, NULL);
@@ -767,7 +824,7 @@ static PyObject* h3lib_create_part(PyObject* self, PyObject *args, PyObject *kw)
     Py_RETURN_TRUE;
 }
 
-static PyObject* h3lib_create_part_copy(PyObject* self, PyObject *args, PyObject *kw) {
+static PyObject *h3lib_create_part_copy(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name objectName;
     off_t offset;
@@ -777,7 +834,7 @@ static PyObject* h3lib_create_part_copy(PyObject* self, PyObject *args, PyObject
     uint32_t userId = 0;
 
     static char *kwlist[] = {"handle", "object_name", "offset", "size", "multipart_id", "part_number", "user_id", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "OslksI|I", kwlist, &capsule, &objectName, &offset, &size, &multipartId, &partNumber, &userId)) 
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "OslksI|I", kwlist, &capsule, &objectName, &offset, &size, &multipartId, &partNumber, &userId))
         return NULL;
 
     H3_Handle handle = (H3_Handle)PyCapsule_GetPointer(capsule, NULL);
@@ -811,6 +868,8 @@ static PyMethodDef module_functions[] = {
     {"read_object",        (PyCFunction)h3lib_read_object,        METH_VARARGS|METH_KEYWORDS, NULL},
     {"copy_object",        (PyCFunction)h3lib_copy_object,        METH_VARARGS|METH_KEYWORDS, NULL},
     {"move_object",        (PyCFunction)h3lib_move_object,        METH_VARARGS|METH_KEYWORDS, NULL},
+    {"exchange_object",    (PyCFunction)h3lib_exchange_object,    METH_VARARGS|METH_KEYWORDS, NULL},
+    {"truncate_object",    (PyCFunction)h3lib_truncate_object,    METH_VARARGS|METH_KEYWORDS, NULL},
     {"delete_object",      (PyCFunction)h3lib_delete_object,      METH_VARARGS|METH_KEYWORDS, NULL},
 
     {"list_multiparts",    (PyCFunction)h3lib_list_multiparts,    METH_VARARGS|METH_KEYWORDS, NULL},
@@ -865,11 +924,13 @@ PyMODINIT_FUNC PyInit_h3lib(void) {
     store_error_status = PyErr_NewException("pyh3lib.h3lib.StoreError", NULL, NULL);
     exists_status = PyErr_NewException("pyh3lib.h3lib.ExistsError", NULL, NULL);
     not_exists_status = PyErr_NewException("pyh3lib.h3lib.NotExistsError", NULL, NULL);
+    not_empty_status = PyErr_NewException("pyh3lib.h3lib.NotEmptyError", NULL, NULL);
     PyModule_AddObject(module, "FailureError", failure_status);
     PyModule_AddObject(module, "InvalidArgsError", invalid_args_status);
     PyModule_AddObject(module, "StoreError", store_error_status);
     PyModule_AddObject(module, "ExistsError", exists_status);
     PyModule_AddObject(module, "NotExistsError", not_exists_status);
+    PyModule_AddObject(module, "NotEmptyError", not_empty_status);
 
     return module;
 }

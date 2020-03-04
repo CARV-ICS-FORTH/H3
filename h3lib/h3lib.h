@@ -51,6 +51,7 @@ typedef enum {
     H3_STORE_ERROR,     //!< External (store provider) error
     H3_EXISTS,          //!< Bucket or object already exists
     H3_NOT_EXISTS,      //!< Bucket or object does not exist
+	H3_NOT_EMPTY,       //!< Bucket is not empty
     H3_SUCCESS,         //!< Operation succeeded
     H3_CONTINUE         //!< Operation succeeded though there are more data to retrieve
 } H3_Status;
@@ -65,6 +66,7 @@ typedef enum {
     H3_STORE_IME,           //!< IME cluster    (not available)
     H3_STORE_NumOfStores    //!< Not an option, used for iteration purposes.
 } H3_StoreType;
+
 /** @}*/
 
 /*! \brief User authentication info */
@@ -144,12 +146,14 @@ H3_Status H3_ListObjects(H3_Handle handle, H3_Token token, H3_Name bucketName, H
 H3_Status H3_ForeachObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name prefix, uint32_t nObjects, uint32_t offset, h3_name_iterator_cb function, void* userData);
 H3_Status H3_InfoObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, H3_ObjectInfo* objectInfo);
 H3_Status H3_CreateObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, void* data, size_t size);
-H3_Status H3_CreateObjectCopy(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, off_t offset, size_t size, H3_Name dstObjectName);
+H3_Status H3_CreateObjectCopy(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, off_t offset, size_t* size, H3_Name dstObjectName);
 H3_Status H3_WriteObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, void* data, size_t size, off_t offset);
-H3_Status H3_WriteObjectCopy(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, off_t srcOffset, size_t size, H3_Name dstObjectName, off_t dstOffset);
+H3_Status H3_WriteObjectCopy(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, off_t srcOffset, size_t* size, H3_Name dstObjectName, off_t dstOffset);
 H3_Status H3_ReadObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, off_t offset, void** data, size_t* size);
 H3_Status H3_CopyObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, H3_Name dstObjectName, uint8_t noOverwrite);
 H3_Status H3_MoveObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, H3_Name dstObjectName, uint8_t noOverwrite);
+H3_Status H3_ExchangeObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, H3_Name dstObjectName);
+H3_Status H3_TruncateObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, size_t size);
 H3_Status H3_DeleteObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName);
 /** @}*/
 
