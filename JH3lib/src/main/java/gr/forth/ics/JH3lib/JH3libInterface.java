@@ -367,6 +367,17 @@ public interface JH3libInterface extends Library {
      */
     int H3_TruncateObject(Pointer handle, NativeAuth token, Pointer bucketName, Pointer objectName, NativeLong size);
 
+    /**
+     * Swap data between two objects.
+     * Note that both objects will rest within the same bucket.
+     * @param handle            An h3lib handle
+     * @param token             Authentication information
+     * @param bucketName        The name of the bucket to host the object
+     * @param srcObjectName     The name of the first object to be exchanged
+     * @param dstObjectName     The name of the second object to be exchanged
+     * @return  H3_SUCCESS on success, or H3_FAILURE/H3_NOT_EXISTS/H3_INVALID_ARGS on failure
+     */
+    int H3_ExchangeObject(Pointer handle, NativeAuth token, Pointer bucketName, Pointer srcObjectName, Pointer dstObjectName);
 
     //--------------------- Multipart Management ---------------------
 

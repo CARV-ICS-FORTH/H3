@@ -848,6 +848,38 @@ public class JH3Client implements Serializable{
         return truncateObject(bucketName, objectName, 0);
     }
 
+    /**
+     * Swaps data between two objects. Note that both objects will rest within the same bucket. The status of the
+     * operation is set and can be retrieved by {@link JH3Client#getStatus() getStatus()}.
+     * Expected status from operation:
+     * <p>
+     * {@link H3Status#H3_SUCCESS} - The operation was successful.
+     * <p>
+     * {@link H3Status#H3_FAILURE} - Unable to retrieve object info or user has no access.
+     * <p>
+     * {@link H3Status#H3_NOT_EXISTS} - The object doesn't exist.
+     * <p>
+     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     *
+     * @param bucketName            The name of the bucket hosting the objects.
+     * @param srcObjectName         The name of the first object to be exchanged.
+     * @param dstObjectName         The name of the second object to be exchanged.
+     * @return              <code>true</code> if the operation was successful, <code>false</code> otherwise.
+     * @throws H3Exception  If an unknown status is received.
+     */
+    public boolean exchangeObject(String bucketName, String srcObjectName, String dstObjectName) throws H3Exception {
+        Pointer bucket = new Memory(bucketName.length() + 1);
+        Pointer firstName = new Memory(srcObjectName.length() + 1);
+        Pointer secondName = new Memory(dstObjectName.length() + 1);
+
+        bucket.setString(0, bucketName);
+        firstName.setString(0, srcObjectName);
+        secondName.setString(0, dstObjectName);
+
+        status = H3Status.fromInt(JH3libInterface.INSTANCE.H3_ExchangeObject(handle, token, bucket, firstName, secondName));
+
+        return operationSucceeded(status);
+    }
     /* Multipart Management methods */
 
     /**

@@ -355,6 +355,58 @@ public class JH3ObjectTest {
             assertTrue(client.deleteObject("b1", "o1"));
             assertEquals(H3Status.H3_SUCCESS, client.getStatus());
 
+            // Exchange non-existent objects
+            assertFalse(client.exchangeObject("b1", "o1", "o2"));
+            assertEquals(H3Status.H3_NOT_EXISTS, client.getStatus());
+
+            // Create first objects to be exchanged
+            assertTrue(client.createObject("b1", "o1", dataObj));
+            assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+
+            // Exchange with only one existent object
+            assertFalse(client.exchangeObject("b1", "o1", "o2"));
+            assertEquals(H3Status.H3_FAILURE, client.getStatus());
+
+            // Create second object to be exchanged
+            H3Object dataObj2 = new H3Object(Arrays.copyOfRange(data, 0, MEGABYTE), MEGABYTE);
+            assertTrue(client.createObject("b1", "o2", dataObj2));
+            assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+
+            // Exchange the two objects
+            assertTrue(client.exchangeObject("b1", "o1", "o2"));
+            assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+
+            // Check info of first object
+            objectInfo = client.infoObject("b1", "o1");
+            assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+            assertNotNull(objectInfo);
+            assertFalse(objectInfo.isCorrupt());
+            assertEquals(MEGABYTE, objectInfo.getSize());
+
+            readObj = client.readObject("b1", "o1");
+            assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+            assertNotNull(readObj);
+            assertTrue(Arrays.equals(dataObj2.getData(), readObj.getData()));;
+
+            // Check info of second object
+            objectInfo = client.infoObject("b1", "o2");
+            assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+            assertNotNull(objectInfo);
+            assertFalse(objectInfo.isCorrupt());
+            assertEquals(3 * MEGABYTE, objectInfo.getSize());
+
+            readObj = client.readObject("b1", "o2");
+            assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+            assertNotNull(readObj);
+            assertTrue(Arrays.equals(dataObj.getData(), readObj.getData()));
+
+            // Delete objects
+            assertTrue(client.deleteObject("b1", "o1"));
+            assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+            assertTrue(client.deleteObject("b1", "o2"));
+            assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+
+
             // Delete bucket
             assertTrue(client.deleteBucket("b1"));
             assertEquals(H3Status.H3_SUCCESS, client.getStatus());
