@@ -1,6 +1,7 @@
 package gr.forth.ics.JH3lib;
 
 import com.sun.jna.Memory;
+import com.sun.jna.Native;
 import com.sun.jna.NativeLong;
 import com.sun.jna.Pointer;
 import com.sun.jna.ptr.NativeLongByReference;
@@ -183,6 +184,10 @@ public class JH3Client implements Serializable{
             while(bucketNameArray.getValue().getByte(arrayOffset) == '\0')
                 arrayOffset++;
         }
+
+        // Free internal buffer (only allocated when operation was successful)
+        Native.free(Pointer.nativeValue(bucketNameArray.getValue()));
+
         return buckets;
     }
 
@@ -510,7 +515,7 @@ public class JH3Client implements Serializable{
 
         bucket.setString(0, bucketName);
         name.setString(0, objectName);
-        if(size > 0 )
+        if(size != 0 )
             data =  new PointerByReference(new Memory(size));
         else
             data = new PointerByReference();
@@ -522,6 +527,11 @@ public class JH3Client implements Serializable{
             buffer.get(array);
 
             H3Object obj = new H3Object(array, nSize.getValue().longValue());
+
+            // Free internal buffer that was allocated (only when size is zero)
+            if(size == 0)
+                Native.free(Pointer.nativeValue(data.getValue()));
+
             return obj;
         }
         return null;
@@ -1022,6 +1032,8 @@ public class JH3Client implements Serializable{
             list.add(new H3MultipartId(tmp));
         }
 
+        // Free internal buffer
+        Native.free(Pointer.nativeValue(multipartIdArray.getValue()));
         return list;
     }
 
@@ -1089,6 +1101,9 @@ public class JH3Client implements Serializable{
         for(int i = 0; i < nParts.get(0); i++) {
             list.add(new H3PartInfo(partInfoArray[i].partNumber, partInfoArray[i].size.longValue()));
         }
+
+        // Free internal buffer
+        Native.free(Pointer.nativeValue(partInfoPointer.getValue()));
 
         return list;
 
