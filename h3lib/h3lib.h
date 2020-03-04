@@ -80,27 +80,28 @@ typedef H3_Auth* H3_Token;
 
 /*! \brief Bucket statistics */
 typedef struct {
-    size_t size;                //!< The size of all objects contained in the bucket
-    uint64_t nObjects;          //!< Number of objects contained in the bucket
-    time_t lastAccess;          //!< Last time an object was accessed
-    time_t lastModification;    //!< Last time an object was modified
+    size_t size;                		 //!< The size of all objects contained in the bucket
+    uint64_t nObjects;          		 //!< Number of objects contained in the bucket
+    struct timespec lastAccess;          //!< Last time an object was accessed
+    struct timespec lastModification;    //!< Last time an object was modified
 } H3_BucketStats;
 
 
 /*! \brief Bucket information */
 typedef struct {
-    time_t creation;        //!< Creation timestamp
-    H3_BucketStats stats;   //!< Aggregate object statistics
+	struct timespec creation;        //!< Creation timestamp
+    H3_BucketStats stats;   		 //!< Aggregate object statistics
 } H3_BucketInfo;
 
 
 /*! \brief H3 object information */
 typedef struct {
-    char isBad;                 //!< Data are corrupt
-    size_t size;                //!< Object size
-    time_t creation;            //!< Creation timestamp
-    time_t lastAccess;          //!< Last access timestamp
-    time_t lastModification;    //!< Last modification timestamp
+    char isBad;                 			//!< Data are corrupt
+    size_t size;                			//!< Object size
+    struct timespec creation;            	//!< Creation timestamp
+    struct timespec lastAccess;          	//!< Last access timestamp
+    struct timespec lastModification;    	//!< Last modification timestamp
+    mode_t mode;							//!< File type and mode (used by h3fuse)
 } H3_ObjectInfo;
 
 
@@ -135,6 +136,7 @@ void H3_Free(H3_Handle handle);
 H3_Status H3_ListBuckets(H3_Handle handle, H3_Token token, H3_Name* bucketNameArray, uint32_t* nBuckets);
 H3_Status H3_ForeachBucket(H3_Handle handle, H3_Token token, h3_name_iterator_cb function, void* userData);
 H3_Status H3_InfoBucket(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_BucketInfo* bucketInfo, uint8_t getStats);
+H3_Status H3_SetBucketAttributes(H3_Handle handle, H3_Token token, H3_Name bucketName, mode_t mode);
 H3_Status H3_CreateBucket(H3_Handle handle, H3_Token token, H3_Name bucketName);
 H3_Status H3_DeleteBucket(H3_Handle handle, H3_Token token, H3_Name bucketName);
 /** @}*/
@@ -145,6 +147,7 @@ H3_Status H3_DeleteBucket(H3_Handle handle, H3_Token token, H3_Name bucketName);
 H3_Status H3_ListObjects(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name prefix, uint32_t offset, H3_Name* objectNameArray, uint32_t* nObjects);
 H3_Status H3_ForeachObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name prefix, uint32_t nObjects, uint32_t offset, h3_name_iterator_cb function, void* userData);
 H3_Status H3_InfoObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, H3_ObjectInfo* objectInfo);
+H3_Status H3_SetObjectAttributes(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, mode_t mode);
 H3_Status H3_CreateObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, void* data, size_t size);
 H3_Status H3_CreateObjectCopy(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, off_t offset, size_t* size, H3_Name dstObjectName);
 H3_Status H3_WriteObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, void* data, size_t size, off_t offset);

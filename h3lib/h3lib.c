@@ -16,6 +16,30 @@
 
 extern KV_Operations operationsFilesystem;
 
+/*
+    http://man7.org/linux/man-pages/man2/umask.2.html
+    http://man7.org/linux/man-pages/man2/chmod.2.html
+    https://en.wikipedia.org/wiki/Umask
+
+	0 - no access to the file
+	1 - execute only
+	2 - write only
+	3 - write and execute
+	4 - read only
+	5 - read and execute
+	6 - read and write
+	7 - read, write and execute (full permissions)
+
+	Assign typical values assuming a umask of 022
+*/
+void InitMode(H3_ObjectMetadata* objMeta){
+	size_t length = strlen(objMeta->userId);
+	if(objMeta->userId[length - 1] == '/')
+		objMeta->mode = S_IFDIR | 0755;
+	else
+		objMeta->mode = S_IFREG | 0644;
+}
+
 int GetUserId(H3_Token token, H3_UserId id){
     snprintf(id, H3_USERID_SIZE, "@%d", token->userId);
     return TRUE;

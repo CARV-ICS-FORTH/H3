@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <regex.h>
+#include <sys/stat.h>
 
 #include <uuid/uuid.h>
 
@@ -92,7 +93,8 @@ typedef struct{
 
 typedef struct{
     H3_UserId userId;
-    time_t creation;
+    struct timespec creation;
+    mode_t mode;
 }H3_BucketMetadata;
 
 typedef struct{
@@ -106,9 +108,10 @@ typedef struct{
     char isBad;
     H3_UserId userId;
     uuid_t uuid;
-    time_t creation;
-    time_t lastAccess;
-    time_t lastModification;
+    struct timespec creation;
+    struct timespec lastAccess;
+    struct timespec lastModification;
+    mode_t mode;
     uint nParts;
     H3_PartMetadata part[];
 }H3_ObjectMetadata;
@@ -128,6 +131,7 @@ int GetBucketIndex(H3_UserMetadata* userMetadata, H3_Name bucketName);
 void GetObjectId(H3_Name bucketName, H3_Name objectName, H3_ObjectId id);
 void GetMultipartObjectId(H3_Name bucketName, H3_Name objectName, H3_ObjectId id);
 char* GetBucketFromId(H3_ObjectId objId, H3_BucketId bucketId);
+void InitMode(H3_ObjectMetadata* objMeta);
 H3_MultipartId GeneratetMultipartId(uuid_t uuid);
 void CreatePartId(H3_PartId partId, uuid_t uuid, int partNumber, int subPartNumber);
 char* PartToId(H3_PartId partId, uuid_t uuid, H3_PartMetadata* part);
