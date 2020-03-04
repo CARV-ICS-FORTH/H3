@@ -316,6 +316,7 @@ H3_Status H3_InfoBucket(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
         // Make sure the token grants access to the bucket
         if( GrantBucketAccess(userId, bucketMetadata) ){
             bucketInfo->creation = bucketMetadata->creation;
+            bucketInfo->mode = bucketMetadata->mode;
 
             if(getStats){
                 KV_Key keyBuffer = calloc(1, KV_LIST_BUFFER_SIZE);
