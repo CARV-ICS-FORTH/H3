@@ -89,8 +89,9 @@ typedef struct {
 
 /*! \brief Bucket information */
 typedef struct {
-	struct timespec creation;        //!< Creation timestamp
-    H3_BucketStats stats;   		 //!< Aggregate object statistics
+	struct timespec creation;       //!< Creation timestamp
+	mode_t 			mode;			//!< File type and mode (used by h3fuse)
+    H3_BucketStats 	stats;   		//!< Aggregate object statistics
 } H3_BucketInfo;
 
 
