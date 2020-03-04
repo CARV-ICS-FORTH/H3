@@ -3,6 +3,7 @@ package gr.forth.ics.JH3lib;
 import com.sun.jna.Memory;
 import com.sun.jna.NativeLong;
 import com.sun.jna.Pointer;
+import com.sun.jna.ptr.NativeLongByReference;
 import com.sun.jna.ptr.PointerByReference;
 import org.junit.Ignore;
 
@@ -205,7 +206,7 @@ public class LinkingTest
             Pointer objectName2 = new Memory(object2.length() +1);
             objectName.setString(0, object2);
             NativeLong offset = new NativeLong(0);
-            assertEquals(H3Status.H3_SUCCESS, H3Status.fromInt(JH3libInterface.INSTANCE.H3_CreateObjectCopy(handle, myToken, bucketName, objectName, offset, size, objectName2)));
+            assertEquals(H3Status.H3_SUCCESS, H3Status.fromInt(JH3libInterface.INSTANCE.H3_CreateObjectCopy(handle, myToken, bucketName, objectName, offset, new NativeLongByReference(size), objectName2)));
 
 
 

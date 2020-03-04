@@ -290,7 +290,7 @@ public class JH3Client implements Serializable{
     }
 
     /**
-     * Copy a part of an object into a new one. Not that both objects will rest within the same bucket. The status of
+     * Copy a part of an object into a new one. Note that both objects will rest within the same bucket. The status of
      * the operation is set and can be retrieved by {@link JH3Client#getStatus() getStatus()}.
      * Expected status from operation:
      * <p>
@@ -308,22 +308,27 @@ public class JH3Client implements Serializable{
      * @param size              The amount of data to copy.
      * @param dstObjectName     The name of the new object.
      *
-     * @return <code>true</code> is the operation was successful, <code>false</code> otherwise.
+     * @return The number of bytes actually copied if is the operation was successful, <code>-1</code> otherwise.
      * @throws H3Exception If an unknown status is received.
      */
-    public boolean createObjectCopy(String bucketName, String srcObjectName, long offset, long size, String dstObjectName) throws H3Exception {
+    public long createObjectCopy(String bucketName, String srcObjectName, long offset, long size, String dstObjectName)
+            throws H3Exception {
         Pointer bucket = new Memory(bucketName.length() + 1);
         Pointer src = new Memory(srcObjectName.length() + 1);
         Pointer dst = new Memory(dstObjectName.length() + 1);
         NativeLong off = new NativeLong(offset);
-        NativeLong s = new NativeLong(size);
+        NativeLongByReference nSize = new NativeLongByReference( new NativeLong(size));
 
         bucket.setString(0, bucketName);
         src.setString(0, srcObjectName);
         dst.setString(0, dstObjectName);
 
-        status = H3Status.fromInt(JH3libInterface.INSTANCE.H3_CreateObjectCopy(handle, token, bucket, src, off, s, dst));
-        return  operationSucceeded(status);
+        status = H3Status.fromInt(JH3libInterface.INSTANCE.H3_CreateObjectCopy(handle, token, bucket, src, off, nSize, dst));
+        if(operationSucceeded(status))
+            return nSize.getValue().longValue();
+
+        // operation failed
+        return -1;
     }
 
     /**
@@ -634,16 +639,16 @@ public class JH3Client implements Serializable{
      * @param    dstOffset          Offset with respect to the destination object's first byte.
      * @param    size               The amount of data to copy.
      *
-     * @return              <code>true</code> if the operation was successful, <code>false</code> otherwise.
+     * @return  The number of bytes actually copied if the operation was successful, <code>-1</code> otherwise.
      * @throws H3Exception  If an unknown status is received.
      */
-    public boolean writeObjectCopy(String bucketName, String srcObjectName, long srcOffset,
+    public long writeObjectCopy(String bucketName, String srcObjectName, long srcOffset,
                                    long size, String dstObjectName,  long dstOffset) throws H3Exception {
         Pointer bucket = new Memory(bucketName.length() +1 );
         Pointer src = new Memory(srcObjectName.length() +1);
         Pointer dst = new Memory(dstObjectName.length() +1);
         NativeLong srcOff = new NativeLong(srcOffset);
-        NativeLong nSize = new NativeLong(size);
+        NativeLongByReference nSize = new NativeLongByReference(new NativeLong(size));
         NativeLong dstOff = new NativeLong(dstOffset);
 
         bucket.setString(0, bucketName);
@@ -651,7 +656,11 @@ public class JH3Client implements Serializable{
         dst.setString(0, dstObjectName);
 
         status = H3Status.fromInt(JH3libInterface.INSTANCE.H3_WriteObjectCopy(handle, token, bucket, src, srcOff, nSize, dst, dstOff));
-        return operationSucceeded(status);
+        if(operationSucceeded(status))
+            return nSize.getValue().longValue();
+
+        // operation failed
+        return -1;
     }
 
     /**

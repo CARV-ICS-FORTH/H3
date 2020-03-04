@@ -192,7 +192,7 @@ public interface JH3libInterface extends Library {
      *
      * @return H3_SUCCESS on success, or H3_NOT_EXISTS/H3_INVALID_ARGS/H3_FAILURE on failure
      */
-    int H3_CreateObjectCopy(Pointer handle, NativeAuth token, Pointer bucketName, Pointer srcObjectName, NativeLong offset, NativeLong size, Pointer dstObjectName);
+    int H3_CreateObjectCopy(Pointer handle, NativeAuth token, Pointer bucketName, Pointer srcObjectName, NativeLong offset, NativeLongByReference size, Pointer dstObjectName);
 
     /**
      * Delete an object. Permanently deletes an object.
@@ -317,7 +317,7 @@ public interface JH3libInterface extends Library {
      *
      * @return H3_SUCCESS on success, or H3_NOT_EXISTS/H3_INVALID_ARGS/H3_FAILURE on failure
      */
-    int H3_WriteObjectCopy(Pointer handle, NativeAuth token, Pointer bucketName, Pointer srcObjectName, NativeLong srcOffset, NativeLong size, Pointer dstObjectName, NativeLong dstOffset);
+    int H3_WriteObjectCopy(Pointer handle, NativeAuth token, Pointer bucketName, Pointer srcObjectName, NativeLong srcOffset, NativeLongByReference size, Pointer dstObjectName, NativeLong dstOffset);
 
     /**
      * Copy an object.
