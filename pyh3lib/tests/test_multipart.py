@@ -66,7 +66,7 @@ def test_simple(h3):
     with pytest.raises(pyh3lib.H3NotExistsError):
         h3.abort_multipart(multipart)
 
-    assert 'm1' in h3.list_bucket('b1')
+    assert 'm1' in h3.list_objects('b1')
 
     object_info = h3.info_object('b1', 'm1')
     assert not object_info.is_bad
