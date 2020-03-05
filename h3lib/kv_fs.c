@@ -151,7 +151,6 @@ KV_Handle KV_FS_Init(GKeyFile* cfgFile) {
 }
 
 void KV_FS_Free(KV_Handle handle) {
-    // FSPRINT("Here I am\n");
     KV_Filesystem_Handle* iHandle = (KV_Filesystem_Handle*) handle;
     free(iHandle->root);
     free(iHandle);
