@@ -253,16 +253,24 @@ H3_Status H3_ListBuckets(H3_Handle handle, H3_Token token, H3_Name* bucketNameAr
 
     if( (status = op->metadata_read(_handle, userId, 0, &value, &metaSize)) == KV_SUCCESS){
         H3_UserMetadata* userMetadata = (H3_UserMetadata*)value;
-        *nBuckets = userMetadata->nBuckets;
-        *bucketNameArray = calloc(userMetadata->nBuckets, sizeof(H3_BucketId));
+        if(userMetadata->nBuckets){
+        	int i;
+        	char* entry;
 
-        char* entry = *bucketNameArray;
-        int i;
-        for(i=0; i<userMetadata->nBuckets; i++){
-        	strcpy(entry, (const char*)userMetadata->bucket[i]);
-        	entry += strlen(entry) + 1;
+			*nBuckets = userMetadata->nBuckets;
+			*bucketNameArray = calloc(userMetadata->nBuckets, sizeof(H3_BucketId));
+			entry = *bucketNameArray;
+
+			for(i=0; i<userMetadata->nBuckets; i++){
+				strcpy(entry, (const char*)userMetadata->bucket[i]);
+				entry += strlen(entry) + 1;
+			}
+			free(userMetadata);
         }
-        free(userMetadata);
+        else {
+        	*nBuckets = 0;
+        	*bucketNameArray = NULL;
+        }
 
         return H3_SUCCESS;
     }
