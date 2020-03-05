@@ -265,12 +265,13 @@ H3_Status H3_ListBuckets(H3_Handle handle, H3_Token token, H3_Name* bucketNameAr
 				strcpy(entry, (const char*)userMetadata->bucket[i]);
 				entry += strlen(entry) + 1;
 			}
-			free(userMetadata);
         }
         else {
         	*nBuckets = 0;
         	*bucketNameArray = NULL;
         }
+
+        free(userMetadata);
 
         return H3_SUCCESS;
     }
