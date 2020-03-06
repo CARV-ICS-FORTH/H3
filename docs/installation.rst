@@ -10,7 +10,7 @@ To compile ``h3lib`` you need CMake v3.10 or latter. H3 uses the ``glib2`` and `
 
 **Note:** For CentOS 7, use the ``cmake3`` package available in EPEL. Replace ``cmake`` in the following commands with ``cmake3``.
 
-**Note:** For macOS, install ``cmake``, ``pkgconfig``, ``glib2``, and ``libuuid`` via MacPorts. ``h3lib`` requires GCC to build, so you also need to install ``gcc9`` and replace the following ``cmake`` command with: ``export CC=<path to gcc>; cmake -DCMAKE_C_COMPILER=<path to gcc> <path to h3lib directory>``
+**Note:** For macOS, install ``cmake``, ``pkgconfig``, ``glib2``, and ``libuuid`` via MacPorts. ``h3lib`` requires GCC to build, so you also need to install ``gcc9`` and replace the following ``cmake`` command with: ``export CC=<path to gcc>; cmake -DCMAKE_C_COMPILER=$CC <path to h3lib directory>``
 
 Create and enter build directory::
 
@@ -45,13 +45,12 @@ With ``h3lib`` installed, you can compile and install the Python wrapper library
 
 If you have installed ``h3lib`` in some non-standard path and ``setup.py install`` fails to find it, run the following and retry (the example assumes ``h3lib`` is installed in ``/usr/local/``)::
 
-	export C_INCLUDE_PATH=/usr/local/include
-	export LIBRARY_PATH=/usr/local/lib
+    export C_INCLUDE_PATH=/usr/local/include
+    export LIBRARY_PATH=/usr/local/lib
 
 To package (creates ``tar.gz`` in ``dist``)::
 
 	python3 setup.py bdist
-
 
 JH3lib
 ------
@@ -59,13 +58,17 @@ To compile ``JH3lib``, at least Java version 9 is required. The project was deve
 
   mvn install
 
-To package (creates a ``.jar`` in ``target``)::
+To package without dependencies (creates a ``.jar`` in ``target``)::
 
-  (without dependencies) mvn package
-  (include dependencies) mvn package assembly:single
+  mvn package
+
+To package with dependencies (creates a ``-with-dependencies.jar`` in ``target``)::
+
+  mvn package assembly:single
 
 To run tests::
 
   mvn test
 
 **Note:** When packaging/installing ``JH3lib`` the ``-DskipTests`` flag can be used to skip the test phase.
+
