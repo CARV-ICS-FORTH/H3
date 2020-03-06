@@ -2,8 +2,10 @@
 
 from setuptools import setup, Extension
 
+from pyh3lib.version import __version__
+
 setup(name='pyh3lib',
-      version='1.0',
+      version=__version__,
       description='Python interface to H3: A High speed, High Volume and Highly available object storage',
       url='https://www.ics.forth.gr/carv/',
       author='FORTH-ICS',
@@ -12,8 +14,9 @@ setup(name='pyh3lib',
       ext_modules=[Extension('pyh3lib.h3lib',
                              sources=['pyh3lib/h3lib.c'],
                              libraries=['h3lib'])],
+      entry_points={'console_scripts': ['h3cli = pyh3lib.cli:main']},
       python_requires='>=3.6',
-      classifiers=['Development Status :: 3 - Alpha',
+      classifiers=['Development Status :: 4 - Beta',
                    'Environment :: Console',
                    'Programming Language :: Python :: 3.6',
                    'Programming Language :: C'
