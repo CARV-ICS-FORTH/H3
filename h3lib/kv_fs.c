@@ -156,70 +156,40 @@ KV_Status KV_FS_List(KV_Handle handle, KV_Key prefix, uint8_t nTrim, KV_Key buff
     size_t remaining = KV_LIST_BUFFER_SIZE;
 
     int CopyDirEntry(const char* fpath, const struct stat* sb, int typeflag, struct FTW* ftwbuf) {
-#if TARGET_OS_MAC
-    	char* canPath = canonicalize_file_name(fpath);
-#else
-    	const char* canPath = fpath;
-#endif
-
-        if(strncmp(canPath, fullPrefix, prefixLen) == 0){
-            LogActivity(H3_DEBUG_MSG, "%s\n", canPath);
+        if(strncmp(fpath, fullPrefix, prefixLen) == 0){
+            LogActivity(H3_DEBUG_MSG, "%s\n", fpath);
             if(offset)
                 offset--;
             else if( nMatchingKeys < nRequiredKeys ){
-                size_t entrySize = strlen(canPath) + 1 - rootLen;
+                size_t entrySize = strlen(fpath) + 1 - rootLen;
                 if(remaining >= entrySize) {
-//                    LogActivity(H3_DEBUG_MSG, "%s\n", &canPath[rootLen]);
-                    memcpy(&buffer[KV_LIST_BUFFER_SIZE - remaining], &canPath[rootLen], entrySize);
+//                    LogActivity(H3_DEBUG_MSG, "%s\n", &fpath[rootLen]);
+                    memcpy(&buffer[KV_LIST_BUFFER_SIZE - remaining], &fpath[rootLen], entrySize);
                     remaining -= entrySize;
                     nMatchingKeys++;
                 }
-                else{
-#if TARGET_OS_MAC
-                	free(canPath);
-#endif
+                else
                     return KV_CONTINUE;
-                }
             }
-            else{
-#if TARGET_OS_MAC
-                	free(canPath);
-#endif
+            else
                 return KV_CONTINUE;
-            }
         }
 
-#if TARGET_OS_MAC
-        free(canPath);
-#endif
         return 0;
     }
 
 
     int CountDirEntry(const char* fpath, const struct stat* sb, int typeflag, struct FTW* ftwbuf) {
-#if TARGET_OS_MAC
-    	char* canPath = canonicalize_file_name(fpath);
-#else
-    	const char* canPath = fpath;
-#endif
-
-        if(strncmp(canPath, fullPrefix, prefixLen) == 0){
-            //        printf("%s - %s\n", __FUNCTION__, canPath);
+        if(strncmp(fpath, fullPrefix, prefixLen) == 0){
+            //        printf("%s - %s\n", __FUNCTION__, fpath);
             if(offset)
                 offset--;
             else if (nMatchingKeys < nRequiredKeys)
                 nMatchingKeys++;
-            else{
-#if TARGET_OS_MAC
-                	free(canPath);
-#endif
+            else
                 return KV_CONTINUE;
-            }
         }
 
-#if TARGET_OS_MAC
-         free(canPath);
-#endif
         return 0;
     }
 
