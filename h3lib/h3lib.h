@@ -64,8 +64,16 @@ typedef enum {
     H3_STORE_ROCKSDB,       //!< RocksDB server (not available)
     H3_STORE_REDIS,         //!< Redis cluster  (not available)
     H3_STORE_IME,           //!< IME cluster    (not available)
-    H3_STORE_NumOfStores    //!< Not an option, used for iteration purposes.
+    H3_NumOfStores    		//!< Not an option, used for iteration purposes.
 } H3_StoreType;
+
+
+/*! \brief Object/Bucket attributes supported by H3 */
+typedef enum {
+	H3_ATTRIBUTE_OWNER = 0,		//!< Owner attributes.
+	H3_ATTRIBUTE_PERMISSION,	//!< Permission attribute
+	H3_NumOfAttributes			//!< Not an option, used for iteration purposes.
+}H3_AttributeType;
 
 /** @}*/
 
@@ -113,6 +121,18 @@ typedef struct {
 } H3_PartInfo;
 
 
+/*! \brief Object & Bucket attributes */
+typedef struct {
+	H3_AttributeType type;
+	union{
+		mode_t mode;		//!< Permissions in octal mode similar to chmod()
+		struct {
+			uid_t uid;		//!< User ID, adhering to chown() semantics
+			gid_t gid;		//!< Group ID, adhering to chown() semantics
+		};
+	};
+}H3_Attribute;
+
 
 /** \defgroup Functions
  *  @{
@@ -137,7 +157,7 @@ void H3_Free(H3_Handle handle);
 H3_Status H3_ListBuckets(H3_Handle handle, H3_Token token, H3_Name* bucketNameArray, uint32_t* nBuckets);
 H3_Status H3_ForeachBucket(H3_Handle handle, H3_Token token, h3_name_iterator_cb function, void* userData);
 H3_Status H3_InfoBucket(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_BucketInfo* bucketInfo, uint8_t getStats);
-H3_Status H3_SetBucketAttributes(H3_Handle handle, H3_Token token, H3_Name bucketName, mode_t mode);
+H3_Status H3_SetBucketAttributes(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Attribute attrib);
 H3_Status H3_CreateBucket(H3_Handle handle, H3_Token token, H3_Name bucketName);
 H3_Status H3_DeleteBucket(H3_Handle handle, H3_Token token, H3_Name bucketName);
 /** @}*/
@@ -148,7 +168,7 @@ H3_Status H3_DeleteBucket(H3_Handle handle, H3_Token token, H3_Name bucketName);
 H3_Status H3_ListObjects(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name prefix, uint32_t offset, H3_Name* objectNameArray, uint32_t* nObjects);
 H3_Status H3_ForeachObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name prefix, uint32_t nObjects, uint32_t offset, h3_name_iterator_cb function, void* userData);
 H3_Status H3_InfoObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, H3_ObjectInfo* objectInfo);
-H3_Status H3_SetObjectAttributes(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, mode_t mode);
+H3_Status H3_SetObjectAttributes(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, H3_Attribute attrib);
 H3_Status H3_CreateObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, void* data, size_t size);
 H3_Status H3_CreateObjectCopy(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, off_t offset, size_t* size, H3_Name dstObjectName);
 H3_Status H3_WriteObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, void* data, size_t size, off_t offset);

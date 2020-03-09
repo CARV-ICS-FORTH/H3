@@ -95,6 +95,8 @@ typedef struct{
     H3_UserId userId;
     struct timespec creation;
     mode_t mode;
+    uid_t uid;
+    gid_t gid;
 }H3_BucketMetadata;
 
 typedef struct{
@@ -112,6 +114,8 @@ typedef struct{
     struct timespec lastAccess;
     struct timespec lastModification;
     mode_t mode;
+    uid_t uid;
+    gid_t gid;
     uint nParts;
     H3_PartMetadata part[];
 }H3_ObjectMetadata;

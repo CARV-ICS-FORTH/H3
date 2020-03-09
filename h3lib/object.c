@@ -536,7 +536,7 @@ H3_Status H3_InfoObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
  * @param[in]    token              Authentication information
  * @param[in]    bucketName         The name of the bucket to host the object
  * @param[in]    objectName         The name of the object to be created
- * @param[in]    mode         		Permissions in octal mode similar to chmod()
+ * @param[in]    attrib         	Object attributes
 
  *
  * @result \b H3_SUCCESS            Operation completed successfully
@@ -545,10 +545,10 @@ H3_Status H3_InfoObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
  * @result \b H3_INVALID_ARGS       Missing or malformed arguments
  *
  */
-H3_Status H3_SetObjectAttributes(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, mode_t mode){
+H3_Status H3_SetObjectAttributes(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, H3_Attribute attrib){
 
     // Argument check
-    if(!handle || !token  || !bucketName || !objectName){
+    if(!handle || !token  || !bucketName || !objectName || attrib.type >= H3_NumOfAttributes){
         return H3_INVALID_ARGS;
     }
 
@@ -575,7 +575,13 @@ H3_Status H3_SetObjectAttributes(H3_Handle handle, H3_Token token, H3_Name bucke
         H3_ObjectMetadata* objMeta = (H3_ObjectMetadata*)value;
         if(GrantObjectAccess(userId, objMeta)){
 
-        	objMeta->mode = mode & 0777;
+        	if(attrib.type == H3_ATTRIBUTE_PERMISSION)
+        		objMeta->mode = attrib.mode & 0777;
+        	else {
+        		if(attrib.uid >= 0) objMeta->uid = attrib.uid;
+        		if(attrib.gid >= 0) objMeta->gid = attrib.gid;
+        	}
+
         	clock_gettime(CLOCK_REALTIME, &objMeta->lastAccess);
         	if(op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, mSize) == KV_SUCCESS){
         		status = H3_SUCCESS;

@@ -446,7 +446,7 @@ H3_Status H3_ForeachBucket(H3_Handle handle, H3_Token token, h3_name_iterator_cb
  * @param[in]    handle             An h3lib handle
  * @param[in]    token              Authentication information
  * @param[in]    bucketName         Name of bucket
- * @param[in]    mode         		Permissions in octal mode similar to chmod()
+ * @param[in]    attrib         	Bucket attributes
  *
  * @result \b H3_SUCCESS            Operation completed successfully
  * @result \b H3_NOT_EXISTS         The bucket doesn't exist
@@ -454,7 +454,7 @@ H3_Status H3_ForeachBucket(H3_Handle handle, H3_Token token, h3_name_iterator_cb
  * @result \b H3_FAILURE            Storage provider error
  *
  */
-H3_Status H3_SetBucketAttributes(H3_Handle handle, H3_Token token, H3_Name bucketName, mode_t mode){
+H3_Status H3_SetBucketAttributes(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Attribute attrib){
     H3_UserId userId;
     H3_BucketId bucketId;
     KV_Value value = NULL;
@@ -462,7 +462,7 @@ H3_Status H3_SetBucketAttributes(H3_Handle handle, H3_Token token, H3_Name bucke
     H3_Status status = H3_FAILURE;
 
     // Argument check
-    if(!handle || !token  || !bucketName){
+    if(!handle || !token  || !bucketName || attrib.type >= H3_NumOfAttributes){
         return H3_INVALID_ARGS;
     }
 
@@ -481,7 +481,13 @@ H3_Status H3_SetBucketAttributes(H3_Handle handle, H3_Token token, H3_Name bucke
 
         // Make sure the token grants access to the bucket
         if( GrantBucketAccess(userId, bucketMetadata) ){
-        	bucketMetadata->mode = mode & 0777;
+        	if(attrib.type == H3_ATTRIBUTE_PERMISSION)
+        		bucketMetadata->mode = attrib.mode & 0777;
+        	else {
+        		if(attrib.uid >= 0) bucketMetadata->uid = attrib.uid;
+        		if(attrib.gid >= 0) bucketMetadata->gid = attrib.gid;
+        	}
+
         	if(op->metadata_write(_handle, bucketId, (KV_Value)bucketMetadata, 0, size) == KV_SUCCESS){
         		status = H3_SUCCESS;
         	}
