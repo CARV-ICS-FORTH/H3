@@ -35,5 +35,3 @@ Java
    :maxdepth: 2
 
    packages   
-
-=======

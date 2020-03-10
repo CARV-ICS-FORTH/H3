@@ -11,13 +11,13 @@ import java.nio.IntBuffer;
  * @author Giorgos Kalaentzis
  * @version 0.1-beta
  */
-public interface JH3libInterface extends Library {
+public interface JH3Interface extends Library {
     // public static final String JNA_LIBRARY_NAME = "/usr/local/lib/libH3.so";
     // public static final NativeLibrary JNA_NATIVE_LIB = NativeLibrary.getInstance(JH3libInterface.JNA_LIBRARY_NAME);
     // public static final JH3libInterface INSTANCE = (JH3libInterface) Native.load(JH3libInterface.JNA_LIBRARY_NAME, JH3libInterface.class);
 
     /** The instance of the native h3lib. */
-    JH3libInterface INSTANCE = Native.load("h3lib", JH3libInterface.class);
+    JH3Interface INSTANCE = Native.load("h3lib", JH3Interface.class);
 
     // Defines of H3
     /** Maximum number of characters allowed for a bucket. */
@@ -139,7 +139,7 @@ public interface JH3libInterface extends Library {
      *
      * @return H3_SUCCESS on success, or H3_NOT_EXISTS/H3_INVALID_ARGS/H3_FAILURE on failure
     */
-    int H3_ForeachBucket(Pointer handle, NativeAuth token, JH3libInterface.h3_name_iterator_cb function, Pointer userData);
+    int H3_ForeachBucket(Pointer handle, NativeAuth token, JH3Interface.h3_name_iterator_cb function, Pointer userData);
 
     /**
      * Retrieve information about a bucket.
@@ -243,7 +243,7 @@ public interface JH3libInterface extends Library {
      *
      * @return H3_SUCCESS on success, or H3_NOT_EXISTS/H3_INVALID_ARGS/H3_FAILURE on failure
      */
-    int H3_ForeachObject(Pointer handle, NativeAuth token, Pointer bucketName, Pointer prefix, int nObjects, int offset, JH3libInterface.h3_name_iterator_cb function, Pointer userData);
+    int H3_ForeachObject(Pointer handle, NativeAuth token, Pointer bucketName, Pointer prefix, int nObjects, int offset, JH3Interface.h3_name_iterator_cb function, Pointer userData);
 
     /**
      *  Retrieve information about an object.

@@ -12,19 +12,19 @@ import java.util.Map;
 public enum H3StoreType {
 
    /** Provider is set in the configuration file. */
-    H3_STORE_CONFIG (JH3libInterface.StoreType.H3_STORE_CONFIG),
+    H3_STORE_CONFIG (JH3Interface.StoreType.H3_STORE_CONFIG),
     /** Use mounted filesystem. */
-    H3_STORE_FILESYSTEM (JH3libInterface.StoreType.H3_STORE_FILESYSTEM),
+    H3_STORE_FILESYSTEM (JH3Interface.StoreType.H3_STORE_FILESYSTEM),
     /** Kreon cluster (not available). */
-    H3_STORE_KREON (JH3libInterface.StoreType.H3_STORE_KREON),
+    H3_STORE_KREON (JH3Interface.StoreType.H3_STORE_KREON),
     /** RocksDB server (not available). */
-    H3_STORE_ROCKSDB (JH3libInterface.StoreType.H3_STORE_ROCKSDB),
+    H3_STORE_ROCKSDB (JH3Interface.StoreType.H3_STORE_ROCKSDB),
     /** Redis cluster (not available). */
-    H3_STORE_REDIS (JH3libInterface.StoreType.H3_STORE_REDIS),
+    H3_STORE_REDIS (JH3Interface.StoreType.H3_STORE_REDIS),
     /** IME cluster (not available). */
-    H3_STORE_IME (JH3libInterface.StoreType.H3_STORE_IME),
+    H3_STORE_IME (JH3Interface.StoreType.H3_STORE_IME),
     /** Not an option, used for iteration purposes. */
-    H3_STORE_NumOfStores (JH3libInterface.StoreType.H3_STORE_NumOfStores);
+    H3_STORE_NumOfStores (JH3Interface.StoreType.H3_STORE_NumOfStores);
 
     private final int storeType;
     private static final Map<Integer,H3StoreType> lookup = new HashMap<>();

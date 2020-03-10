@@ -1,7 +1,6 @@
 package gr.forth.ics.JH3lib;
 
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -51,7 +50,7 @@ public class JH3ObjectTest {
             ArrayList<String> objects;
 
             // Initialize client
-            JH3Client client = new JH3Client(storeType, config, userId);
+            JH3 client = new JH3(storeType, config, userId);
 
             // Check if there are any buckets
             buckets = client.listBuckets();
@@ -430,7 +429,7 @@ public class JH3ObjectTest {
             ArrayList<String> buckets;
             ArrayList<String> objects;
             // Initialize client
-            JH3Client client = new JH3Client(storeType, config, userId);
+            JH3 client = new JH3(storeType, config, userId);
 
             // Create some random data and store them into an H3Object
             byte[] data = new byte[3 * MEGABYTE];

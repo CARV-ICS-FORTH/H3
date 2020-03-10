@@ -46,7 +46,7 @@ public class JH3BucketTest {
             ArrayList<String> buckets;
 
             // Initialize client
-            JH3Client client = new JH3Client(storeType, config, userId);
+            JH3 client = new JH3(storeType, config, userId);
 
             // Check if there are any buckets
             buckets = client.listBuckets();
@@ -112,7 +112,7 @@ public class JH3BucketTest {
     public void argumentsTest(){
         try {
             // Initialize client
-            JH3Client client = new JH3Client(storeType, config, userId);
+            JH3 client = new JH3(storeType, config, userId);
 
             // Bucket with empty name
             assertFalse(client.createBucket(""));
@@ -126,7 +126,7 @@ public class JH3BucketTest {
             }
 
             // Large bucket name
-            String largeName = new String(new char[JH3Client.H3_BUCKET_NAME_SIZE + 1]).replace("\0", "a");
+            String largeName = new String(new char[JH3.H3_BUCKET_NAME_SIZE + 1]).replace("\0", "a");
             assertFalse(client.createBucket(largeName));
             assertEquals(H3Status.H3_INVALID_ARGS, client.getStatus());
 
@@ -155,7 +155,7 @@ public class JH3BucketTest {
             ArrayList<String> buckets;
 
             // Initialize client
-            JH3Client client = new JH3Client(storeType, config, userId);
+            JH3 client = new JH3(storeType, config, userId);
 
             // Check if there are any buckets
             buckets = client.listBuckets();

@@ -19,7 +19,7 @@ import java.util.logging.Logger;
  * @author Giorgos Kalaentzis
  * @version 0.1-beta
  */
-public class JH3Client implements Serializable{
+public class JH3 implements Serializable{
 
     private static final Cleaner cleaner = Cleaner.create();
     private Pointer handle;
@@ -27,9 +27,9 @@ public class JH3Client implements Serializable{
     private H3Status status = H3Status.H3_SUCCESS;
 
     /** The maximum bucket name size. */
-    public static int H3_BUCKET_NAME_SIZE = JH3libInterface.H3_BUCKET_NAME_SIZE;
+    public static int H3_BUCKET_NAME_SIZE = JH3Interface.H3_BUCKET_NAME_SIZE;
     /** The maximum object name size. */
-    public static int H3_OBJECT_NAME_SIZE = JH3libInterface.H3_OBJECT_NAME_SIZE;
+    public static int H3_OBJECT_NAME_SIZE = JH3Interface.H3_OBJECT_NAME_SIZE;
 
     /**
      * If empty constructor is called, user must call init
@@ -52,15 +52,18 @@ public class JH3Client implements Serializable{
      * @param config    Path of file containing options for storage type.
      * @param userId    The user that performs all operations.
      */
-    public JH3Client(H3StoreType storeType, String config, int userId){
+    public JH3(H3StoreType storeType, String config, int userId) throws H3Exception {
         Pointer configPath = new Memory(config.length() + 1);
         configPath.setString(0, config);
-        Logger log = Logger.getLogger(JH3Client.class.getName());
-        handle = JH3libInterface.INSTANCE.H3_Init(storeType.getStoreType(), configPath);
+        Logger log = Logger.getLogger(JH3.class.getName());
+        handle = JH3Interface.INSTANCE.H3_Init(storeType.getStoreType(), configPath);
+        if(handle == null){
+            throw new H3Exception("Could not initialize H3");
+        }
         token = new NativeAuth(userId);
 
         // When object is garbage collected, H3_Free is called to free the handle
-        cleaner.register(this, () -> {log.info("Calling H3_Free"); JH3libInterface.INSTANCE.H3_Free(handle);});
+        cleaner.register(this, () -> {JH3Interface.INSTANCE.H3_Free(handle);});
     }
 
     /**
@@ -69,7 +72,7 @@ public class JH3Client implements Serializable{
      * @param config Path of the file containing options for storage type.
      * @param token The authentication token of the user that performs all operations.
      */
-    public JH3Client(H3StoreType storeType, String config, H3Auth token){
+    public JH3(H3StoreType storeType, String config, H3Auth token) throws H3Exception {
         this(storeType, config, token.getUserId());
     }
 
@@ -77,7 +80,7 @@ public class JH3Client implements Serializable{
      * Get the current version of the JH3 client.
      * @return the version string.
      */
-    public String getVersion(){ return JH3libInterface.INSTANCE.H3_Version().getString(0); }
+    public String getVersion(){ return JH3Interface.INSTANCE.H3_Version().getString(0); }
 
     /**
      * Get the status of the last operation performed.
@@ -102,7 +105,7 @@ public class JH3Client implements Serializable{
     /* Bucket Management methods */
 
     /**
-     * Create a bucket. The status of the operation is set and can be retrieved by {@link JH3Client#getStatus() getStatus()}.
+     * Create a bucket. The status of the operation is set and can be retrieved by {@link JH3#getStatus() getStatus()}.
      * Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
@@ -121,13 +124,13 @@ public class JH3Client implements Serializable{
         Pointer bucket = new Memory(bucketName.length() + 1);
         bucket.setString(0, bucketName);
 
-        status = H3Status.fromInt(JH3libInterface.INSTANCE.H3_CreateBucket(handle, token, bucket));
+        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_CreateBucket(handle, token, bucket));
         return operationSucceeded(status);
     }
 
     /**
      * Delete a bucket. The bucket must be empty and the token must grant access to it in order to be deleted. The
-     * status of the operation is set and can be retrieved by {@link JH3Client#getStatus() getStatus()}.
+     * status of the operation is set and can be retrieved by {@link JH3#getStatus() getStatus()}.
      * Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
@@ -147,13 +150,13 @@ public class JH3Client implements Serializable{
         Pointer bucket = new Memory(bucketName.length() + 1);
         bucket.setString(0, bucketName);
 
-        status = H3Status.fromInt((JH3libInterface.INSTANCE.H3_DeleteBucket(handle, token, bucket)));
+        status = H3Status.fromInt((JH3Interface.INSTANCE.H3_DeleteBucket(handle, token, bucket)));
         return operationSucceeded(status);
     }
 
     /**
      * List buckets associated with a user. The status of the operation is set and can be retrieved by
-     * {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
+     * {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
@@ -168,7 +171,7 @@ public class JH3Client implements Serializable{
         IntBuffer nBuckets = IntBuffer.allocate(1);
 
         // Retrieve bucket names
-        status = H3Status.fromInt(JH3libInterface.INSTANCE.H3_ListBuckets(handle, token, bucketNameArray, nBuckets));
+        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_ListBuckets(handle, token, bucketNameArray, nBuckets));
 
         // Return empty list on failure
         if(!operationSucceeded(status))
@@ -193,7 +196,7 @@ public class JH3Client implements Serializable{
 
     /**
      * Retrieve information about a bucket. The status of the operation is set and can be retrieved by
-     * {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
+     * {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
@@ -215,7 +218,7 @@ public class JH3Client implements Serializable{
         byte retrieveStats = (byte) (getStats? 1:0);        // map boolean to byte
 
         bucket.setString(0, bucketName);
-        status = H3Status.fromInt(JH3libInterface.INSTANCE.H3_InfoBucket(handle, token, bucket, bucketInfo, retrieveStats));
+        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_InfoBucket(handle, token, bucket, bucketInfo, retrieveStats));
         if (!operationSucceeded(status))
             return null;
 
@@ -230,7 +233,7 @@ public class JH3Client implements Serializable{
 
     /**
      * Retrieve information about a bucket. No aggregate object information is produced. The status of the operation is
-     * set and can be retrieved by {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
+     * set and can be retrieved by {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
@@ -262,7 +265,7 @@ public class JH3Client implements Serializable{
      *     <li> Must not start with a slash.
      *     <li> A slash must not be followed by another one.
      * </ol>
-     * The status of the operation is set and can be retrieved by {@link JH3Client#getStatus() getStatus()}.
+     * The status of the operation is set and can be retrieved by {@link JH3#getStatus() getStatus()}.
      * Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
@@ -290,13 +293,13 @@ public class JH3Client implements Serializable{
         // TODO check if there is a better way
         data.getByteBuffer(0, objectData.getSize()).put(objectData.getData());
 
-        status = H3Status.fromInt(JH3libInterface.INSTANCE.H3_CreateObject(handle, token, bucket, name, data, size));
+        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_CreateObject(handle, token, bucket, name, data, size));
         return operationSucceeded(status);
     }
 
     /**
      * Copy a part of an object into a new one. Note that both objects will rest within the same bucket. The status of
-     * the operation is set and can be retrieved by {@link JH3Client#getStatus() getStatus()}.
+     * the operation is set and can be retrieved by {@link JH3#getStatus() getStatus()}.
      * Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
@@ -328,7 +331,7 @@ public class JH3Client implements Serializable{
         src.setString(0, srcObjectName);
         dst.setString(0, dstObjectName);
 
-        status = H3Status.fromInt(JH3libInterface.INSTANCE.H3_CreateObjectCopy(handle, token, bucket, src, off, nSize, dst));
+        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_CreateObjectCopy(handle, token, bucket, src, off, nSize, dst));
         if(operationSucceeded(status))
             return nSize.getValue().longValue();
 
@@ -338,7 +341,7 @@ public class JH3Client implements Serializable{
 
     /**
      * Delete an object from specified bucket.The status of the operation is set and can be retrieved by
-     * {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
+     * {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
@@ -360,7 +363,7 @@ public class JH3Client implements Serializable{
         bucket.setString(0,  bucketName);
         name.setString(0, objectName);
 
-        status = H3Status.fromInt(JH3libInterface.INSTANCE.H3_DeleteObject(handle, token, bucket, name));
+        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_DeleteObject(handle, token, bucket, name));
         return operationSucceeded(status);
     }
 
@@ -370,7 +373,7 @@ public class JH3Client implements Serializable{
      * must adhere to the object naming conventions. In case that there are more objects to be listed (indicated by the
      * operation status) the user may invoke again the function with an appropriately set offset in order to retrieve
      * the next batch of names. The status of the operation is set and can be retrieved by
-     * {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
+     * {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful (no more matching names exist).
      * <p>
@@ -397,7 +400,7 @@ public class JH3Client implements Serializable{
         bucket.setString(0, bucketName);
         nPrefix.setString(0, prefix);
 
-        status = H3Status.fromInt(JH3libInterface.INSTANCE.H3_ListObjects(handle, token, bucket, nPrefix, offset, objectArray, nObjects));
+        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_ListObjects(handle, token, bucket, nPrefix, offset, objectArray, nObjects));
 
         // Return null on failure
         if(!operationSucceeded(status))
@@ -421,7 +424,7 @@ public class JH3Client implements Serializable{
      * List all objects in a bucket. In case that there are more objects to be listed (indicated by the
      * operation status) the user may invoke again the function with an appropriately set offset in order to retrieve
      * the next batch of names. The status of the operation is set and can be retrieved by
-     * {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
+     * {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful (no more matching names exist).
      * <p>
@@ -449,7 +452,7 @@ public class JH3Client implements Serializable{
 
     /**
      * Get the object's information. Retrieve an object's size, timestamps, health status and creation.
-     * The status of the operation is set and can be retrieved by {@link JH3Client#getStatus() getStatus()}.
+     * The status of the operation is set and can be retrieved by {@link JH3#getStatus() getStatus()}.
      * Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
@@ -475,7 +478,7 @@ public class JH3Client implements Serializable{
         bucket.setString(0, bucketName);
         name.setString(0, objectName);
 
-        status = H3Status.fromInt(JH3libInterface.INSTANCE.H3_InfoObject(handle, token, bucket, name, info));
+        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_InfoObject(handle, token, bucket, name, info));
         if(operationSucceeded(status)){
             return new H3ObjectInfo((info.isBad == 1), info.size.longValue(), info.creation.longValue(),
                     info.lastAccess.longValue(), info.lastModification.longValue());
@@ -487,7 +490,7 @@ public class JH3Client implements Serializable{
     /**
      * Retrieve data from an object, starting at an offset. The size of the data to be retrieved cannot exceed
      * <code>MAX_INTEGER</code> due to Java's array restrictions. The status of the operation is set and can be retrieved
-     * by {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
+     * by {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
@@ -520,7 +523,7 @@ public class JH3Client implements Serializable{
         else
             data = new PointerByReference();
 
-        status = H3Status.fromInt(JH3libInterface.INSTANCE.H3_ReadObject(handle, token, bucket, name, nOffset, data, nSize));
+        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_ReadObject(handle, token, bucket, name, nOffset, data, nSize));
         if(operationSucceeded(status)) {
             ByteBuffer buffer = data.getValue().getByteBuffer(0, nSize.getValue().longValue());
             byte[] array = new byte[buffer.remaining()];        // remaining returns int
@@ -539,7 +542,7 @@ public class JH3Client implements Serializable{
 
     /**
      * Retrieve full data from an object. Object must not exceed 2GB in order to retrieve it.The status of the
-     * operation is set and can be retrieved by {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
+     * operation is set and can be retrieved by {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
@@ -571,7 +574,7 @@ public class JH3Client implements Serializable{
      * </ol>
      *
      * The status of the operation is set and can be retrieved by
-     * {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
+     * {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
@@ -596,7 +599,7 @@ public class JH3Client implements Serializable{
         name.setString(0, objectName);
         data.getByteBuffer(0, objectData.getSize()).put(objectData.getData());
 
-        status = H3Status.fromInt(JH3libInterface.INSTANCE.H3_WriteObject(handle, token, bucket, name, data, nSize, nOffset));
+        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_WriteObject(handle, token, bucket, name, data, nSize, nOffset));
         return operationSucceeded(status);
     }
 
@@ -611,7 +614,7 @@ public class JH3Client implements Serializable{
      * </ol>
      *
      * The status of the operation is set and can be retrieved by
-     * {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
+     * {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
@@ -632,7 +635,7 @@ public class JH3Client implements Serializable{
     /**
      * Copy a part of an object into a new or existing one, at a user provided offset.
      * Note that both objects will rest within the same bucket. The status of the operation is set and can be
-     * retrieved by {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
+     * retrieved by {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
@@ -665,7 +668,7 @@ public class JH3Client implements Serializable{
         src.setString(0, srcObjectName);
         dst.setString(0, dstObjectName);
 
-        status = H3Status.fromInt(JH3libInterface.INSTANCE.H3_WriteObjectCopy(handle, token, bucket, src, srcOff, nSize, dst, dstOff));
+        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_WriteObjectCopy(handle, token, bucket, src, srcOff, nSize, dst, dstOff));
         if(operationSucceeded(status))
             return nSize.getValue().longValue();
 
@@ -676,7 +679,7 @@ public class JH3Client implements Serializable{
     /**
      * Copies an object provided the new name is not taken by another object unless it is explicitly allowed
      * by the user in which case the previous object will be overwritten. Note that both objects will rest within
-     * the same bucket. The status of the operation is set and can be retrieved by {@link JH3Client#getStatus() getStatus()}.
+     * the same bucket. The status of the operation is set and can be retrieved by {@link JH3#getStatus() getStatus()}.
      * Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
@@ -707,14 +710,14 @@ public class JH3Client implements Serializable{
         src.setString(0, srcObjectName);
         dst.setString(0, dstObjectName);
 
-        status = H3Status.fromInt(JH3libInterface.INSTANCE.H3_CopyObject(handle, token, bucket, src, dst, overwrite));
+        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_CopyObject(handle, token, bucket, src, dst, overwrite));
         return operationSucceeded(status);
     }
 
     /**
      * Copies an object provided to the destination name, always allowing overwrite, even if the destination object
      * already exists.Note that both objects will rest within the same bucket. The status of the operation is set and
-     * can be retrieved by {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
+     * can be retrieved by {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
@@ -738,7 +741,7 @@ public class JH3Client implements Serializable{
     /**
      * Renames an object provided the destination name is not taken by another object unless it is explicitly allowed
      * by the user in which case the previous object will be overwritten. Note that both objects will rest within
-     * the same bucket.  The status of the operation is set and can be retrieved by {@link JH3Client#getStatus() getStatus()}.
+     * the same bucket.  The status of the operation is set and can be retrieved by {@link JH3#getStatus() getStatus()}.
      * Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
@@ -771,7 +774,7 @@ public class JH3Client implements Serializable{
         src.setString(0, srcObjectName);
         dst.setString(0, dstObjectName);
 
-        status = H3Status.fromInt(JH3libInterface.INSTANCE.H3_MoveObject(handle, token, bucket, src, dst, overwrite));
+        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_MoveObject(handle, token, bucket, src, dst, overwrite));
         return operationSucceeded(status);
 
     }
@@ -779,7 +782,7 @@ public class JH3Client implements Serializable{
     /**
      * Renames an object to the destination name, always allowing overwrite, even if the destination object already
      * exists. Note that both objects will rest within the same bucket. The status of the operation is set and can be
-     * retrieved by {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
+     * retrieved by {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
@@ -805,7 +808,7 @@ public class JH3Client implements Serializable{
 
     /**
      * Reduces the size of the object by permanently removing excess data. The status of the operation is set and can be
-     * retrieved by {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
+     * retrieved by {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
@@ -831,14 +834,14 @@ public class JH3Client implements Serializable{
         bucket.setString(0, bucketName);
         name.setString(0, objectName);
 
-        status = H3Status.fromInt(JH3libInterface.INSTANCE.H3_TruncateObject(handle, token, bucket, name, nSize));
+        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_TruncateObject(handle, token, bucket, name, nSize));
 
         return operationSucceeded(status);
     }
 
     /**
      * Reduces the size of the object to zero by permanently removing all data in object. The status of the operation
-     * is set and can be retrieved by {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
+     * is set and can be retrieved by {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
@@ -860,7 +863,7 @@ public class JH3Client implements Serializable{
 
     /**
      * Swaps data between two objects. Note that both objects will rest within the same bucket. The status of the
-     * operation is set and can be retrieved by {@link JH3Client#getStatus() getStatus()}.
+     * operation is set and can be retrieved by {@link JH3#getStatus() getStatus()}.
      * Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
@@ -886,7 +889,7 @@ public class JH3Client implements Serializable{
         firstName.setString(0, srcObjectName);
         secondName.setString(0, dstObjectName);
 
-        status = H3Status.fromInt(JH3libInterface.INSTANCE.H3_ExchangeObject(handle, token, bucket, firstName, secondName));
+        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_ExchangeObject(handle, token, bucket, firstName, secondName));
 
         return operationSucceeded(status);
     }
@@ -903,7 +906,7 @@ public class JH3Client implements Serializable{
      *  <li> A slash must not be followed by another one.
      *</ol>
      *
-     * The status of the operation is set and can be retrieved by {@link JH3Client#getStatus() getStatus()}.
+     * The status of the operation is set and can be retrieved by {@link JH3#getStatus() getStatus()}.
      * Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
@@ -925,7 +928,7 @@ public class JH3Client implements Serializable{
         bucket.setString(0, bucketName);
         name.setString(0, objectName);
 
-        status = H3Status.fromInt(JH3libInterface.INSTANCE.H3_CreateMultipart(handle, token, bucket, name, multipartId));
+        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_CreateMultipart(handle, token, bucket, name, multipartId));
 
         // Return null on error
         if(!operationSucceeded(status)) {
@@ -939,7 +942,7 @@ public class JH3Client implements Serializable{
      * Converts a multipart object into an ordinary one by coalescing uploaded parts ordered by their part-ID.
      * If another object with that name already exists it is overwritten. Once completed, the multipart-ID is
      * invalidated thus the multipart API becomes in-applicable for the object. The status of the operation is set and
-     * can be retrieved by {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
+     * can be retrieved by {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
@@ -959,13 +962,13 @@ public class JH3Client implements Serializable{
         Pointer multipart = new Memory(multipartId.getMultipartId().length() +1);
         multipart.setString(0, multipartId.getMultipartId());
 
-        status = H3Status.fromInt(JH3libInterface.INSTANCE.H3_CompleteMultipart(handle, token, multipart));
+        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_CompleteMultipart(handle, token, multipart));
         return operationSucceeded(status);
     }
 
     /**
      * Deletes a multipart object along with all uploaded parts if any. Once deleted, the multipart-ID is
-     * invalidated. The status of the operation is set and can be retrieved by {@link JH3Client#getStatus() getStatus()}.
+     * invalidated. The status of the operation is set and can be retrieved by {@link JH3#getStatus() getStatus()}.
      * Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
@@ -985,7 +988,7 @@ public class JH3Client implements Serializable{
         Pointer multipart = new Memory(multipartId.getMultipartId().length() +1);
         multipart.setString(0, multipartId.getMultipartId());
 
-        status = H3Status.fromInt(JH3libInterface.INSTANCE.H3_AbortMultipart(handle, token, multipart));
+        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_AbortMultipart(handle, token, multipart));
         return operationSucceeded(status);
     }
 
@@ -993,7 +996,7 @@ public class JH3Client implements Serializable{
      * Retrieve the ID of all multipart objects in specified bucket. In case that there are more multipart objects to
      * be listed (indicated by the operation status) the user may invoke again the function with an appropriately set
      * offset in order to retrieve the next batch of multiparts. The status of the operation is set and can be
-     * retrieved by {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
+     * retrieved by {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful (no more matching names exist).
      * <p>
@@ -1019,7 +1022,7 @@ public class JH3Client implements Serializable{
 
         bucket.setString(0, bucketName);
 
-        status = H3Status.fromInt(JH3libInterface.INSTANCE.H3_ListMultiparts(handle, token, bucket, offset, multipartIdArray, nIds));
+        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_ListMultiparts(handle, token, bucket, offset, multipartIdArray, nIds));
         // Return null on failure
         if(!operationSucceeded(status))
             return null;
@@ -1040,9 +1043,9 @@ public class JH3Client implements Serializable{
     /**
      * Retrieve the ID of all multipart objects in specified bucket. In case that there are more multipart objects to
      * be listed (indicated by the operation status) the user may invoke
-     * {@link JH3Client#listMultiparts(String,int) listMultiparts(String bucketName, int offset)} with an appropriately set
+     * {@link JH3#listMultiparts(String,int) listMultiparts(String bucketName, int offset)} with an appropriately set
      * offset in order to retrieve the next batch of multiparts. The status of the operation is set and can be
-     * retrieved by {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
+     * retrieved by {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful (no more matching names exist).
      * <p>
@@ -1066,7 +1069,7 @@ public class JH3Client implements Serializable{
 
     /**
      * Retrieves information for each part of a multipart object. The status of the operation is set and can be
-     * retrieved by {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
+     * retrieved by {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
@@ -1087,7 +1090,7 @@ public class JH3Client implements Serializable{
         multipart.setString(0, multipartId.getMultipartId());
         PointerByReference partInfoPointer = new PointerByReference();
 
-        status = H3Status.fromInt(JH3libInterface.INSTANCE.H3_ListParts(handle, token, multipart, partInfoPointer, nParts));
+        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_ListParts(handle, token, multipart, partInfoPointer, nParts));
         if(!operationSucceeded(status))
             return null;
 
@@ -1112,7 +1115,7 @@ public class JH3Client implements Serializable{
     /**
      * Creates a part of a multipart object designated by a number. If a part with the same number exists it is
      * replaced by the new one. The status of the operation is set and can be retrieved by
-     * {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
+     * {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
@@ -1137,7 +1140,7 @@ public class JH3Client implements Serializable{
         multipart.setString(0, multipartId.getMultipartId());
         data.getByteBuffer(0, objectData.getSize()).put(objectData.getData());
 
-        status = H3Status.fromInt(JH3libInterface.INSTANCE.H3_CreatePart(handle, token, multipart, partNumber, data, size));
+        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_CreatePart(handle, token, multipart, partNumber, data, size));
         return operationSucceeded(status);
     }
 
@@ -1145,7 +1148,7 @@ public class JH3Client implements Serializable{
      * Creates a part of a multipart object from a pre-existing object. If a part with the same number exists it is
      * replaced by the new one. The data is sourced from an ordinary object expected to be hosted in the same  bucket
      * as the multipart one. The status of the operation is set and can be retrieved by
-     * {@link JH3Client#getStatus() getStatus()}. Expected status from operation:
+     * {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
      * {@link H3Status#H3_SUCCESS} - The operation was successful.
      * <p>
@@ -1174,7 +1177,7 @@ public class JH3Client implements Serializable{
         name.setString(0, objectName);
         multipart.setString(0, multipartId.getMultipartId());
 
-        status = H3Status.fromInt(JH3libInterface.INSTANCE.H3_CreatePartCopy(handle, token, name, nOffset, nSize, multipart, partNumber));
+        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_CreatePartCopy(handle, token, name, nOffset, nSize, multipart, partNumber));
         return operationSucceeded(status);
     }
 

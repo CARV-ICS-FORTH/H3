@@ -47,7 +47,7 @@ public class JH3MultipartTest {
     public void simpleTest(){
         try {
             //Initialize client
-            JH3Client client = new JH3Client(storeType, config, userId);
+            JH3 client = new JH3(storeType, config, userId);
             ArrayList<String> buckets;
 
             // Create some random data and store them into an H3Object

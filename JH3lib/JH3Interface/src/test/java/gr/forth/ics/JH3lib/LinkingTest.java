@@ -36,7 +36,7 @@ public class LinkingTest
     private String dir = "/tmp/h3";
     private NativeAuth myToken = new NativeAuth(17);        // Dummy authorization
     // Dummy callback function
-    private JH3libInterface.h3_name_iterator_cb println = new JH3libInterface.h3_name_iterator_cb() {
+    private JH3Interface.h3_name_iterator_cb println = new JH3Interface.h3_name_iterator_cb() {
         @Override
         public void apply(Pointer name, Pointer userData) {
             System.out.println("name = " + name.getString(0) + ", userData = " + userData.getString(0));
@@ -71,7 +71,7 @@ public class LinkingTest
         log.info("---- printVersion ----");
 
         // h3lib version
-        Pointer version = JH3libInterface.INSTANCE.H3_Version();
+        Pointer version = JH3Interface.INSTANCE.H3_Version();
         log.info("h3lib Version: " + version.getString(0));
     }
 
@@ -88,12 +88,12 @@ public class LinkingTest
         log.info("Using Configuration File: " + cfgFileName.getString(0));
 
         // Get h3lib handle
-        Pointer handle = JH3libInterface.INSTANCE.H3_Init(JH3libInterface.StoreType.H3_STORE_CONFIG, cfgFileName);
+        Pointer handle = JH3Interface.INSTANCE.H3_Init(JH3Interface.StoreType.H3_STORE_CONFIG, cfgFileName);
         assertNotEquals(null, handle);
         log.info("Initialized h3lib handle successfully");
 
         // Call Free
-        JH3libInterface.INSTANCE.H3_Free(handle);
+        JH3Interface.INSTANCE.H3_Free(handle);
     }
 
     /**
@@ -106,27 +106,27 @@ public class LinkingTest
             // Get h3lib handle
             Pointer cfgFileName = new Memory(configPath.length() + 1);
             cfgFileName.setString(0, configPath);
-            Pointer handle = JH3libInterface.INSTANCE.H3_Init(JH3libInterface.StoreType.H3_STORE_CONFIG, cfgFileName);
+            Pointer handle = JH3Interface.INSTANCE.H3_Init(JH3Interface.StoreType.H3_STORE_CONFIG, cfgFileName);
             assertNotEquals(null, handle);
 
             // Create a bucket
             String b1 = "bucket1";
             Pointer bucketName = new Memory(b1.length() + 1);
             bucketName.setString(0, b1);
-            assertEquals(H3Status.H3_SUCCESS, H3Status.fromInt(JH3libInterface.INSTANCE.H3_CreateBucket(handle, myToken, bucketName)));
+            assertEquals(JH3Interface.Status.H3_SUCCESS, JH3Interface.INSTANCE.H3_CreateBucket(handle, myToken, bucketName));
 
             // Create a second bucket
             String b2 = "bucket0";
             Pointer bucketName2 = new Memory(b2.length() + 1);
             bucketName2.setString(0, b2);
-            assertEquals(H3Status.H3_SUCCESS, H3Status.fromInt(JH3libInterface.INSTANCE.H3_CreateBucket(handle, myToken, bucketName2)));
+            assertEquals(JH3Interface.Status.H3_SUCCESS, JH3Interface.INSTANCE.H3_CreateBucket(handle, myToken, bucketName2));
 
             log.info("Created buckets: {" + b1 + ", " + b2 + "} successfully");
 
             // List buckets
             PointerByReference bucketNameArray = new PointerByReference();
             IntBuffer nBuckets = IntBuffer.allocate(1);
-            assertEquals(H3Status.H3_SUCCESS, H3Status.fromInt(JH3libInterface.INSTANCE.H3_ListBuckets(handle, myToken, bucketNameArray, nBuckets)));
+            assertEquals(JH3Interface.Status.H3_SUCCESS, JH3Interface.INSTANCE.H3_ListBuckets(handle, myToken, bucketNameArray, nBuckets));
             assertEquals(2, nBuckets.get(0));
 
             ArrayList<String> buckets = new ArrayList<>();
@@ -146,15 +146,15 @@ public class LinkingTest
             log.info("List buckets result: " + buckets.toString());
 
             // Delete Buckets
-            assertEquals(H3Status.H3_SUCCESS, H3Status.fromInt(JH3libInterface.INSTANCE.H3_DeleteBucket(handle, myToken, bucketName)));
-            assertEquals(H3Status.H3_SUCCESS, H3Status.fromInt(JH3libInterface.INSTANCE.H3_DeleteBucket(handle, myToken, bucketName2)));
+            assertEquals(JH3Interface.Status.H3_SUCCESS, JH3Interface.INSTANCE.H3_DeleteBucket(handle, myToken, bucketName));
+            assertEquals(JH3Interface.Status.H3_SUCCESS, JH3Interface.INSTANCE.H3_DeleteBucket(handle, myToken, bucketName2));
 
             // Check if list is empty
-            assertEquals(H3Status.H3_SUCCESS, H3Status.fromInt(JH3libInterface.INSTANCE.H3_ListBuckets(handle,myToken, bucketNameArray, nBuckets)));
+            assertEquals(JH3Interface.Status.H3_SUCCESS, JH3Interface.INSTANCE.H3_ListBuckets(handle,myToken, bucketNameArray, nBuckets));
             assertEquals(0, nBuckets.get(0));
             log.info("Buckets were deleted successfully");
 
-            JH3libInterface.INSTANCE.H3_Free(handle);
+            JH3Interface.INSTANCE.H3_Free(handle);
 
         } catch (Exception e) {
             //e.printStackTrace();
@@ -172,13 +172,13 @@ public class LinkingTest
             // Get h3lib handle
             Pointer cfgFileName = new Memory(configPath.length() + 1);
             cfgFileName.setString(0, configPath);
-            Pointer handle = JH3libInterface.INSTANCE.H3_Init(JH3libInterface.StoreType.H3_STORE_CONFIG, cfgFileName);
+            Pointer handle = JH3Interface.INSTANCE.H3_Init(JH3Interface.StoreType.H3_STORE_CONFIG, cfgFileName);
             assertNotEquals(null, handle);
 
             String b1 = "bucket1";
             Pointer bucketName = new Memory(b1.length() + 1);
             bucketName.setString(0, b1);
-            assertEquals(H3Status.H3_SUCCESS, H3Status.fromInt(JH3libInterface.INSTANCE.H3_CreateBucket(handle, myToken, bucketName)));
+            assertEquals(JH3Interface.Status.H3_SUCCESS, JH3Interface.INSTANCE.H3_CreateBucket(handle, myToken, bucketName));
 
             // Create dummy data
             String data = "dummyValue";
@@ -190,7 +190,7 @@ public class LinkingTest
             String object1 = "object1";
             Pointer objectName = new Memory(object1.length() +1);
             objectName.setString(0, object1);
-            assertEquals(H3Status.H3_SUCCESS, H3Status.fromInt(JH3libInterface.INSTANCE.H3_CreateObject(handle, myToken, bucketName, objectName, userData, size)));
+            assertEquals(JH3Interface.Status.H3_SUCCESS, JH3Interface.INSTANCE.H3_CreateObject(handle, myToken, bucketName, objectName, userData, size));
 
             // List current objects
             PointerByReference objectNameArray = new PointerByReference();
@@ -198,7 +198,7 @@ public class LinkingTest
             Pointer prefix = new Memory("".length() +1);
             objectName.setString(0, "");
 
-            assertEquals(H3Status.H3_SUCCESS, H3Status.fromInt(JH3libInterface.INSTANCE.H3_ListObjects(handle, myToken, bucketName, prefix,0, objectNameArray, nObjects)));
+            assertEquals(JH3Interface.Status.H3_SUCCESS, JH3Interface.INSTANCE.H3_ListObjects(handle, myToken, bucketName, prefix,0, objectNameArray, nObjects));
             assertEquals(1, nObjects.get(0));
 
             // Create second object by copying first
@@ -206,11 +206,11 @@ public class LinkingTest
             Pointer objectName2 = new Memory(object2.length() +1);
             objectName.setString(0, object2);
             NativeLong offset = new NativeLong(0);
-            assertEquals(H3Status.H3_SUCCESS, H3Status.fromInt(JH3libInterface.INSTANCE.H3_CreateObjectCopy(handle, myToken, bucketName, objectName, offset, new NativeLongByReference(size), objectName2)));
+            assertEquals(JH3Interface.Status.H3_SUCCESS, JH3Interface.INSTANCE.H3_CreateObjectCopy(handle, myToken, bucketName, objectName, offset, new NativeLongByReference(size), objectName2));
 
 
 
-            assertEquals(H3Status.H3_SUCCESS, H3Status.fromInt(JH3libInterface.INSTANCE.H3_ListObjects(handle, myToken, bucketName, prefix,0, objectNameArray, nObjects)));
+            assertEquals(JH3Interface.Status.H3_SUCCESS, JH3Interface.INSTANCE.H3_ListObjects(handle, myToken, bucketName, prefix,0, objectNameArray, nObjects));
             assertEquals(2, nObjects.get(0));
 
             ArrayList<String> objects = new ArrayList<>();
@@ -229,17 +229,17 @@ public class LinkingTest
             assertEquals(expected, objects);
             log.info("List objects result: " + objects.toString());
 
-            assertEquals(H3Status.H3_SUCCESS, H3Status.fromInt(JH3libInterface.INSTANCE.H3_DeleteObject(handle, myToken, bucketName, objectName)));
-            assertEquals(H3Status.H3_SUCCESS, H3Status.fromInt(JH3libInterface.INSTANCE.H3_DeleteObject(handle, myToken, bucketName, objectName2)));
+            assertEquals(JH3Interface.Status.H3_SUCCESS, JH3Interface.INSTANCE.H3_DeleteObject(handle, myToken, bucketName, objectName));
+            assertEquals(JH3Interface.Status.H3_SUCCESS, JH3Interface.INSTANCE.H3_DeleteObject(handle, myToken, bucketName, objectName2));
 
-            assertEquals(H3Status.H3_SUCCESS, H3Status.fromInt(JH3libInterface.INSTANCE.H3_ListObjects(handle, myToken, bucketName, prefix,0, objectNameArray, nObjects)));
+            assertEquals(JH3Interface.Status.H3_SUCCESS, JH3Interface.INSTANCE.H3_ListObjects(handle, myToken, bucketName, prefix,0, objectNameArray, nObjects));
             assertEquals(0, nObjects.get(0));
             log.info("Objects were deleted successfully");
 
-            assertEquals(H3Status.H3_SUCCESS, H3Status.fromInt(JH3libInterface.INSTANCE.H3_DeleteBucket(handle, myToken, bucketName)));
+            assertEquals(JH3Interface.Status.H3_SUCCESS, JH3Interface.INSTANCE.H3_DeleteBucket(handle, myToken, bucketName));
 
             // Free h3lib handle
-            JH3libInterface.INSTANCE.H3_Free(handle);
+            JH3Interface.INSTANCE.H3_Free(handle);
 
 
            // Pointer objectName3 = new Memory("object3".length() +1);
