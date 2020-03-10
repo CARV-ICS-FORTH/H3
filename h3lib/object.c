@@ -41,6 +41,34 @@ int ValidObjectName(char* name){
     return status;
 }
 
+H3_Status _ValidObjectName(char* name){
+	H3_Status status = H3_SUCCESS;
+
+    if(name){
+
+        // Too small/big
+        regex_t regex;
+        size_t nameSize = strnlen(name, H3_OBJECT_NAME_SIZE+1);
+        if(nameSize > H3_OBJECT_NAME_SIZE){
+        	status = H3_NAME_TO_LONG;
+        }
+        else if(nameSize == 0 || regcomp(&regex, "(^/)|([^/_0-9a-zA-Z.-])|(/{2,})", 0) != REG_NOERROR){
+        	status = H3_INVALID_ARGS;
+        }
+        else if(regexec(&regex, name, 0, NULL, 0) != REG_NOMATCH){
+        	regfree(&regex);
+        	status = H3_INVALID_ARGS;
+        }
+        else
+        	regfree(&regex);
+    }
+
+    return status;
+}
+
+
+
+
 int ValidPrefix(char* name){
     if(name){
         size_t nameSize = strnlen(name, H3_OBJECT_NAME_SIZE+1);
@@ -496,8 +524,12 @@ H3_Status H3_InfoObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
     size_t mSize = 0;
 
     // Validate bucketName & extract userId from token
-    if( !ValidBucketName(bucketName) || !ValidObjectName(objectName) || !GetUserId(token, userId) ){
+    if( !ValidBucketName(bucketName) || !GetUserId(token, userId) ){
         return H3_INVALID_ARGS;
+    }
+
+    if((status = _ValidObjectName(objectName)) != H3_SUCCESS){
+    	return status;
     }
 
     GetObjectId(bucketName, objectName, objId);
@@ -523,6 +555,10 @@ H3_Status H3_InfoObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
     }
     else if(storeStatus == KV_KEY_NOT_EXIST)
         status = H3_NOT_EXISTS;
+    else if(storeStatus == KV_NAME_TO_LONG)
+        status = H3_NAME_TO_LONG;
+    else
+    	status = H3_FAILURE;
 
     return status;
 }

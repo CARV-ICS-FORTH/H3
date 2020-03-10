@@ -289,6 +289,10 @@ KV_Status KV_FS_Read(KV_Handle handle, KV_Key key, off_t offset, KV_Value* value
             free(*value);
     }
 
+    if(errno == ENAMETOOLONG){
+    	return KV_NAME_TO_LONG;
+    }
+
     free(full_key);
     return status;
 }
