@@ -600,8 +600,12 @@ H3_Status H3_SetObjectAttributes(H3_Handle handle, H3_Token token, H3_Name bucke
     size_t mSize = 0;
 
     // Validate bucketName & extract userId from token
-    if( !ValidBucketName(bucketName) || !ValidObjectName(objectName) || !GetUserId(token, userId) ){
+    if( !ValidBucketName(bucketName) || !GetUserId(token, userId) ){
         return H3_INVALID_ARGS;
+    }
+
+    if((status = _ValidObjectName(objectName)) != H3_SUCCESS){
+    	return status;
     }
 
     GetObjectId(bucketName, objectName, objId);
