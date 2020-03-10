@@ -1,0 +1,19 @@
+// Write Dataframe to H3 as text
+val someDF = Seq("word1", "word2", "word4", "this is").toDF("word")
+someDF.write.text("h3://mybucket/dir1/df.txt")
+
+// Read text from H3
+spark.read.text("h3://mybucket/dir1/df.txt").take(4)
+
+// Create DataFrame
+val someDF = Seq((8, "word1"), (64, "word2"), (-27, "word4"), (104, "this is")).toDF("number", "word")
+
+// Write DataFrame to H3 as CSV
+someDF.write.csv("h3://mybucket/dir1/df.csv")
+// Read CSV File from H3
+spark.read.csv("h3://mybucket/dir1/df.csv").take(4)
+// Write DataFrame to H3 as json
+someDF.write.json("h3://mybucket/dir1/df.json")
+// Read Json from H3
+spark.read.json("h3://mybucket/dir1/df.json").take(4)
+

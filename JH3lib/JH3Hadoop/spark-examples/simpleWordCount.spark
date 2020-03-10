@@ -1,0 +1,5 @@
+val someDF = Seq((8, "word1"), (64, "word2"), (-27, "word4"), (104, "this is")).toDF("number", "word")
+someDF.rdd.saveAsTextFile("h3://mybucket/dir1/rdd")
+val text_file = sc.textFile("h3://mybucket/dir1/rdd")
+val counts = text_file.flatMap(line => line.split(" ")).map(word => (word, 1)).reduceByKey(_ + _)
+counts.take(4)
