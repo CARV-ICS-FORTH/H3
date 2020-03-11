@@ -109,8 +109,9 @@ typedef struct {
     char isBad;                 			//!< Data are corrupt
     size_t size;                			//!< Object size
     struct timespec creation;            	//!< Creation timestamp
-    struct timespec lastAccess;          	//!< Last access timestamp
-    struct timespec lastModification;    	//!< Last modification timestamp
+    struct timespec lastAccess;          	//!< The last time the object was read
+    struct timespec lastModification;    	//!< The last time the object was modified (content has been modified)
+    struct timespec lastChange;    			//!< The last time the object's attributes were changed (e.g. permissions)
     mode_t mode;							//!< File type and mode (used by h3fuse)
 } H3_ObjectInfo;
 

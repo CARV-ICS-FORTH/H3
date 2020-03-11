@@ -542,6 +542,7 @@ H3_Status H3_InfoObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
             objectInfo->isBad = objMeta->isBad;
             objectInfo->lastAccess = objMeta->lastAccess;
             objectInfo->lastModification = objMeta->lastModification;
+            objectInfo->lastChange = objMeta->lastChange;
             objectInfo->mode = objMeta->mode;
 
             if(objMeta->nParts)
@@ -622,7 +623,7 @@ H3_Status H3_SetObjectAttributes(H3_Handle handle, H3_Token token, H3_Name bucke
         		if(attrib.gid >= 0) objMeta->gid = attrib.gid;
         	}
 
-        	clock_gettime(CLOCK_REALTIME, &objMeta->lastAccess);
+        	clock_gettime(CLOCK_REALTIME, &objMeta->lastChange);
         	if(op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, mSize) == KV_SUCCESS){
         		status = H3_SUCCESS;
         	}
