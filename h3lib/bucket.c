@@ -26,7 +26,7 @@ int ValidBucketName(char* name){
     // Too small/big
     size_t nameSize = strnlen(name, H3_BUCKET_NAME_SIZE+1);
     if( nameSize == 0 || nameSize > H3_BUCKET_NAME_SIZE     ||
-        regcomp(&regex, "[^_0-9a-zA-Z.-]", 0) != REG_NOERROR    ){
+        regcomp(&regex, "[^_0-9a-zA-Z.-]", REG_EXTENDED) != REG_NOERROR    ){
         return FALSE;
     }
 

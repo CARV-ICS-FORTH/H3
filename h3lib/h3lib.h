@@ -25,8 +25,9 @@
 /** \defgroup Macros
  *  @{
  */
-#define H3_BUCKET_NAME_SIZE 64      //!< Maximum number of characters allowed for a bucket
-#define H3_OBJECT_NAME_SIZE 512     //!< Maximum number of characters allowed for an object
+#define H3_LAST_ONLY_CHAR			"%"	//!< This character can only appear at the end of an object-name
+#define H3_BUCKET_NAME_SIZE 64      	//!< Maximum number of characters allowed for a bucket
+#define H3_OBJECT_NAME_SIZE 512     	//!< Maximum number of characters allowed for an object
 /** @}*/
 
 
@@ -113,6 +114,8 @@ typedef struct {
     struct timespec lastModification;    	//!< The last time the object was modified (content has been modified)
     struct timespec lastChange;    			//!< The last time the object's attributes were changed (e.g. permissions)
     mode_t mode;							//!< File type and mode (used by h3fuse)
+    uid_t uid;								//!< User ID (used by h3fuse)
+    gid_t gid;								//!< Group ID (used by h3fuse)
 } H3_ObjectInfo;
 
 

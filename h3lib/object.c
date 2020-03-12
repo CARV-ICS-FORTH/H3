@@ -27,11 +27,11 @@ int ValidObjectName(char* name){
         regex_t regex;
         size_t nameSize = strnlen(name, H3_OBJECT_NAME_SIZE+1);
         if( nameSize == 0 || nameSize > H3_OBJECT_NAME_SIZE     ||
-            regcomp(&regex, "(^/)|([^/_0-9a-zA-Z.-])|(/{2,})", 0) != REG_NOERROR    ){
+            regcomp(&regex, "(^/)|([^/_+@%0-9a-zA-Z.-])|(/{2,})|(/$)|(%.)", REG_EXTENDED) != REG_NOERROR    ){
             return FALSE;
         }
 
-        // Contains invalid characters or starts with "/" or has back-to-back "/"
+        // Contains invalid characters or starts/ends with "/" or has back-to-back "/" or special character "%" is not the last one
         if(regexec(&regex, name, 0, NULL, 0) != REG_NOMATCH){
             status = FALSE;
         }
@@ -52,7 +52,7 @@ H3_Status _ValidObjectName(char* name){
         if(nameSize > H3_OBJECT_NAME_SIZE){
         	status = H3_NAME_TO_LONG;
         }
-        else if(nameSize == 0 || regcomp(&regex, "(^/)|([^/_0-9a-zA-Z.-])|(/{2,})", 0) != REG_NOERROR){
+        else if(nameSize == 0 || regcomp(&regex, "(^/)|([^/_+@%0-9a-zA-Z.-])|(/{2,})|(/$)|(%.)", REG_EXTENDED) != REG_NOERROR){
         	status = H3_INVALID_ARGS;
         }
         else if(regexec(&regex, name, 0, NULL, 0) != REG_NOMATCH){
@@ -64,6 +64,15 @@ H3_Status _ValidObjectName(char* name){
     }
 
     return status;
+}
+
+H3_Status _ValidPrefix(char* name){
+    if(name){
+        size_t nameSize = strnlen(name, H3_OBJECT_NAME_SIZE+1);
+        if (nameSize == 0)
+            return H3_SUCCESS;
+    }
+    return _ValidObjectName(name);
 }
 
 
@@ -209,8 +218,7 @@ KV_Status WriteData(H3_Context* ctx, H3_ObjectMetadata* meta, KV_Value value, si
 
     // Update object metadata
     meta->nParts += nNewParts;
-    clock_gettime(CLOCK_REALTIME, &meta->lastAccess);
-    meta->lastModification = meta->lastAccess;
+    clock_gettime(CLOCK_REALTIME, &meta->lastModification);
     qsort(meta->part, meta->nParts, sizeof(H3_PartMetadata), ComparePartMetadataByOffset);
 
     return status;
@@ -379,12 +387,16 @@ H3_Status H3_CreateObject(H3_Handle handle, H3_Token token, H3_Name bucketName, 
             // Write object
         	clock_gettime(CLOCK_REALTIME, &objMeta->creation);
             objMeta->isBad = WriteData(ctx, objMeta, data, size, 0, 0, DivideInParts) != KV_SUCCESS?1:0;
+            objMeta->lastAccess = objMeta->lastModification;
             if( op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, objMetaSize) == KV_SUCCESS && !objMeta->isBad){
                 status = H3_SUCCESS;
             }
         }
         else if(kvStatus == KV_KEY_EXIST)
             status = H3_EXISTS;
+
+        else if(kvStatus == KV_NAME_TO_LONG)
+            status = H3_NAME_TO_LONG;
 
         free(objMeta);
     }
@@ -503,6 +515,7 @@ H3_Status H3_ReadObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
  * @result \b H3_FAILURE            Unable to retrieve object info or user has no access
  * @result \b H3_NOT_EXISTS         Object does not exist
  * @result \b H3_INVALID_ARGS       Missing or malformed arguments
+ * @result \b H3_NAME_TO_LONG       Object or bucket name is too long
  *
  */
 H3_Status H3_InfoObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, H3_ObjectInfo* objectInfo){
@@ -544,6 +557,8 @@ H3_Status H3_InfoObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
             objectInfo->lastModification = objMeta->lastModification;
             objectInfo->lastChange = objMeta->lastChange;
             objectInfo->mode = objMeta->mode;
+            objectInfo->uid = objMeta->uid;
+            objectInfo->gid = objMeta->gid;
 
             if(objMeta->nParts)
                 objectInfo->size = objMeta->part[objMeta->nParts-1].offset + objMeta->part[objMeta->nParts-1].size;
@@ -1035,8 +1050,12 @@ H3_Status H3_ListObjects(H3_Handle handle, H3_Token token, H3_Name bucketName, H
     size_t mSize = 0;
 
     // Validate bucketName & extract userId from token
-    if( !ValidBucketName(bucketName) || !ValidPrefix(prefix) || !GetUserId(token, userId) || !GetBucketId(bucketName, bucketId)){
+    if( !ValidBucketName(bucketName) || !GetUserId(token, userId) || !GetBucketId(bucketName, bucketId)){
         return H3_INVALID_ARGS;
+    }
+
+    if((status = _ValidPrefix(prefix)) != H3_SUCCESS){
+    	return status;
     }
 
     if( (storeStatus = op->metadata_read(_handle, bucketId, 0, &value, &mSize)) == KV_SUCCESS){

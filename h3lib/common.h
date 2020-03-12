@@ -111,8 +111,9 @@ typedef struct{
     H3_UserId userId;
     uuid_t uuid;
     struct timespec creation;
-    struct timespec lastAccess;
-    struct timespec lastModification;
+    struct timespec lastAccess;				// Access - the last time the file was read
+    struct timespec lastModification;		// Modify - the last time the file was modified (content has been modified)
+    struct timespec lastChange;				// Change - the last time meta data of the file was changed (e.g. permissions)
     mode_t mode;
     uid_t uid;
     gid_t gid;
