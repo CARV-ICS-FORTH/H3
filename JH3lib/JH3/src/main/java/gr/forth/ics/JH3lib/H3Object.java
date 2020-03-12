@@ -21,7 +21,10 @@ public class H3Object {
         this.size = size;
     }
 
-    public H3Object() {}
+    public H3Object() {
+        this.data = new byte[0];
+        this.size = 0;
+    }
 
     /**
      * Sets the data of the H3Object.

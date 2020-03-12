@@ -16,10 +16,10 @@ import java.net.URISyntaxException;
 
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
-public class H3FS extends DelegateToFileSystem {
+public class JH3HadoopAbstractFS extends DelegateToFileSystem {
 
-	public H3FS(URI theUri, Configuration conf) throws IOException, URISyntaxException {
-		super(theUri, new H3FileSystem(), conf, "h3", false);
+	public JH3HadoopAbstractFS(URI theUri, Configuration conf) throws IOException, URISyntaxException {
+		super(theUri, new JH3HadoopFS(), conf, "h3", false);
 	}
    
 	@Override

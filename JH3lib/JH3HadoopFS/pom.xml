@@ -9,9 +9,9 @@
     <version>0.1-beta</version>
   </parent>
 
-  <artifactId>JH3Hadoop</artifactId>
+  <artifactId>JH3HadoopFS</artifactId>
   <version>0.1-beta</version>
-  <name>JH3Hadoop</name>
+  <name>JH3HadoopFS</name>
   <url>http://maven.apache.org</url>
 
   <build>

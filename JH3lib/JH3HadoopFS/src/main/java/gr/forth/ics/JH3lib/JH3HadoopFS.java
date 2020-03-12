@@ -24,7 +24,7 @@ import org.apache.hadoop.fs.PathIsNotEmptyDirectoryException;
 
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
-public class H3FileSystem extends FileSystem {
+public class JH3HadoopFS extends FileSystem {
   /* (S3A) implements StreamCapabilities */
 
   public static final int DEFAULT_BLOCKSIZE = 32 * 1024 * 1024;
@@ -34,22 +34,21 @@ public class H3FileSystem extends FileSystem {
   private URI uri;
   private String bucket;
   private JH3 client;
-  private static final boolean H3_DEBUG = false;
+  private static final boolean H3_DEBUG = true;
 
   @Override
   public void initialize(URI name, Configuration originalConf) throws IOException {
 
     if (H3_DEBUG)
-      System.out.println("H3FS: initialize - URI: " + name + ", Configuration: " + originalConf);
+      System.out.println("JH3FS: initialize - URI: " + name + ", Configuration: " + originalConf);
 
     try {
-      String h3ProfilePath = System.getenv("HADOOP_H3_PROFILE");
-      if (h3ProfilePath == null)
-        throw new IOException("HADOOP_H3_PROFILE environment variable is not set.");
+      String h3Config = System.getenv("HADOOP_H3_CONFIG");
+      if (h3Config == null)
+        throw new IOException("HADOOP_H3_CONFIG environment variable is not set.");
 
       // TODO update with a valid user authentication method
-      client = new JH3(H3StoreType.H3_STORE_CONFIG, h3ProfilePath, 0);
-
+      client = new JH3(H3StoreType.H3_STORE_CONFIG, h3Config, 0);
       setUri(name);
       workingDir = new Path("/").makeQualified(this.uri, this.getWorkingDirectory());
       bucket = name.getHost();
@@ -63,7 +62,7 @@ public class H3FileSystem extends FileSystem {
   public String getScheme() {
 
     if (H3_DEBUG)
-      System.out.println("H3FS: getScheme");
+      System.out.println("JH3FS: getScheme");
 
     return "h3";
   }
@@ -72,7 +71,7 @@ public class H3FileSystem extends FileSystem {
   public URI getUri() {
 
     if (H3_DEBUG)
-      System.out.println("H3FS: getUri - URI= " + uri);
+      System.out.println("JH3FS: getUri - URI= " + uri);
 
     return uri;
 
@@ -81,7 +80,7 @@ public class H3FileSystem extends FileSystem {
   public FileStatus getFileStatus(final Path f) throws IOException {
 
     if (H3_DEBUG)
-      System.out.println("H3FS: getFileStatus - Path: " + f.toString());
+      System.out.println("JH3FS: getFileStatus - Path: " + f.toString());
     try {
       final Path path = qualify(f);
       String key = pathToKey(path);
@@ -102,7 +101,9 @@ public class H3FileSystem extends FileSystem {
       ArrayList<String> objectNames = new ArrayList<>();
       do {
         ArrayList<String> retrieved = client.listObjects(bucket, key, objectNames.size());
-        objectNames.addAll(retrieved);
+
+        if(retrieved != null)
+          objectNames.addAll(retrieved);
         // Keep listing objects until there are none left
       } while (client.getStatus() == H3Status.H3_CONTINUE);
 
@@ -114,11 +115,15 @@ public class H3FileSystem extends FileSystem {
       Collections.sort(objectNames);
       // Object names are sorted, so closest match is the first element
       String closestMatch = objectNames.get(0);
-
+      System.out.println("objectNames = " + objectNames);
       //If its an exact match, the requested path is a file
       if (key.equals(closestMatch)) {
         // Retrieve stats of file
         H3ObjectInfo objectInfo = client.infoObject(bucket, key);
+        System.out.println("bucket = " + bucket);
+        System.out.println("key = " + key);
+        System.out.println("objectInfo = " + objectInfo);
+        System.out.println(client.getStatus());
         return new FileStatus(objectInfo.getSize(), false, 0, 0, objectInfo.getLastModification(), path);
       } else {
         // Path emulates a directory
@@ -133,7 +138,7 @@ public class H3FileSystem extends FileSystem {
           throws IOException {
 
     if (H3_DEBUG)
-      System.out.println("H3FS: mkdirs - Path: " + path + ", FsPermission: " + permission);
+      System.out.println("JH3FS: mkdirs - Path: " + path + ", FsPermission: " + permission);
 
     final Path f = qualify(path);
 
@@ -175,7 +180,8 @@ public class H3FileSystem extends FileSystem {
           // We reached root and bucket doesn't exist; create it
           if (fPart == null) {
             try {
-              client.createBucket(bucket);
+              System.out.println("Creating bucket: " + bucket + ". result: " + client.createBucket(bucket));
+              //client.createBucket(bucket);
             } catch (H3Exception ex) {
               throw new IOException(ex);
             }
@@ -199,8 +205,15 @@ public class H3FileSystem extends FileSystem {
 
     try {
       H3Object dirObj = new H3Object();
+      System.out.println("bucket = " + bucket);
+      System.out.println("key = " + key);
+      System.out.println("dirObj = " + dirObj);
+      System.out.println("buckets: " + client.listBuckets());
+      boolean result = client.createObject(bucket, key, dirObj);
+      System.out.println("create object result: " + result);
+      System.out.println(client.getStatus());
       // Upload empty object to emulate directory
-      return client.createObject(bucket, key, dirObj);
+      return result; //client.createObject(bucket, key, dirObj);
     } catch (H3Exception e) {
       throw new IOException(e);
     }
@@ -209,7 +222,7 @@ public class H3FileSystem extends FileSystem {
   public Path getWorkingDirectory() {
 
     if (H3_DEBUG)
-      System.out.println("H3FS: getWorkingDirectory");
+      System.out.println("JH3FS: getWorkingDirectory");
 
     return workingDir;
   }
@@ -217,7 +230,7 @@ public class H3FileSystem extends FileSystem {
   public void setWorkingDirectory(Path newDir) {
 
     if (H3_DEBUG)
-      System.out.println("H3FS: setWorkingDirectory - Path: " + newDir);
+      System.out.println("JH3FS: setWorkingDirectory - Path: " + newDir);
 
     workingDir = newDir;
   }
@@ -225,7 +238,7 @@ public class H3FileSystem extends FileSystem {
   public FileStatus[] listStatus(Path f) throws IOException {
 
     if(H3_DEBUG)
-      System.out.println("H3FS: listStatus - Path: " + f);
+      System.out.println("JH3FS: listStatus - Path: " + f);
 
     Path path = qualify(f);
     String bucket = pathToBucket(path);
@@ -288,7 +301,7 @@ public class H3FileSystem extends FileSystem {
   public boolean delete(Path f, boolean recursive) throws IOException {
 
     if(H3_DEBUG)
-      System.out.println("H3FS: delete - Path: " + f + ", recursive: " + recursive);
+      System.out.println("JH3FS: delete - Path: " + f + ", recursive: " + recursive);
 
     Path path = qualify(f);
     String bucket = pathToBucket(path);
@@ -382,7 +395,7 @@ public class H3FileSystem extends FileSystem {
    */
   public boolean rename(Path source, Path dest) throws IOException {
     if (H3_DEBUG)
-      System.out.println("H3FS: rename - source: " + source + ", dest: " + dest);
+      System.out.println("JH3FS: rename - source: " + source + ", dest: " + dest);
 
     try {
       Path src = qualify(source);
@@ -526,7 +539,7 @@ public class H3FileSystem extends FileSystem {
 
   public FSDataOutputStream append(Path f, int bufferSize, Progressable progress) {
     if(H3_DEBUG)
-      System.out.println("H3FS: append");
+      System.out.println("JH3FS: append");
 
     throw new UnsupportedOperationException("Append is not supported by H3FileSystem");
   }
@@ -536,7 +549,7 @@ public class H3FileSystem extends FileSystem {
                                    Progressable progress) throws IOException {
 
     if(H3_DEBUG)
-      System.out.println("H3FS: create - Path: " + f + ", permission: " + permission
+      System.out.println("JH3FS: create - Path: " + f + ", permission: " + permission
               + ", overwrite: " + overwrite + ", blockSize: " + blockSize
               + ", Progressable: " + progress);
 
@@ -582,7 +595,7 @@ public class H3FileSystem extends FileSystem {
       }
 
       // File can be created
-      return new FSDataOutputStream(new H3OutputStream(client, bucket, key,
+      return new FSDataOutputStream(new JH3OutputStream(client, bucket, key,
               overwrite, blockSize), null);
     } catch (H3Exception e){
       throw new IOException(e);
@@ -592,7 +605,7 @@ public class H3FileSystem extends FileSystem {
   public FSDataInputStream open(Path f, int bufferSize) throws IOException {
 
     if(H3_DEBUG)
-      System.out.println("H3FS: open - Path: " + f + ", bufferSize: " + bufferSize);
+      System.out.println("JH3FS: open - Path: " + f + ", bufferSize: " + bufferSize);
 
     final Path path = qualify(f);
     String key = pathToKey(path);
@@ -605,7 +618,7 @@ public class H3FileSystem extends FileSystem {
       throw new FileNotFoundException("Can't open " + f
               + " because it is a directory");
 
-    H3InputStream s = new H3InputStream(client, bucket, key, status.getLen(), 0);
+    JH3InputStream s = new JH3InputStream(client, bucket, key, status.getLen(), 0);
     return new FSDataInputStream(s);
   }
 
@@ -658,7 +671,7 @@ public class H3FileSystem extends FileSystem {
    */
   private boolean handleRootDelete(boolean isEmpty, boolean recursive) throws IOException {
     if(H3_DEBUG)
-      System.out.println("H3FS: handleRootDelete - isEmpty: " + isEmpty
+      System.out.println("JH3FS: handleRootDelete - isEmpty: " + isEmpty
               + ", recursive: " + recursive);
 
     // If root is empty, recursive flag doesn't matter
@@ -694,8 +707,8 @@ public class H3FileSystem extends FileSystem {
    */
   public Path qualify(Path p) {
 
-    if(H3_DEBUG)
-      System.out.println("H3FS: qualify - path: " + p);
+    //if(H3_DEBUG)
+    //  System.out.println("JH3FS: qualify - path: " + p);
 
     return p.makeQualified(uri, workingDir);
     // String path = p.toString();

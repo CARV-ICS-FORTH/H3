@@ -285,7 +285,9 @@ public class JH3 implements Serializable{
     public boolean createObject(String bucketName, String objectName, H3Object objectData) throws H3Exception {
         Pointer bucket = new Memory(bucketName.length() + 1);
         Pointer name = new Memory(objectName.length() + 1);
-        Pointer data = new Memory(objectData.getSize());
+        // Cannot allocate memory of zero size
+        long s = objectData.getSize() > 0? objectData.getSize() : 1;
+        Pointer data = new Memory(s);
         NativeLong size = new NativeLong(objectData.getSize());
 
         bucket.setString(0, bucketName);
@@ -592,7 +594,9 @@ public class JH3 implements Serializable{
     public boolean writeObject(String bucketName, String objectName, H3Object objectData, long offset) throws H3Exception {
         Pointer bucket = new Memory(bucketName.length() +1);
         Pointer name = new Memory(objectName.length() + 1);
-        Pointer data = new Memory(objectData.getSize());
+        // Cannot allocate memory of zero size
+        long s = objectData.getSize() > 0? objectData.getSize() : 1;
+        Pointer data = new Memory(s);
         NativeLong nOffset= new NativeLong(offset);
         NativeLong nSize = new NativeLong(objectData.getSize());
         bucket.setString(0, bucketName);
@@ -1134,7 +1138,9 @@ public class JH3 implements Serializable{
      */
     public boolean createPart(H3Object objectData, H3MultipartId multipartId, int partNumber) throws H3Exception {
         Pointer multipart = new Memory(multipartId.getMultipartId().length() +1);
-        Pointer data = new Memory(objectData.getSize());
+        // Cannot allocate memory of zero size
+        long s = objectData.getSize() > 0? objectData.getSize() : 1;
+        Pointer data = new Memory(s);
         NativeLong size = new NativeLong(objectData.getSize());
 
         multipart.setString(0, multipartId.getMultipartId());

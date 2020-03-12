@@ -17,11 +17,11 @@ import org.slf4j.LoggerFactory;
 
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
-class H3OutputStream extends OutputStream 
+class JH3OutputStream extends OutputStream
   implements StreamCapabilities {
 
   private static final Logger LOG =
-    LoggerFactory.getLogger(H3OutputStream.class);
+    LoggerFactory.getLogger(JH3OutputStream.class);
 
   private boolean OSDebug = false;
   private final JH3 client;
@@ -60,11 +60,11 @@ class H3OutputStream extends OutputStream
   private int position;
 
 
-  H3OutputStream(JH3 client, String bucket, String key, boolean overwrite, long blockSize)
+  JH3OutputStream(JH3 client, String bucket, String key, boolean overwrite, long blockSize)
       throws IOException {
 
       if(OSDebug)
-        System.out.println("H3OutputStream - client: " + client
+        System.out.println("JH3OutputStream - client: " + client
             + ", bucket: " + bucket + ", key: " + key 
             + ", blockSize: " + blockSize);
 
@@ -83,13 +83,13 @@ class H3OutputStream extends OutputStream
   public synchronized void flush() throws IOException{
     // no-op 
     if(OSDebug)
-      System.out.println("H3OutputStream:flush");
+      System.out.println("JH3OutputStream:flush");
   }
 
   @Override
   public synchronized void write(int b) throws IOException{
     if(OSDebug)
-      System.out.println("H3OutputStream:write - b: " + b);
+      System.out.println("JH3OutputStream:write - b: " + b);
 
     singleCharWrite[0] = (byte) b;
     write(singleCharWrite, 0, 1);
@@ -100,7 +100,7 @@ class H3OutputStream extends OutputStream
     throws IOException {
 
     if(OSDebug)
-      System.out.println("H3OutputStream:write - "
+      System.out.println("JH3OutputStream:write - "
           + "source: " + Arrays.toString(source)
           + ", offset: " + offset
           + ", length: " + length);
@@ -134,7 +134,7 @@ class H3OutputStream extends OutputStream
   @Override
   public void close() throws IOException {
     if(OSDebug)
-      System.out.println("H3OutputStream:close");
+      System.out.println("JH3OutputStream:close");
 
     if(closed.getAndSet(true)) {
       // already closed
@@ -163,7 +163,7 @@ class H3OutputStream extends OutputStream
   @Override
   public boolean hasCapability(String capability){
     if(OSDebug)
-      System.out.println("H3OutputStream:hasCapability - capability: " 
+      System.out.println("JH3OutputStream:hasCapability - capability: "
           + capability);
 
     return false;
@@ -171,17 +171,17 @@ class H3OutputStream extends OutputStream
 
   void checkOpen() throws IOException {
     if(OSDebug)
-      System.out.println("H3OutputStream:checkOpen");
+      System.out.println("JH3OutputStream:checkOpen");
 
     if(closed.get()){
-      throw new IOException("H3OutputStream is closed");
+      throw new IOException("JH3OutputStream is closed");
     }
   }
 
   private void validateWriteArgs(byte[] b, int offset, int length) {
 
       if(OSDebug)
-        System.out.println("H3OutputStream:validateWriteArgs - b: " + Arrays.toString(b)
+        System.out.println("JH3OutputStream:validateWriteArgs - b: " + Arrays.toString(b)
             + ", offset: " + offset + ", length: " + length);
 
       Preconditions.checkNotNull(b);
@@ -196,7 +196,7 @@ class H3OutputStream extends OutputStream
 
   private int putObject() throws IOException {
     if(OSDebug)
-      System.out.println("H3OutputStream:putObject");
+      System.out.println("JH3OutputStream:putObject");
 
     LOG.debug("Executing regular upload");
     try {
@@ -219,7 +219,7 @@ class H3OutputStream extends OutputStream
   private void initMultipartUpload() throws IOException{
 
     if(OSDebug)
-      System.out.println("H3OutputStream:initMultipartUpload");
+      System.out.println("JH3OutputStream:initMultipartUpload");
 
     // No need to init a multipart upload if one already exists
     if(multipartUploadId == null) {
@@ -242,7 +242,7 @@ class H3OutputStream extends OutputStream
   private void completeMultipartUpload() throws IOException {
 
     if(OSDebug)
-      System.out.println("H3OutputStream:completeMultipartUpload");
+      System.out.println("JH3OutputStream:completeMultipartUpload");
 
     try {
       if(!client.completeMultipart(multipartUploadId))
@@ -257,7 +257,7 @@ class H3OutputStream extends OutputStream
   private void abortMultipartUpload() throws IOException {
 
     if(OSDebug)
-      System.out.println("H3OutputStream:abortMultipartUpload");
+      System.out.println("JH3OutputStream:abortMultipartUpload");
 
     try {
       if(!client.abortMultipart(multipartUploadId))
@@ -273,7 +273,7 @@ class H3OutputStream extends OutputStream
   private synchronized void createBlockIfNeeded() {
 
     if(OSDebug)
-      System.out.println("H3OutputStream:createBlockIfNeeded");
+      System.out.println("JH3OutputStream:createBlockIfNeeded");
 
     if(dataBlock == null) {
       dataBlock = new ByteArrayOutputStream(blockSize);
@@ -285,7 +285,7 @@ class H3OutputStream extends OutputStream
   private synchronized void uploadCurrentBlock() throws IOException {
 
     if(OSDebug)
-      System.out.println("H3OutputStream:uploadCurrentBlock");
+      System.out.println("JH3OutputStream:uploadCurrentBlock");
 
     Preconditions.checkState(hasActiveBlock(), "No active block");
     LOG.debug("Writing block # {}", blockCount);
@@ -316,7 +316,7 @@ class H3OutputStream extends OutputStream
   private synchronized boolean hasActiveBlock() {
 
     if(OSDebug)
-      System.out.println("H3OutputStream:hasActiveBlock");
+      System.out.println("JH3OutputStream:hasActiveBlock");
 
     return dataBlock != null;
   }
@@ -325,7 +325,7 @@ class H3OutputStream extends OutputStream
   private synchronized int dataSize(){
 
     if(OSDebug)
-      System.out.println("H3OutputStream:dataSize");
+      System.out.println("JH3OutputStream:dataSize");
 
     return dataBlock.size();
   }
@@ -333,7 +333,7 @@ class H3OutputStream extends OutputStream
   private int remainingBlockCapacity(){
 
     if(OSDebug)
-      System.out.println("H3OutputStream:remainingBlockCapacity");
+      System.out.println("JH3OutputStream:remainingBlockCapacity");
 
     return this.blockSize - dataBlock.size();
   }
@@ -341,7 +341,7 @@ class H3OutputStream extends OutputStream
   private void clearBlock(){
 
     if(OSDebug)
-      System.out.println("H3OutputStream:clearBlock");
+      System.out.println("JH3OutputStream:clearBlock");
 
     if(dataBlock != null) {
       LOG.debug("Clearing active block");

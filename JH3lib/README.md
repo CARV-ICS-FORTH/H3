@@ -43,30 +43,29 @@ A Java Interface for h3lib. This project uses [JNA](https://github.com/java-nati
 Uses JH3Interface to provide a class to make h3lib access more Java-like. 
 Instructions are same as JH3Interface module.
 
-### JH3Hadoop:
+### JH3HadoopFS:
 A H3lib plugin for Hadoop FileSystem API.
 Instructions are same as JH3Interface module.
 
-#### How to add JH3Hadoop to Hadoop:
+#### How to add JH3HadoopFS to Hadoop:
 ```$xslt
-cp path/to/JH3lib/JH3/target/<JH3-jar-with-dependencies.jar> path/to/hadoop/share/hadoop/common/lib
-cp path/to/JH3lib/JH3Hadoop/target/<JH3Hadoop-jar-with-dependencies.jar> path/to/hadoop/share/common/lib
+cp path/to/JH3lib/JH3HadoopFS/target/<JH3HadoopFS-jar-with-dependencies.jar> path/to/hadoop/share/common/lib
 cd path/to/built-hadoop/etc/hadoop
 open core-site.xml and add the following configuration elements:
 <property>
     <name>fs.h3.impl</name>
-    <value>gr.forth.ics.JH3lib.H3FileSystem</value>
-    <description>The filesystem for H3 URIs </descrition>
+    <value>gr.forth.ics.JH3lib.JH3HadoopFS</value>
+    <description>The filesystem for H3lib URIs </descrition>
 </property>
 
 <property>
     <name>fs.AbstractFileSystem.h3.impl</name>
-    <value>gr.forth.ics.JH3lib.H3FS</value>
+    <value>gr.forth.ics.JH3lib.JH3HadoopAbstractFS</value>
     <description>The AbstractFileSystem for H3lib</description>
 </property>
 ```
 
-#### How to use JH3Hadoop in Spark:
+#### How to use JH3HadoopFS in Spark:
 ```$xslt
 cd path/to/spark/conf
 cp spark-env.sh.template spart-env.sh
@@ -75,4 +74,4 @@ add to spark-env:
 ```
 When ``h3://`` is used as the schema part of the URI in Spark, 
 Hadoop will use the plugin instead of hdfs, local etc.
-See spark-examples folder under JH3Hadoop module.
+See spark-examples folder under JH3HadoopFS module.

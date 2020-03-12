@@ -17,9 +17,9 @@ import org.slf4j.LoggerFactory;
 
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
-public class H3InputStream extends FSInputStream implements CanSetReadahead {
+public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 
-	private final Logger LOG = LoggerFactory.getLogger(H3InputStream.class);
+	private final Logger LOG = LoggerFactory.getLogger(JH3InputStream.class);
 	private boolean ISDebug = true;
 
 	/* Position that is set by seek() and returned by getPos() */
@@ -51,11 +51,11 @@ public class H3InputStream extends FSInputStream implements CanSetReadahead {
 	/* Keep value of object in byte buffer */
 	H3Object data;
 
-	public H3InputStream(JH3 client, String bucket,
-			String key, long contentLength, long readahead) throws IOException {
+	public JH3InputStream(JH3 client, String bucket,
+						  String key, long contentLength, long readahead) throws IOException {
 
 		if(ISDebug)
-			System.out.println("H3InputSteam - " 
+			System.out.println("JH3InputSteam - "
 					+ "client: " + client + ", bucket: " + bucket 
 					+ ", key: " + key + ", contentLength: " + contentLength 
 					+ ", readahead: " + readahead);
@@ -88,7 +88,7 @@ public class H3InputStream extends FSInputStream implements CanSetReadahead {
 	public synchronized void seek(long targetPos) throws IOException {
 
 		if(ISDebug)
-			System.out.println("H3InputStream:seek - targetPos = " + targetPos);
+			System.out.println("JH3InputStream:seek - targetPos = " + targetPos);
 
 		checkNotClosed();
 
@@ -109,7 +109,7 @@ public class H3InputStream extends FSInputStream implements CanSetReadahead {
 	@Override
 	public synchronized long getPos() throws IOException {
 		if(ISDebug)
-			System.out.println("H3InputStream:getPos");
+			System.out.println("JH3InputStream:getPos");
 		return pos;
 		//return (nextReadPos < 0) ? 0 : nextReadPos;
 	}
@@ -119,7 +119,7 @@ public class H3InputStream extends FSInputStream implements CanSetReadahead {
 	public boolean seekToNewSource(long targetPos) throws IOException {
 
 		if(ISDebug)
-			System.out.println("H3InputStream:seekToNewSource - "
+			System.out.println("JH3InputStream:seekToNewSource - "
 					+ "targetPos: " + targetPos);
 		return false;
 	}
@@ -128,7 +128,7 @@ public class H3InputStream extends FSInputStream implements CanSetReadahead {
 	public synchronized int read() throws IOException {
 
 		if(ISDebug)
-			System.out.println("H3InputStream:read");
+			System.out.println("JH3InputStream:read");
 
 		checkNotClosed();
 
@@ -145,7 +145,7 @@ public class H3InputStream extends FSInputStream implements CanSetReadahead {
 
 
 		if(ISDebug)
-			System.out.println("H3InputStream:read - buffer = " + buffer + ", offset = "
+			System.out.println("JH3InputStream:read - buffer = " + buffer + ", offset = "
 					+ offset + ", length = " + length);
 
 		checkNotClosed();
@@ -183,7 +183,7 @@ public class H3InputStream extends FSInputStream implements CanSetReadahead {
 	public void readFully(long position, byte[] buffer, int offset, int length) throws IOException {
 
 		if(ISDebug)
-			System.out.println("H3InputStream:readFully - "
+			System.out.println("JH3InputStream:readFully - "
 					+ "position: " + position + ", buffer: " + buffer
 					+ ", offset: " + offset + ", length: " + length);
 
@@ -211,7 +211,7 @@ public class H3InputStream extends FSInputStream implements CanSetReadahead {
 	public synchronized int available() throws IOException {
 
 		if(ISDebug)
-			System.out.println("H3InputStream:available");
+			System.out.println("JH3InputStream:available");
 
 		long remaining = remainingInFile();
 
@@ -225,7 +225,7 @@ public class H3InputStream extends FSInputStream implements CanSetReadahead {
 	public synchronized void close() throws IOException {
 
 		if(ISDebug)
-			System.out.println("H3InputStream:close");
+			System.out.println("JH3InputStream:close");
 
 		if(!closed){
 			closed = true;
@@ -241,7 +241,7 @@ public class H3InputStream extends FSInputStream implements CanSetReadahead {
 	public synchronized void setReadahead(Long readahead) {
 
 		if(ISDebug)
-			System.out.println("H3InputStream:setReadahead - "
+			System.out.println("JH3InputStream:setReadahead - "
 					+ "readahead: " + readahead);
 
 		if (readahead == null) {
@@ -257,7 +257,7 @@ public class H3InputStream extends FSInputStream implements CanSetReadahead {
 	public synchronized long remainingInFile() {
 
 		if(ISDebug)
-			System.out.println("H3InputStream:remainingInFile: " + (this.contentLength - this.pos));
+			System.out.println("JH3InputStream:remainingInFile: " + (this.contentLength - this.pos));
 
 		return this.contentLength - this.pos;
 	}
@@ -265,7 +265,7 @@ public class H3InputStream extends FSInputStream implements CanSetReadahead {
 	public synchronized long getContentRangeStart(){
 
 		if(ISDebug)
-			System.out.println("H3InputStream:getContentRangeStart");
+			System.out.println("JH3InputStream:getContentRangeStart");
 
 		return this.contentRangeStart;
 	}
@@ -273,7 +273,7 @@ public class H3InputStream extends FSInputStream implements CanSetReadahead {
 	public synchronized long getContentRangeFinish(){
 
 		if(ISDebug)
-			System.out.println("H3InputStream:getContentRangeFinish");
+			System.out.println("JH3InputStream:getContentRangeFinish");
 
 		return this.contentRangeFinish;
 	}
@@ -281,7 +281,7 @@ public class H3InputStream extends FSInputStream implements CanSetReadahead {
 	public synchronized long getReadahead(){
 
 		if(ISDebug)
-			System.out.println("H3InputStream:getReadahead");
+			System.out.println("JH3InputStream:getReadahead");
 
 		return readahead;
 	}
@@ -293,7 +293,7 @@ public class H3InputStream extends FSInputStream implements CanSetReadahead {
 	public boolean markSupported(){
 
 		if(ISDebug)
-			System.out.println("H3InputStream:markSupported");
+			System.out.println("JH3InputStream:markSupported");
 
 		return false;
 	}
@@ -305,7 +305,7 @@ public class H3InputStream extends FSInputStream implements CanSetReadahead {
 	private void checkNotClosed() throws IOException {
 
 		if(ISDebug)
-			System.out.println("H3InputStream:checkNotClosed");
+			System.out.println("JH3InputStream:checkNotClosed");
 
 		if (closed){
 			throw new IOException(uri + ": " + FSExceptionMessages.STREAM_IS_CLOSED);
