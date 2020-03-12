@@ -86,7 +86,7 @@ H3_Status H3_CreateMultipart(H3_Handle handle, H3_Token token, H3_Name bucketNam
     if(GrantBucketAccess(userId, bucketMetadata)){
 
         // Populate temporary object metadata
-        H3_ObjectMetadata objMeta = {.nParts = 0, .creation = time(NULL)};
+        H3_ObjectMetadata objMeta;
         memcpy(objMeta.userId, userId, sizeof(H3_UserId));
         uuid_generate(objMeta.uuid);
 
@@ -97,6 +97,9 @@ H3_Status H3_CreateMultipart(H3_Handle handle, H3_Token token, H3_Name bucketNam
 
         // Generate multipart ID
         *multipartId = GeneratetMultipartId(objMeta.uuid);
+
+        objMeta.nParts = 0;
+        clock_gettime(CLOCK_REALTIME, &objMeta.creation);
 
         // Upload multipart and temp object metadata
         if(op->metadata_create(_handle, multiMeta.objectId, (KV_Value)&objMeta, 0, sizeof(H3_ObjectMetadata)) == KV_SUCCESS){

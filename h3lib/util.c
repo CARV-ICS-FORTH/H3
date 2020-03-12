@@ -25,3 +25,21 @@ void _LogActivity(H3_MsgLevel level, const char* function, int lineNumber, const
     // Print the message
     printf("%s\033[0m", buffer);
 }
+
+// res < 0	A < B
+// res = 0	A == B
+// res > 0  A > B
+int64_t Compare(struct timespec* a, struct timespec* b){
+	if(a->tv_sec == b->tv_sec)
+		return a->tv_nsec - b->tv_nsec;
+
+	return a->tv_sec - b->tv_sec;
+}
+
+struct timespec Posterior(struct timespec* a, struct timespec* b){
+	return Compare(a,b)>0?*a:*b;
+}
+
+struct timespec Anterior(struct timespec* a, struct timespec* b){
+	return Compare(a,b)<0?*a:*b;
+}

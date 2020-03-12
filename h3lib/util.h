@@ -1,6 +1,10 @@
 #ifndef UTIL_H_
 #define UTIL_H_
 
+#include <stdint.h>
+#include <time.h>
+
+
 
 #define H3_MSG_SIZE     1024
 #define H3_HEADER_SIZE  80
@@ -20,6 +24,9 @@ typedef enum{
 
 
 void _LogActivity(H3_MsgLevel level, const char* function, int lineNumber, const char *format, ...);
+int64_t Compare(struct timespec* a, struct timespec* b);
+struct timespec Posterior(struct timespec* a, struct timespec* b);
+struct timespec Anterior(struct timespec* a, struct timespec* b);
 
 
 #endif

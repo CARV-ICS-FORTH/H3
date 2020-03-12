@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "common.h"
+#include "util.h"
 
 int ValidBucketName(char* name){
     int status = TRUE;
@@ -25,7 +26,7 @@ int ValidBucketName(char* name){
     // Too small/big
     size_t nameSize = strnlen(name, H3_BUCKET_NAME_SIZE+1);
     if( nameSize == 0 || nameSize > H3_BUCKET_NAME_SIZE     ||
-        regcomp(&regex, "[^_0-9a-zA-Z.-]", 0) != REG_NOERROR    ){
+        regcomp(&regex, "[^_0-9a-zA-Z.-]", REG_EXTENDED) != REG_NOERROR    ){
         return FALSE;
     }
 
@@ -80,7 +81,8 @@ H3_Status H3_CreateBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
 
     // Populate bucket metadata
     memcpy(bucketMetadata.userId, userId, sizeof(H3_UserId));
-    bucketMetadata.creation = time(NULL);
+    clock_gettime(CLOCK_REALTIME, &bucketMetadata.creation);
+    bucketMetadata.mode = S_IFDIR | 0777;
 
     if( (status = op->metadata_create(_handle, bucketId, (KV_Value)&bucketMetadata, 0, sizeof(H3_BucketMetadata))) == KV_SUCCESS){
 
@@ -251,11 +253,24 @@ H3_Status H3_ListBuckets(H3_Handle handle, H3_Token token, H3_Name* bucketNameAr
 
     if( (status = op->metadata_read(_handle, userId, 0, &value, &metaSize)) == KV_SUCCESS){
         H3_UserMetadata* userMetadata = (H3_UserMetadata*)value;
-        size_t arraySize = metaSize - sizeof(H3_UserMetadata);
+        if(userMetadata->nBuckets){
+        	int i;
+        	char* entry;
 
-        *nBuckets = userMetadata->nBuckets;
-        *bucketNameArray = malloc(arraySize);
-        memcpy(*bucketNameArray, userMetadata->bucket, arraySize);
+			*nBuckets = userMetadata->nBuckets;
+			*bucketNameArray = calloc(userMetadata->nBuckets, sizeof(H3_BucketId));
+			entry = *bucketNameArray;
+
+			for(i=0; i<userMetadata->nBuckets; i++){
+				strcpy(entry, (const char*)userMetadata->bucket[i]);
+				entry += strlen(entry) + 1;
+			}
+        }
+        else {
+        	*nBuckets = 0;
+        	*bucketNameArray = NULL;
+        }
+
         free(userMetadata);
 
         return H3_SUCCESS;
@@ -314,12 +329,13 @@ H3_Status H3_InfoBucket(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
         // Make sure the token grants access to the bucket
         if( GrantBucketAccess(userId, bucketMetadata) ){
             bucketInfo->creation = bucketMetadata->creation;
+            bucketInfo->mode = bucketMetadata->mode;
 
             if(getStats){
                 KV_Key keyBuffer = calloc(1, KV_LIST_BUFFER_SIZE);
                 size_t bucketSize = 0;
-                time_t lastAccess = 0;
-                time_t lastModification = 0;
+                struct timespec lastAccess = {0,0};
+                struct timespec lastModification = {0,0};
                 H3_ObjectId prefix;
                 uint32_t keyOffset = 0, nKeys = 0;
 
@@ -334,8 +350,8 @@ H3_Status H3_InfoBucket(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
                         H3_ObjectMetadata* objMeta = (H3_ObjectMetadata*)value;
                         if(objMeta->nParts){
                             bucketSize += objMeta->part[objMeta->nParts-1].offset + objMeta->part[objMeta->nParts-1].size;
-                            lastAccess = max(lastAccess, objMeta->lastAccess);
-                            lastModification = max(lastAccess, objMeta->lastModification);
+                            lastAccess = Posterior(&lastAccess, &objMeta->lastAccess);
+                            lastModification = Posterior(&lastModification, &objMeta->lastModification);
                         }
 
                         objId += strlen(objId)+1;
@@ -422,4 +438,65 @@ H3_Status H3_ForeachBucket(H3_Handle handle, H3_Token token, h3_name_iterator_cb
     }
 
     return H3_FAILURE;
+}
+
+
+/*! \brief Set a bucket's permission bits
+ *
+ * @param[in]    handle             An h3lib handle
+ * @param[in]    token              Authentication information
+ * @param[in]    bucketName         Name of bucket
+ * @param[in]    attrib         	Bucket attributes
+ *
+ * @result \b H3_SUCCESS            Operation completed successfully
+ * @result \b H3_NOT_EXISTS         The bucket doesn't exist
+ * @result \b H3_INVALID_ARGS       Missing or malformed arguments
+ * @result \b H3_FAILURE            Storage provider error
+ *
+ */
+H3_Status H3_SetBucketAttributes(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Attribute attrib){
+    H3_UserId userId;
+    H3_BucketId bucketId;
+    KV_Value value = NULL;
+    size_t size = 0;
+    H3_Status status = H3_FAILURE;
+
+    // Argument check
+    if(!handle || !token  || !bucketName || attrib.type >= H3_NumOfAttributes){
+        return H3_INVALID_ARGS;
+    }
+
+    H3_Context* ctx = (H3_Context*)handle;
+    KV_Handle _handle = ctx->handle;
+    KV_Operations* op = ctx->operation;
+
+    // Validate bucketName & extract userId from token
+    if( !ValidBucketName(bucketName) || !GetUserId(token, userId) || !GetBucketId(bucketName, bucketId) ){
+        return H3_INVALID_ARGS;
+    }
+
+    KV_Status kvStatus;
+    if( (kvStatus = op->metadata_read(_handle, bucketId, 0, &value, &size)) == KV_SUCCESS){
+        H3_BucketMetadata* bucketMetadata = (H3_BucketMetadata*)value;
+
+        // Make sure the token grants access to the bucket
+        if( GrantBucketAccess(userId, bucketMetadata) ){
+        	if(attrib.type == H3_ATTRIBUTE_PERMISSION)
+        		bucketMetadata->mode = attrib.mode & 0777;
+        	else {
+        		if(attrib.uid >= 0) bucketMetadata->uid = attrib.uid;
+        		if(attrib.gid >= 0) bucketMetadata->gid = attrib.gid;
+        	}
+
+        	if(op->metadata_write(_handle, bucketId, (KV_Value)bucketMetadata, 0, size) == KV_SUCCESS){
+        		status = H3_SUCCESS;
+        	}
+        }
+        free(bucketMetadata);
+    }
+    else if(kvStatus == KV_KEY_NOT_EXIST){
+        status = H3_NOT_EXISTS;
+    }
+
+    return status;
 }
