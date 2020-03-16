@@ -127,9 +127,9 @@ typedef struct{
 }H3_MultipartMetadata;
 
 
-int ValidBucketName(char* name);
-int ValidObjectName(char* name);
-int ValidPrefix(char* name);
+H3_Status ValidBucketName(char* name);
+H3_Status ValidObjectName(char* name);
+H3_Status ValidPrefix(char* name);
 int GetUserId(H3_Token token, H3_UserId id);
 int GetBucketId(H3_Name bucketName, H3_BucketId id);
 int GetBucketIndex(H3_UserMetadata* userMetadata, H3_Name bucketName);
