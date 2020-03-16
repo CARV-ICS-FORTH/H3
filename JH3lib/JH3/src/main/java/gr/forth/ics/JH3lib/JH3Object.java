@@ -3,31 +3,31 @@ package gr.forth.ics.JH3lib;
 import java.util.Arrays;
 
 /**
- * A basic H3 object. Holds the data as a byte array and its size.
+ * A basic JH3 object. Holds the data as a byte array and its size.
  * @author Giorgos Kalaentzis
  * @version 0.1-beta
  */
-public class H3Object {
+public class JH3Object {
     private byte[] data;
     private long size;
 
     /**
-     * Create an H3Object.
+     * Create an JH3Object.
      * @param data The data in bytes to be written / were read
      * @param size The size of the data
      */
-    public H3Object(byte[] data, long size) {
+    public JH3Object(byte[] data, long size) {
         this.data = data;
         this.size = size;
     }
 
-    public H3Object() {
+    public JH3Object() {
         this.data = new byte[0];
         this.size = 0;
     }
 
     /**
-     * Sets the data of the H3Object.
+     * Sets the data of the JH3Object.
      * @param data the data of the object.
      */
     public void setData(byte[] data) {
@@ -35,7 +35,7 @@ public class H3Object {
     }
 
     /**
-     * Sets the size of the H3Object.
+     * Sets the size of the JH3Object.
      * @param size the size of the object.
      */
     public void setSize(long size) {
@@ -43,7 +43,7 @@ public class H3Object {
     }
 
     /**
-     * Get the data of the H3Object.
+     * Get the data of the JH3Object.
      * @return the data of the object.
      */
     public byte[] getData() {
@@ -51,7 +51,7 @@ public class H3Object {
     }
 
     /**
-     * Get the size of the H3Object.
+     * Get the size of the JH3Object.
      * @return the size of the object.
      */
     public long getSize() {
@@ -60,7 +60,7 @@ public class H3Object {
 
     @Override
     public String toString() {
-        return "H3Object{" +
+        return "JH3Object{" +
                 "data=" + Arrays.toString(data) +
                 ", size=" + size +
                 '}';

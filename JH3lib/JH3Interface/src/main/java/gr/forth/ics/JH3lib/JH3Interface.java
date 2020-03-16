@@ -26,6 +26,9 @@ public interface JH3Interface extends Library {
     /** Maximum number of characters allowed for an object. */
     int H3_OBJECT_NAME_SIZE = 512;
 
+    /**  This character can only appear at the end of an object-name */
+    String H3_LAST_ONLY_CHAR = (String)"%";
+    
     /** Storage providers supported by H3;  Represents values of H3_StoreType enum. */
     interface StoreType {
         /** Provider is set in the configuration file. */
@@ -55,13 +58,26 @@ public interface JH3Interface extends Library {
         int H3_EXISTS = 3;
         /** Bucket or object does not exist. */
         int H3_NOT_EXISTS = 4;
+        /** Bucket or object name is too long. */
+        int H3_NAME_TOO_LONG = 5;
         /** Bucket is not empty. */
-        int H3_NOT_EMPTY = 5;
+        int H3_NOT_EMPTY = 6;
         /** Operation succeeded. */
-        int H3_SUCCESS = 6;
-        /** Operation succeeded though there are more data to retrieve */
-        int H3_CONTINUE = 7;
+        int H3_SUCCESS = 7;
+        /** Operation succeeded though there are more data to retrieve. */
+        int H3_CONTINUE = 8;
     }
+
+    /** Object/Bucket attributes supported by H3. */
+    interface AttributeType {
+        /** Owner attributes. */
+        int H3_ATTRIBUTE_OWNER = 0;
+        /** Permission attribute. */
+        int H3_ATTRIBUTE_PERMISSION =1;
+        /** Not an option, used for iteration purposes. */
+        int H3_NumOfAttributes = 2;
+    }
+
     /**  Callback function to be invoked for each bucket or object. */
     interface h3_name_iterator_cb extends Callback {
         void apply(Pointer name, Pointer userData);
@@ -153,6 +169,17 @@ public interface JH3Interface extends Library {
      * @return H3_SUCCESS on success, or H3_NOT_EXISTS/H3_INVALID_ARGS/H3_FAILURE on failure
      */
     int H3_InfoBucket(Pointer handle, NativeAuth token, Pointer bucketName, NativeBucketInfo bucketInfo, byte getStats);
+
+
+    /**
+     * Set a bucket's permission bits
+     * @param handle            An h3lib handle
+     * @param token             Authentication information
+     * @param bucketName        Name of bucket
+     * @param attribute         Bucket attributes
+     * @return H3_SUCCESS on success, or H3_NOT_EXISTS/H3_INVALID_ARGS/H3_FAULURE on failure
+     */
+    int H3_SetBucketAttributes(Pointer handle, NativeAuth token, Pointer bucketName, NativeAttribute attribute);
 
     //--------------------- Object Management ---------------------
     /**
@@ -378,6 +405,18 @@ public interface JH3Interface extends Library {
      * @return  H3_SUCCESS on success, or H3_FAILURE/H3_NOT_EXISTS/H3_INVALID_ARGS on failure
      */
     int H3_ExchangeObject(Pointer handle, NativeAuth token, Pointer bucketName, Pointer srcObjectName, Pointer dstObjectName);
+
+
+    /**
+     * Set an object's attribute. Currently only a file ode is supported.
+     * @param handle            An h3lb handle
+     * @param token             Authentication information
+     * @param bucketName        The name of the bucket
+     * @param objectName        The name of the object
+     * @param attribute         The object attribute
+     * @return
+     */
+    int H3_SetObjectAttributes(Pointer handle, NativeAuth token, Pointer bucketName, Pointer objectName, NativeAttribute attribute);
 
     //--------------------- Multipart Management ---------------------
 

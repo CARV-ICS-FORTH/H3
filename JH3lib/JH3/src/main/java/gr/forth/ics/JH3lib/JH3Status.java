@@ -9,37 +9,39 @@ import java.util.Map;
  * @author Giorgos Kalaentzis
  * @version 0.1-beta
  */
-public enum H3Status {
+public enum JH3Status {
 
     /** Operation failed. */
-    H3_FAILURE (JH3Interface.Status.H3_FAILURE),
+    JH3_FAILURE(JH3Interface.Status.H3_FAILURE),
     /** Arguments are missing or malformed. */
-    H3_INVALID_ARGS (JH3Interface.Status.H3_INVALID_ARGS),
+    JH3_INVALID_ARGS(JH3Interface.Status.H3_INVALID_ARGS),
     /** External (store provider) error. */
-    H3_STORE_ERROR (JH3Interface.Status.H3_STORE_ERROR),
+    JH3_STORE_ERROR(JH3Interface.Status.H3_STORE_ERROR),
     /** Bucket or object already exists. */
-    H3_EXISTS (JH3Interface.Status.H3_EXISTS),
+    JH3_EXISTS(JH3Interface.Status.H3_EXISTS),
     /** Bucket or object does not exist. */
-    H3_NOT_EXISTS (JH3Interface.Status.H3_NOT_EXISTS),
+    JH3_NOT_EXISTS(JH3Interface.Status.H3_NOT_EXISTS),
+    /** Bucker or object name is too long */
+    JH3_NAME_TOO_LONG(JH3Interface.Status.H3_NAME_TOO_LONG),
     /** Bucket is not empty. */
-    H3_NOT_EMPTY (JH3Interface.Status.H3_NOT_EMPTY),
+    JH3_NOT_EMPTY(JH3Interface.Status.H3_NOT_EMPTY),
     /** Operation succeeded. */
-    H3_SUCCESS (JH3Interface.Status.H3_SUCCESS),
+    JH3_SUCCESS(JH3Interface.Status.H3_SUCCESS),
     /** Operation succeeded though there are more data to retrieve. */
-    H3_CONTINUE (JH3Interface.Status.H3_CONTINUE);
+    JH3_CONTINUE(JH3Interface.Status.H3_CONTINUE);
 
     private final int status;
-    private static final Map<Integer,H3Status> lookup = new HashMap<>();
+    private static final Map<Integer, JH3Status> lookup = new HashMap<>();
 
 
-    // Map int -> H3Status enum for easy lookup later
+    // Map int -> JH3Status enum for easy lookup later
     static {
-        for( H3Status s : EnumSet.allOf(H3Status.class)){
+        for( JH3Status s : EnumSet.allOf(JH3Status.class)){
             lookup.put(s.getStatus(), s);
         }
     }
 
-    H3Status(int status){
+    JH3Status(int status){
         this.status = status;
     }
 
@@ -48,11 +50,11 @@ public enum H3Status {
     }
 
     /**
-     * Get a H3Status enum from its integer representation.
+     * Get a JH3Status enum from its integer representation.
      * @param id    Integer representation of the status
      * @return      The status as enum
      */
-    public static H3Status fromInt(int id) {
+    public static JH3Status fromInt(int id) {
        return lookup.get(id);
     }
 }

@@ -15,15 +15,21 @@ import java.util.List;
 public class NativeObjectInfo extends Structure {
     public byte isBad;
     public NativeLong size;
-    public NativeLong creation;
-    public NativeLong lastAccess;
-    public NativeLong lastModification;
+    public NativeTimespec creation;
+    public NativeTimespec lastAccess;
+    public NativeTimespec lastModification;
+    public NativeTimespec lastChange;
+    public int mode;        /* mode_t in native h3lib */
+    public int uid;         /* uid_t in native h3lib */
+    public int gid;         /* gid_t in native h3lib */                   
+
 
     public NativeObjectInfo() { super(); }
 
     @Override
     protected List<String> getFieldOrder() {
-        return Arrays.asList("isBad", "size", "creation", "lastAccess", "lastModification");
+        return Arrays.asList("isBad", "size", "creation", "lastAccess",
+         "lastModification", "lastChange", "mode", "uid", "gid");
     }
 
     /**
@@ -33,15 +39,23 @@ public class NativeObjectInfo extends Structure {
      * @param creation              Creation timestamp
      * @param lastAccess            Last access timestamp
      * @param lastModification      Last modification timestamp
+     * @param lastChange            The last time the object's attributes were changed (e.g. permissions)
+     * @param mode                  File type and mode (used by h3fuse)
+     * @param uid                   User ID (used by h3fuse)
+     * @param gid                   Group ID (used by h3fuse)
      */
-    public NativeObjectInfo(byte isBad, NativeLong size, NativeLong creation,
-                            NativeLong lastAccess, NativeLong lastModification) {
+    public NativeObjectInfo(byte isBad, NativeLong size, NativeTimespec creation, NativeTimespec lastAccess,
+        NativeTimespec lastModification, NativeTimespec lastChange, int mode, int uid, int gid) {
         super();
         this.isBad = isBad;
         this.size = size;
         this.creation = creation;
         this.lastAccess = lastAccess;
         this.lastModification = lastModification;
+        this.lastChange = lastChange;
+        this.mode = mode;
+        this.uid = uid;
+        this.gid = gid;
     }
 
     /**

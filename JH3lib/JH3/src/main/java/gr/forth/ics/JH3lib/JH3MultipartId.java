@@ -5,10 +5,10 @@ package gr.forth.ics.JH3lib;
  * @author Giorgos Kalaentzis
  * @version 0.1-beta
  */
-public class H3MultipartId {
+public class JH3MultipartId {
     private String multipartId;
 
-    public H3MultipartId(String multipartId) {
+    public JH3MultipartId(String multipartId) {
         this.multipartId = multipartId;
     }
 
@@ -23,7 +23,7 @@ public class H3MultipartId {
 
     @Override
     public String toString() {
-        return "H3MultipartId{" +
+        return "JH3MultipartId{" +
                 "multipartId='" + multipartId + '\'' +
                 '}';
     }

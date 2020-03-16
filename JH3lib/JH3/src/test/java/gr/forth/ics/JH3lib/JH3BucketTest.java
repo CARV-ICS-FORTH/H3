@@ -13,7 +13,7 @@ import static org.junit.Assert.*;
 public class JH3BucketTest {
 
     private String config = "config.ini";                                   // Path of configuration file
-    private H3StoreType storeType = H3StoreType.H3_STORE_CONFIG;            // Use local filesystem
+    private JH3StoreType storeType = JH3StoreType.JH3_STORE_CONFIG;            // Use local filesystem
     private int userId = 0;                                                 // Dummy userId
     private String dir = "/tmp/h3";
 
@@ -50,26 +50,26 @@ public class JH3BucketTest {
 
             // Check if there are any buckets
             buckets = client.listBuckets();
-            assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+            assertEquals(JH3Status.JH3_SUCCESS, client.getStatus());
             assertTrue(buckets.isEmpty());
 
             // Create a bucket
             assertTrue(client.createBucket("b1"));
-            assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+            assertEquals(JH3Status.JH3_SUCCESS, client.getStatus());
 
             // Create the same bucket
             assertFalse(client.createBucket("b1"));
-            assertEquals(H3Status.H3_EXISTS, client.getStatus());
+            assertEquals(JH3Status.JH3_EXISTS, client.getStatus());
 
             // Get info of bucket without stats
-            H3BucketInfo bucketInfo = client.infoBucket("b1");
-            assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+            JH3BucketInfo bucketInfo = client.infoBucket("b1");
+            assertEquals(JH3Status.JH3_SUCCESS, client.getStatus());
             assertNull(bucketInfo.getStats());
             assertNotEquals(0, bucketInfo.getCreation());
 
             // Get info of bucket with stats
             bucketInfo = client.infoBucket("b1", true);
-            assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+            assertEquals(JH3Status.JH3_SUCCESS, client.getStatus());
             assertNotNull(bucketInfo.getStats());
             assertEquals(0, bucketInfo.getStats().getSize());
             assertEquals(0, bucketInfo.getStats().getNumObjects());
@@ -79,26 +79,26 @@ public class JH3BucketTest {
 
             // List buckets should contain the bucket now
             assertEquals(expected, client.listBuckets());
-            assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+            assertEquals(JH3Status.JH3_SUCCESS, client.getStatus());
 
             // Delete a bucket
             assertTrue(client.deleteBucket("b1"));
-            assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+            assertEquals(JH3Status.JH3_SUCCESS, client.getStatus());
 
             // Delete the same bucket
             assertFalse(client.deleteBucket("b1"));
-            assertEquals(H3Status.H3_NOT_EXISTS, client.getStatus());
+            assertEquals(JH3Status.JH3_NOT_EXISTS, client.getStatus());
 
             // Get info of non-existent bucket
             assertNull(client.infoBucket("b1"));
-            assertEquals(H3Status.H3_NOT_EXISTS, client.getStatus());
+            assertEquals(JH3Status.JH3_NOT_EXISTS, client.getStatus());
 
             // Check if there are any buckets
             buckets = client.listBuckets();
-            assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+            assertEquals(JH3Status.JH3_SUCCESS, client.getStatus());
             assertTrue(buckets.isEmpty());
 
-        } catch (H3Exception e) {
+        } catch (JH3Exception e) {
             e.printStackTrace();
         }
 
@@ -116,7 +116,7 @@ public class JH3BucketTest {
 
             // Bucket with empty name
             assertFalse(client.createBucket(""));
-            assertEquals(H3Status.H3_INVALID_ARGS, client.getStatus());
+            assertEquals(JH3Status.JH3_INVALID_ARGS, client.getStatus());
 
             // Bucket with null
             try {
@@ -128,16 +128,16 @@ public class JH3BucketTest {
             // Large bucket name
             String largeName = new String(new char[JH3.H3_BUCKET_NAME_SIZE + 1]).replace("\0", "a");
             assertFalse(client.createBucket(largeName));
-            assertEquals(H3Status.H3_INVALID_ARGS, client.getStatus());
+            assertEquals(JH3Status.JH3_INVALID_ARGS, client.getStatus());
 
             // Invalid bucket names
             assertFalse(client.createBucket("/bucketId"));
-            assertEquals(H3Status.H3_INVALID_ARGS, client.getStatus());
+            assertEquals(JH3Status.JH3_INVALID_ARGS, client.getStatus());
 
             assertFalse(client.createBucket("\bucketId"));
-            assertEquals(H3Status.H3_INVALID_ARGS, client.getStatus());
+            assertEquals(JH3Status.JH3_INVALID_ARGS, client.getStatus());
 
-        } catch (H3Exception e) {
+        } catch (JH3Exception e) {
             e.printStackTrace();
         }
 
@@ -159,25 +159,25 @@ public class JH3BucketTest {
 
             // Check if there are any buckets
             buckets = client.listBuckets();
-            assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+            assertEquals(JH3Status.JH3_SUCCESS, client.getStatus());
             assertTrue(buckets.isEmpty());
 
             // Create buckets
             for(int i = 0; i < count; i++){
                 assertTrue(client.createBucket("bucket" + i));
-                assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+                assertEquals(JH3Status.JH3_SUCCESS, client.getStatus());
             }
 
             // Randomly create 10 already existing buckets
             Random rn = new Random();
             for(int i = 0; i < 10; i++){
                 assertFalse(client.createBucket("bucket" + rn.nextInt(count)));
-                assertEquals(H3Status.H3_EXISTS, client.getStatus());
+                assertEquals(JH3Status.JH3_EXISTS, client.getStatus());
             }
 
             // Get info of all buckets (without stats)
             for(int i = 0; i < count; i++){
-                H3BucketInfo bucketInfo = client.infoBucket("bucket" + i);
+                JH3BucketInfo bucketInfo = client.infoBucket("bucket" + i);
                 assertNull(bucketInfo.getStats());
                 assertNotEquals(0, bucketInfo.getCreation());
             }
@@ -189,32 +189,32 @@ public class JH3BucketTest {
 
             // List all buckets
             assertEquals(expected, client.listBuckets());
-            assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+            assertEquals(JH3Status.JH3_SUCCESS, client.getStatus());
 
             // Delete all buckets
             for (int i = 0; i < count; i++) {
                 assertTrue(client.deleteBucket("bucket" + i));
-                assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+                assertEquals(JH3Status.JH3_SUCCESS, client.getStatus());
             }
 
             // Randomly delete already deleted buckets
             for (int i = 0; i < 10; i++) {
                 assertFalse(client.deleteBucket("bucket" + i));
-                assertEquals(H3Status.H3_NOT_EXISTS, client.getStatus());
+                assertEquals(JH3Status.JH3_NOT_EXISTS, client.getStatus());
             }
 
             // Randomly get info of non-existent buckets
             for (int i = 0; i < 10; i++) {
                 assertNull(client.infoBucket("bucket" + rn.nextInt(count)));
-                assertEquals(H3Status.H3_NOT_EXISTS, client.getStatus());
+                assertEquals(JH3Status.JH3_NOT_EXISTS, client.getStatus());
             }
 
             // List buckets should be empty
             buckets = client.listBuckets();
-            assertEquals(H3Status.H3_SUCCESS, client.getStatus());
+            assertEquals(JH3Status.JH3_SUCCESS, client.getStatus());
             assertTrue(buckets.isEmpty());
 
-        } catch (H3Exception e) {
+        } catch (JH3Exception e) {
             e.printStackTrace();
         }
 

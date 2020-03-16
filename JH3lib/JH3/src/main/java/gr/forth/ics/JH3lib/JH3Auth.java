@@ -5,7 +5,7 @@ package gr.forth.ics.JH3lib;
  * @author Giorgos Kalaentzis
  * @version 0.1-beta
  */
-public class H3Auth {
+public class JH3Auth {
 
     private int userId;
 
@@ -13,7 +13,7 @@ public class H3Auth {
      * Create user authentication info.
      * @param userId The id of the user
      */
-    public H3Auth(int userId) {
+    public JH3Auth(int userId) {
         this.userId = userId;
     }
 
@@ -27,7 +27,7 @@ public class H3Auth {
 
     @Override
     public String toString() {
-        return "H3Auth{" +
+        return "JH3Auth{" +
                 "userId=" + userId +
                 '}';
     }

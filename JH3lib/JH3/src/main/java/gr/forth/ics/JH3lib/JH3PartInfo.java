@@ -5,7 +5,7 @@ package gr.forth.ics.JH3lib;
  * @author Giorgos Kalaentzis
  * @version 0.1-beta
  */
-public class H3PartInfo {
+public class JH3PartInfo {
     private int partNumber;
     private long size;
 
@@ -14,7 +14,7 @@ public class H3PartInfo {
      * @param partNumber The part number of the multipart
      * @param size       The size of the part
      */
-    public H3PartInfo(int partNumber, long size) {
+    public JH3PartInfo(int partNumber, long size) {
         this.partNumber = partNumber;
         this.size = size;
     }
@@ -37,7 +37,7 @@ public class H3PartInfo {
 
     @Override
     public String toString() {
-        return "H3PartInfo{" +
+        return "JH3PartInfo{" +
                 "partNumber=" + partNumber +
                 ", size=" + size +
                 '}';

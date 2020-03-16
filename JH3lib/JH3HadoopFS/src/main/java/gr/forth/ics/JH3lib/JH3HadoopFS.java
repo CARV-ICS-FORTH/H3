@@ -48,12 +48,12 @@ public class JH3HadoopFS extends FileSystem {
         throw new IOException("HADOOP_H3_CONFIG environment variable is not set.");
 
       // TODO update with a valid user authentication method
-      client = new JH3(H3StoreType.H3_STORE_CONFIG, h3Config, 0);
+      client = new JH3(JH3StoreType.JH3_STORE_CONFIG, h3Config, 0);
       setUri(name);
       workingDir = new Path("/").makeQualified(this.uri, this.getWorkingDirectory());
       bucket = name.getHost();
       super.initialize(name, originalConf);
-    } catch (H3Exception e) {
+    } catch (JH3Exception e) {
       throw new IOException(e);
     }
   }
@@ -87,7 +87,7 @@ public class JH3HadoopFS extends FileSystem {
       bucket = pathToBucket(path);
       // if key is empty, we are referring to a bucket instead of an object
       if (key.isEmpty()) {
-        H3BucketInfo bucketInfo = client.infoBucket(bucket);
+        JH3BucketInfo bucketInfo = client.infoBucket(bucket);
         // If bucket exists, we consider it as a directory
         if (bucketInfo != null) {
           return new FileStatus(0, true, 0, 0, 0, path);
@@ -105,7 +105,7 @@ public class JH3HadoopFS extends FileSystem {
         if(retrieved != null)
           objectNames.addAll(retrieved);
         // Keep listing objects until there are none left
-      } while (client.getStatus() == H3Status.H3_CONTINUE);
+      } while (client.getStatus() == JH3Status.JH3_CONTINUE);
 
       // No match found in H3
       if (objectNames.size() == 0) {
@@ -119,17 +119,17 @@ public class JH3HadoopFS extends FileSystem {
       //If its an exact match, the requested path is a file
       if (key.equals(closestMatch)) {
         // Retrieve stats of file
-        H3ObjectInfo objectInfo = client.infoObject(bucket, key);
+        JH3ObjectInfo objectInfo = client.infoObject(bucket, key);
         System.out.println("bucket = " + bucket);
         System.out.println("key = " + key);
         System.out.println("objectInfo = " + objectInfo);
         System.out.println(client.getStatus());
-        return new FileStatus(objectInfo.getSize(), false, 0, 0, objectInfo.getLastModification(), path);
+        return new FileStatus(objectInfo.getSize(), false, 0, 0, objectInfo.getLastModification().getSeconds(), path);
       } else {
         // Path emulates a directory
         return new FileStatus(0, true, 0, 0, 0, path);
       }
-    } catch (H3Exception e) {
+    } catch (JH3Exception e) {
       throw new IOException(e);
     }
   }
@@ -182,7 +182,7 @@ public class JH3HadoopFS extends FileSystem {
             try {
               System.out.println("Creating bucket: " + bucket + ". result: " + client.createBucket(bucket));
               //client.createBucket(bucket);
-            } catch (H3Exception ex) {
+            } catch (JH3Exception ex) {
               throw new IOException(ex);
             }
           }
@@ -204,7 +204,7 @@ public class JH3HadoopFS extends FileSystem {
 
 
     try {
-      H3Object dirObj = new H3Object();
+      JH3Object dirObj = new JH3Object();
       System.out.println("bucket = " + bucket);
       System.out.println("key = " + key);
       System.out.println("dirObj = " + dirObj);
@@ -214,7 +214,7 @@ public class JH3HadoopFS extends FileSystem {
       System.out.println(client.getStatus());
       // Upload empty object to emulate directory
       return result; //client.createObject(bucket, key, dirObj);
-    } catch (H3Exception e) {
+    } catch (JH3Exception e) {
       throw new IOException(e);
     }
   }
@@ -263,11 +263,11 @@ public class JH3HadoopFS extends FileSystem {
           ArrayList<String> retrieved = client.listObjects(bucket, prefix, objectNames.size());
           objectNames.addAll(retrieved);
           // Keep listing objects until there are none left
-        } while (client.getStatus() == H3Status.H3_CONTINUE);
+        } while (client.getStatus() == JH3Status.JH3_CONTINUE);
 
         // Operation failed
-        if (client.getStatus() != H3Status.H3_SUCCESS)
-          throw new H3Exception("listStatus: failed listing all objects of: " + bucket + " with prefix: " + prefix);
+        if (client.getStatus() != JH3Status.JH3_SUCCESS)
+          throw new JH3Exception("listStatus: failed listing all objects of: " + bucket + " with prefix: " + prefix);
 
         Set<String> children = new HashSet<>();
         // Only immediate children should be listed
@@ -293,7 +293,7 @@ public class JH3HadoopFS extends FileSystem {
         stats[0] = fileStatus;
         return stats;
       }
-    } catch (H3Exception e){
+    } catch (JH3Exception e){
       throw new IOException(e);
     }
   }
@@ -355,11 +355,11 @@ public class JH3HadoopFS extends FileSystem {
               ArrayList<String> retrieved = client.listObjects(bucket, key, objectNames.size());
               objectNames.addAll(retrieved);
               // Keep listing objects until there are none left
-            } while(client.getStatus() == H3Status.H3_CONTINUE);
+            } while(client.getStatus() == JH3Status.JH3_CONTINUE);
 
             // Operation failed
-            if(client.getStatus() != H3Status.H3_SUCCESS)
-              throw new H3Exception("listStatus: failed listing all objects of: " + bucket + " with prefix: " + key);
+            if(client.getStatus() != JH3Status.JH3_SUCCESS)
+              throw new JH3Exception("listStatus: failed listing all objects of: " + bucket + " with prefix: " + key);
 
             // Delete everything under given directory
             for(String objectName: objectNames){
@@ -375,7 +375,7 @@ public class JH3HadoopFS extends FileSystem {
       }
 
       return true;
-    } catch (FileNotFoundException | H3Exception e){
+    } catch (FileNotFoundException | JH3Exception e){
       return false;
     }
   }
@@ -532,7 +532,7 @@ public class JH3HadoopFS extends FileSystem {
       }
       // Successful rename
       return true;
-    } catch (H3Exception e) {
+    } catch (JH3Exception e) {
       throw new IOException(e);
     }
   }
@@ -597,7 +597,7 @@ public class JH3HadoopFS extends FileSystem {
       // File can be created
       return new FSDataOutputStream(new JH3OutputStream(client, bucket, key,
               overwrite, blockSize), null);
-    } catch (H3Exception e){
+    } catch (JH3Exception e){
       throw new IOException(e);
     }
   }

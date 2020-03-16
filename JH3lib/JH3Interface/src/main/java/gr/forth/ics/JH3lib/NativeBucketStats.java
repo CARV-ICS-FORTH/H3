@@ -17,8 +17,8 @@ public class NativeBucketStats extends Structure {
 
     public NativeLong size;
     public long nObjects;
-    public NativeLong lastAccess;
-    public NativeLong lastModification;
+    public NativeTimespec lastAccess;
+    public NativeTimespec lastModification;
 
     public NativeBucketStats() { super(); }
 
@@ -30,7 +30,7 @@ public class NativeBucketStats extends Structure {
      * @param lastModification      Last time an object was modified
      */
     public NativeBucketStats(NativeLong size, long nObjects,
-                             NativeLong lastAccess, NativeLong lastModification) {
+                             NativeTimespec lastAccess, NativeTimespec lastModification) {
         super();
         this.size = size;
         this.nObjects = nObjects;
@@ -49,10 +49,6 @@ public class NativeBucketStats extends Structure {
      */
     public NativeBucketStats(Pointer peer) { super(peer); }
 
-    public static abstract class ByReference extends NativeBucketStats implements Structure.ByReference{
-
-    };
-
     @Override
     public String toString() {
         return "NativeBucketStats{" +
@@ -62,6 +58,10 @@ public class NativeBucketStats extends Structure {
                 ", lastModification=" + lastModification +
                 '}';
     }
+
+    public static abstract class ByReference extends NativeBucketStats implements Structure.ByReference{
+
+    };
 
     public static abstract class ByValue extends NativeBucketStats implements Structure.ByValue{
 

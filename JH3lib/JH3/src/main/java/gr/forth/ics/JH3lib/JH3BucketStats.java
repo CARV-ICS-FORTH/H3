@@ -5,11 +5,11 @@ package gr.forth.ics.JH3lib;
  * @author Giorgos Kalaentzis
  * @version 0.1-beta
  */
-public class H3BucketStats {
+public class JH3BucketStats {
     private long size;
     private long nObjects;
-    private long lastAccess;
-    private long lastModification;
+    private JH3Timespec lastAccess;
+    private JH3Timespec lastModification;
 
     /**
      * Create a BucketStats object.
@@ -18,7 +18,7 @@ public class H3BucketStats {
      * @param lastAccess        Last time an object was accessed
      * @param lastModification  Last time an object was modified
      */
-    public H3BucketStats(long size, long nObjects, long lastAccess, long lastModification) {
+    public JH3BucketStats(long size, long nObjects, JH3Timespec lastAccess, JH3Timespec lastModification) {
         this.size = size;
         this.nObjects = nObjects;
         this.lastAccess = lastAccess;
@@ -45,7 +45,7 @@ public class H3BucketStats {
      * Get the timestamp when an object was last accessed.
      * @return the last access timestamp.
      */
-    public long getLastAccess() {
+    public JH3Timespec getLastAccess() {
         return lastAccess;
     }
 
@@ -53,13 +53,13 @@ public class H3BucketStats {
      * Get the timestamp when an object was last modified.
      * @return the last modified timestamp.
      */
-    public long getLastModification() {
+    public JH3Timespec getLastModification() {
         return lastModification;
     }
 
     @Override
     public String toString() {
-        return "H3BucketStats{" +
+        return "JH3BucketStats{" +
                 "size=" + size +
                 ", nObjects=" + nObjects +
                 ", lastAccess=" + lastAccess +

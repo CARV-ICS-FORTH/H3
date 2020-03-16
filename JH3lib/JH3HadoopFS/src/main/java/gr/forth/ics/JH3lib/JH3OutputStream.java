@@ -51,7 +51,7 @@ class JH3OutputStream extends OutputStream
   private int blockCount = 0;
 
   /** Id of multipart upload */
-  private H3MultipartId multipartUploadId;
+  private JH3MultipartId multipartUploadId;
 
   /** ByteArray that keeps current block content */
   private ByteArrayOutputStream dataBlock;
@@ -201,11 +201,11 @@ class JH3OutputStream extends OutputStream
     LOG.debug("Executing regular upload");
     try {
       int size = dataSize();
-      H3Object dataObj = new H3Object(dataBlock.toByteArray(), size);
+      JH3Object dataObj = new JH3Object(dataBlock.toByteArray(), size);
       client.createObject(bucket, key, dataObj);
       clearBlock();
       return size;
-    }catch (H3Exception e){
+    }catch (JH3Exception e){
       throw new IOException(e);
     }
   }
@@ -229,10 +229,10 @@ class JH3OutputStream extends OutputStream
 
         // if id is null, error has occurred
         if (multipartUploadId == null) {
-          throw new H3Exception("Cannot create a new multipart upload for: "
+          throw new JH3Exception("Cannot create a new multipart upload for: "
                   + bucket + "/" + key);
         }
-      } catch (H3Exception e) {
+      } catch (JH3Exception e) {
         throw new IOException(e);
       }
 
@@ -246,9 +246,9 @@ class JH3OutputStream extends OutputStream
 
     try {
       if(!client.completeMultipart(multipartUploadId))
-        throw new H3Exception("Cannot complete multipart upload for: "
+        throw new JH3Exception("Cannot complete multipart upload for: "
             + bucket + "/" + key);
-    } catch (H3Exception e) {
+    } catch (JH3Exception e) {
       abortMultipartUpload();
       throw new IOException(e);
     }
@@ -261,9 +261,9 @@ class JH3OutputStream extends OutputStream
 
     try {
       if(!client.abortMultipart(multipartUploadId))
-        throw new H3Exception("Cannot abort multipart upload for: "
+        throw new JH3Exception("Cannot abort multipart upload for: "
             + bucket + "/" + key);
-    } catch (H3Exception e) {
+    } catch (JH3Exception e) {
       throw new IOException(e);
     }
   }
@@ -293,10 +293,10 @@ class JH3OutputStream extends OutputStream
     initMultipartUpload();
     try {
       int size = dataSize();
-      H3Object dataObj = new H3Object(dataBlock.toByteArray(), size);
+      JH3Object dataObj = new JH3Object(dataBlock.toByteArray(), size);
       client.createPart(dataObj, multipartUploadId, blockCount);
       bytesSubmitted += size;
-    }catch(H3Exception e){
+    }catch(JH3Exception e){
       abortMultipartUpload();
       throw new IOException(e);
     }finally{

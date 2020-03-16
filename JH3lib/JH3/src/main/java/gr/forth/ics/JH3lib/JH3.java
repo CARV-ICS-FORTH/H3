@@ -21,10 +21,11 @@ import java.util.logging.Logger;
  */
 public class JH3 implements Serializable{
 
+    private static final Logger log = Logger.getLogger(JH3.class.getName());
     private static final Cleaner cleaner = Cleaner.create();
     private Pointer handle;
     private NativeAuth token;
-    private H3Status status = H3Status.H3_SUCCESS;
+    private JH3Status status = JH3Status.JH3_SUCCESS;
 
     /** The maximum bucket name size. */
     public static int H3_BUCKET_NAME_SIZE = JH3Interface.H3_BUCKET_NAME_SIZE;
@@ -52,13 +53,12 @@ public class JH3 implements Serializable{
      * @param config    Path of file containing options for storage type.
      * @param userId    The user that performs all operations.
      */
-    public JH3(H3StoreType storeType, String config, int userId) throws H3Exception {
+    public JH3(JH3StoreType storeType, String config, int userId) throws JH3Exception {
         Pointer configPath = new Memory(config.length() + 1);
         configPath.setString(0, config);
-        Logger log = Logger.getLogger(JH3.class.getName());
         handle = JH3Interface.INSTANCE.H3_Init(storeType.getStoreType(), configPath);
         if(handle == null){
-            throw new H3Exception("Could not initialize H3");
+            throw new JH3Exception("Could not initialize H3");
         }
         token = new NativeAuth(userId);
 
@@ -72,7 +72,7 @@ public class JH3 implements Serializable{
      * @param config Path of the file containing options for storage type.
      * @param token The authentication token of the user that performs all operations.
      */
-    public JH3(H3StoreType storeType, String config, H3Auth token) throws H3Exception {
+    public JH3(JH3StoreType storeType, String config, JH3Auth token) throws JH3Exception {
         this(storeType, config, token.getUserId());
     }
 
@@ -86,7 +86,7 @@ public class JH3 implements Serializable{
      * Get the status of the last operation performed.
      * @return The status of the last operation.
      */
-    public H3Status getStatus() { return status; }
+    public JH3Status getStatus() { return status; }
 
     /**
      * Get the name of the status of the last operation performed.
@@ -98,8 +98,8 @@ public class JH3 implements Serializable{
      * Get the authentication token of the user performing the operations.
      * @return The authentication token.
      */
-    public H3Auth getToken(){
-        return new H3Auth(token.userId);
+    public JH3Auth getToken(){
+        return new JH3Auth(token.userId);
     }
 
     /* Bucket Management methods */
@@ -108,23 +108,23 @@ public class JH3 implements Serializable{
      * Create a bucket. The status of the operation is set and can be retrieved by {@link JH3#getStatus() getStatus()}.
      * Expected status from operation:
      * <p>
-     * {@link H3Status#H3_SUCCESS} - The operation was successful.
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful.
      * <p>
-     * {@link H3Status#H3_EXISTS} - The bucket already exists.
+     * {@link JH3Status#JH3_EXISTS} - The bucket already exists.
      * <p>
-     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
      * <p>
-     * {@link H3Status#H3_STORE_ERROR} - A storage provider error
+     * {@link JH3Status#JH3_STORE_ERROR} - A storage provider error
      *
      * @param bucketName The bucket name.
      * @return  <code>true</code>if the operation was successful, <code>false</code> otherwise.
-     * @throws H3Exception If an unknown status is received.
+     * @throws JH3Exception If an unknown status is received.
      */
-    public boolean createBucket(String bucketName) throws H3Exception {
+    public boolean createBucket(String bucketName) throws JH3Exception {
         Pointer bucket = new Memory(bucketName.length() + 1);
         bucket.setString(0, bucketName);
 
-        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_CreateBucket(handle, token, bucket));
+        status = JH3Status.fromInt(JH3Interface.INSTANCE.H3_CreateBucket(handle, token, bucket));
         return operationSucceeded(status);
     }
 
@@ -133,24 +133,24 @@ public class JH3 implements Serializable{
      * status of the operation is set and can be retrieved by {@link JH3#getStatus() getStatus()}.
      * Expected status from operation:
      * <p>
-     * {@link H3Status#H3_SUCCESS} - The operation was successful.
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful.
      * <p>
-     * {@link H3Status#H3_NOT_EXISTS} - The bucket does not exist.
+     * {@link JH3Status#JH3_NOT_EXISTS} - The bucket does not exist.
      * <p>
-     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
      * <p>
-     * {@link H3Status#H3_FAILURE} - A storage provider error or the user has no access rights, or the bucket is
+     * {@link JH3Status#JH3_FAILURE} - A storage provider error or the user has no access rights, or the bucket is
      * not empty.
      *
      * @param bucketName The bucket name.
      * @return  <code>true</code> if the operation was successful, <code>false</code> otherwise.
-     * @throws H3Exception If an unknown status is received.
+     * @throws JH3Exception If an unknown status is received.
      */
-    public boolean deleteBucket(String bucketName) throws H3Exception {
+    public boolean deleteBucket(String bucketName) throws JH3Exception {
         Pointer bucket = new Memory(bucketName.length() + 1);
         bucket.setString(0, bucketName);
 
-        status = H3Status.fromInt((JH3Interface.INSTANCE.H3_DeleteBucket(handle, token, bucket)));
+        status = JH3Status.fromInt((JH3Interface.INSTANCE.H3_DeleteBucket(handle, token, bucket)));
         return operationSucceeded(status);
     }
 
@@ -158,20 +158,20 @@ public class JH3 implements Serializable{
      * List buckets associated with a user. The status of the operation is set and can be retrieved by
      * {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
-     * {@link H3Status#H3_SUCCESS} - The operation was successful.
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful.
      * <p>
-     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
      * <p>
-     * {@link H3Status#H3_FAILURE} - A storage provider error
+     * {@link JH3Status#JH3_FAILURE} - A storage provider error
      * @return The list of buckets if the operation was successful, <code>null</code> otherwise.
-     * @throws H3Exception If an unknown status is received.
+     * @throws JH3Exception If an unknown status is received.
      */
-    public ArrayList<String> listBuckets() throws H3Exception {
+    public ArrayList<String> listBuckets() throws JH3Exception {
         PointerByReference bucketNameArray = new PointerByReference();
         IntBuffer nBuckets = IntBuffer.allocate(1);
 
         // Retrieve bucket names
-        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_ListBuckets(handle, token, bucketNameArray, nBuckets));
+        status = JH3Status.fromInt(JH3Interface.INSTANCE.H3_ListBuckets(handle, token, bucketNameArray, nBuckets));
 
         // Return empty list on failure
         if(!operationSucceeded(status))
@@ -198,56 +198,57 @@ public class JH3 implements Serializable{
      * Retrieve information about a bucket. The status of the operation is set and can be retrieved by
      * {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
-     * {@link H3Status#H3_SUCCESS} - The operation was successful.
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful.
      * <p>
-     * {@link H3Status#H3_NOT_EXISTS} - The bucket doesn't exist.
+     * {@link JH3Status#JH3_NOT_EXISTS} - The bucket doesn't exist.
      * <p>
-     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
      * <p>
-     * {@link H3Status#H3_FAILURE} - A storage provider error
+     * {@link JH3Status#JH3_FAILURE} - A storage provider error
      *
      * @param bucketName The bucket name.
      * @param getStats If <code>true</code>, aggregate object information will also be produced at the cost of response
      *                 time.
      * @return  The bucket information if the operation was successful, <code>null</code> otherwise.
-     * @throws H3Exception If an unknown status is received.
+     * @throws JH3Exception If an unknown status is received.
      */
-    public H3BucketInfo infoBucket(String bucketName, boolean getStats) throws H3Exception {
+    public JH3BucketInfo infoBucket(String bucketName, boolean getStats) throws JH3Exception {
         Pointer bucket = new Memory(bucketName.length() + 1);
         NativeBucketInfo bucketInfo= new NativeBucketInfo();
         byte retrieveStats = (byte) (getStats? 1:0);        // map boolean to byte
 
         bucket.setString(0, bucketName);
-        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_InfoBucket(handle, token, bucket, bucketInfo, retrieveStats));
+        status = JH3Status.fromInt(JH3Interface.INSTANCE.H3_InfoBucket(handle, token, bucket, bucketInfo, retrieveStats));
         if (!operationSucceeded(status))
             return null;
 
         if(getStats){
-            H3BucketStats stats = new H3BucketStats(bucketInfo.stats.size.longValue(), bucketInfo.stats.nObjects,
-                    bucketInfo.stats.lastAccess.longValue(), bucketInfo.stats.lastModification.longValue());
-            return new H3BucketInfo(bucketInfo.creation.longValue(), stats);
+            JH3BucketStats stats = new JH3BucketStats(bucketInfo.stats.size.longValue(), bucketInfo.stats.nObjects,
+                    nativeToJH3(bucketInfo.stats.lastAccess), nativeToJH3(bucketInfo.stats.lastModification));
+
+            return new JH3BucketInfo(nativeToJH3(bucketInfo.creation), stats);
         }
 
-        return new H3BucketInfo(bucketInfo.creation.longValue());
+        return new JH3BucketInfo(nativeToJH3(bucketInfo.creation));
     }
 
     /**
      * Retrieve information about a bucket. No aggregate object information is produced. The status of the operation is
      * set and can be retrieved by {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
-     * {@link H3Status#H3_SUCCESS} - The operation was successful.
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful.
      * <p>
-     * {@link H3Status#H3_NOT_EXISTS} - The bucket doesn't exist.
+     * {@link JH3Status#JH3_NOT_EXISTS} - The bucket doesn't exist.
      * <p>
-     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
      * <p>
-     * {@link H3Status#H3_FAILURE} - A storage provider error
+     * {@link JH3Status#JH3_FAILURE} - A storage provider error
      *
      * @param bucketName The bucket name.
      * @return  The bucket information if the operation was successful, <code>null</code> otherwise.
-     * @throws H3Exception If an unknown status is received.
+     * @throws JH3Exception If an unknown status is received.
      */
-    public H3BucketInfo infoBucket(String bucketName) throws H3Exception {
+    public JH3BucketInfo infoBucket(String bucketName) throws JH3Exception {
         return infoBucket(bucketName, false);
     }
 
@@ -268,21 +269,21 @@ public class JH3 implements Serializable{
      * The status of the operation is set and can be retrieved by {@link JH3#getStatus() getStatus()}.
      * Expected status from operation:
      * <p>
-     * {@link H3Status#H3_SUCCESS} - The operation was successful.
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful.
      * <p>
-     * {@link H3Status#H3_FAILURE} - The bucket doesn't exist or the user has no access.
+     * {@link JH3Status#JH3_FAILURE} - The bucket doesn't exist or the user has no access.
      * <p>
-     * {@link H3Status#H3_EXISTS} - The object already exists.
+     * {@link JH3Status#JH3_EXISTS} - The object already exists.
      * <p>
-     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
      *
      * @param bucketName The name of the bucket to host the object.
      * @param objectName The name of the object.
      * @param objectData The data of the object.
      * @return <code>true</code> is the operation was successful, <code>false</code> otherwise.
-     * @throws H3Exception If an unknown status is received.
+     * @throws JH3Exception If an unknown status is received.
      */
-    public boolean createObject(String bucketName, String objectName, H3Object objectData) throws H3Exception {
+    public boolean createObject(String bucketName, String objectName, JH3Object objectData) throws JH3Exception {
         Pointer bucket = new Memory(bucketName.length() + 1);
         Pointer name = new Memory(objectName.length() + 1);
         // Cannot allocate memory of zero size
@@ -295,7 +296,7 @@ public class JH3 implements Serializable{
         // TODO check if there is a better way
         data.getByteBuffer(0, objectData.getSize()).put(objectData.getData());
 
-        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_CreateObject(handle, token, bucket, name, data, size));
+        status = JH3Status.fromInt(JH3Interface.INSTANCE.H3_CreateObject(handle, token, bucket, name, data, size));
         return operationSucceeded(status);
     }
 
@@ -304,13 +305,13 @@ public class JH3 implements Serializable{
      * the operation is set and can be retrieved by {@link JH3#getStatus() getStatus()}.
      * Expected status from operation:
      * <p>
-     * {@link H3Status#H3_SUCCESS} - The operation was successful.
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful.
      * <p>
-     * {@link H3Status#H3_FAILURE} - Unable to access object or user has no access or new name is in use.
+     * {@link JH3Status#JH3_FAILURE} - Unable to access object or user has no access or new name is in use.
      * <p>
-     * {@link H3Status#H3_NOT_EXISTS} - The object doesn't exist.
+     * {@link JH3Status#JH3_NOT_EXISTS} - The object doesn't exist.
      * <p>
-     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
      *
      * @param bucketName        The name of the bucket to host the object.
      * @param srcObjectName     The name of the object to be copied.
@@ -319,10 +320,10 @@ public class JH3 implements Serializable{
      * @param dstObjectName     The name of the new object.
      *
      * @return The number of bytes actually copied if is the operation was successful, <code>-1</code> otherwise.
-     * @throws H3Exception If an unknown status is received.
+     * @throws JH3Exception If an unknown status is received.
      */
     public long createObjectCopy(String bucketName, String srcObjectName, long offset, long size, String dstObjectName)
-            throws H3Exception {
+            throws JH3Exception {
         Pointer bucket = new Memory(bucketName.length() + 1);
         Pointer src = new Memory(srcObjectName.length() + 1);
         Pointer dst = new Memory(dstObjectName.length() + 1);
@@ -333,7 +334,7 @@ public class JH3 implements Serializable{
         src.setString(0, srcObjectName);
         dst.setString(0, dstObjectName);
 
-        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_CreateObjectCopy(handle, token, bucket, src, off, nSize, dst));
+        status = JH3Status.fromInt(JH3Interface.INSTANCE.H3_CreateObjectCopy(handle, token, bucket, src, off, nSize, dst));
         if(operationSucceeded(status))
             return nSize.getValue().longValue();
 
@@ -345,27 +346,27 @@ public class JH3 implements Serializable{
      * Delete an object from specified bucket.The status of the operation is set and can be retrieved by
      * {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
-     * {@link H3Status#H3_SUCCESS} - The operation was successful.
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful.
      * <p>
-     * {@link H3Status#H3_FAILURE} - Unable to delete object or user has no access.
+     * {@link JH3Status#JH3_FAILURE} - Unable to delete object or user has no access.
      * <p>
-     * {@link H3Status#H3_NOT_EXISTS} - The object doesn't exist.
+     * {@link JH3Status#JH3_NOT_EXISTS} - The object doesn't exist.
      * <p>
-     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
      *
      * @param bucketName The bucket that hosts the object.
      * @param objectName The name of the object to be deleted.
      * @return <code>true</code> is the operation was successful, <code>false</code> otherwise.
-     * @throws H3Exception If an unknown status is received.
+     * @throws JH3Exception If an unknown status is received.
      */
-    public boolean deleteObject(String bucketName, String objectName) throws H3Exception {
+    public boolean deleteObject(String bucketName, String objectName) throws JH3Exception {
         Pointer bucket = new Memory(bucketName.length() + 1);
         Pointer name = new Memory(objectName.length() + 1);
 
         bucket.setString(0,  bucketName);
         name.setString(0, objectName);
 
-        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_DeleteObject(handle, token, bucket, name));
+        status = JH3Status.fromInt(JH3Interface.INSTANCE.H3_DeleteObject(handle, token, bucket, name));
         return operationSucceeded(status);
     }
 
@@ -377,23 +378,23 @@ public class JH3 implements Serializable{
      * the next batch of names. The status of the operation is set and can be retrieved by
      * {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
-     * {@link H3Status#H3_SUCCESS} - The operation was successful (no more matching names exist).
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful (no more matching names exist).
      * <p>
-     * {@link H3Status#H3_CONTINUE} - The operation was successful (there could be more matching names).
+     * {@link JH3Status#JH3_CONTINUE} - The operation was successful (there could be more matching names).
      * <p>
-     * {@link H3Status#H3_FAILURE} - Unable to access bucket or user has no access.
+     * {@link JH3Status#JH3_FAILURE} - Unable to access bucket or user has no access.
      * <p>
-     * {@link H3Status#H3_NOT_EXISTS} - The bucket doesn't exist.
+     * {@link JH3Status#JH3_NOT_EXISTS} - The bucket doesn't exist.
      * <p>
-     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
 
      * @param bucketName    The name of the bucket.
      * @param prefix        The initial part of the objects to be listed.
      * @param offset        The number of matching names to skip.
      * @return              The list of matching objects on success, <code>null</code> otherwise.
-     * @throws H3Exception  If an unknown status is received.
+     * @throws JH3Exception  If an unknown status is received.
      */
-    public ArrayList<String> listObjects(String bucketName, String prefix, int offset) throws H3Exception {
+    public ArrayList<String> listObjects(String bucketName, String prefix, int offset) throws JH3Exception {
         Pointer bucket = new Memory(bucketName.length() +1);
         Pointer nPrefix = new Memory(prefix.length() + 1);
         PointerByReference objectArray = new PointerByReference();
@@ -402,7 +403,7 @@ public class JH3 implements Serializable{
         bucket.setString(0, bucketName);
         nPrefix.setString(0, prefix);
 
-        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_ListObjects(handle, token, bucket, nPrefix, offset, objectArray, nObjects));
+        status = JH3Status.fromInt(JH3Interface.INSTANCE.H3_ListObjects(handle, token, bucket, nPrefix, offset, objectArray, nObjects));
 
         // Return null on failure
         if(!operationSucceeded(status))
@@ -428,22 +429,22 @@ public class JH3 implements Serializable{
      * the next batch of names. The status of the operation is set and can be retrieved by
      * {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
-     * {@link H3Status#H3_SUCCESS} - The operation was successful (no more matching names exist).
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful (no more matching names exist).
      * <p>
-     * {@link H3Status#H3_CONTINUE} - The operation was successful (there could be more matching names).
+     * {@link JH3Status#JH3_CONTINUE} - The operation was successful (there could be more matching names).
      * <p>
-     * {@link H3Status#H3_FAILURE} - Unable to access bucket or user has no access.
+     * {@link JH3Status#JH3_FAILURE} - Unable to access bucket or user has no access.
      * <p>
-     * {@link H3Status#H3_NOT_EXISTS} - The bucket doesn't exist.
+     * {@link JH3Status#JH3_NOT_EXISTS} - The bucket doesn't exist.
      * <p>
-     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
 
      * @param bucketName    The name of the bucket.
      * @param offset        The number of matching names to skip.
      * @return              The list of matching objects on success, <code>null</code> otherwise.
-     * @throws H3Exception  If an unknown status is received.
+     * @throws JH3Exception  If an unknown status is received.
      */
-    public ArrayList<String> listObjects(String bucketName, int offset) throws H3Exception {
+    public ArrayList<String> listObjects(String bucketName, int offset) throws JH3Exception {
         return listObjects(bucketName, "", offset);
     }
 
@@ -457,22 +458,22 @@ public class JH3 implements Serializable{
      * The status of the operation is set and can be retrieved by {@link JH3#getStatus() getStatus()}.
      * Expected status from operation:
      * <p>
-     * {@link H3Status#H3_SUCCESS} - The operation was successful.
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful.
      * <p>
-     * {@link H3Status#H3_CONTINUE} - The operation was successful (there could be more matching names).
+     * {@link JH3Status#JH3_CONTINUE} - The operation was successful (there could be more matching names).
      * <p>
-     * {@link H3Status#H3_FAILURE} - Unable to access bucket or user has no access.
+     * {@link JH3Status#JH3_FAILURE} - Unable to access bucket or user has no access.
      * <p>
-     * {@link H3Status#H3_NOT_EXISTS} - The bucket doesn't exist.
+     * {@link JH3Status#JH3_NOT_EXISTS} - The bucket doesn't exist.
      * <p>
-     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
      *
      * @param bucketName    The name of the bucket that hosts the object.
      * @param objectName    The name of the object.
      * @return              The object's information on success, <code>null</code> otherwise.
-     * @throws H3Exception  If an unknown status is received.
+     * @throws JH3Exception  If an unknown status is received.
      */
-    public H3ObjectInfo infoObject(String bucketName, String objectName) throws H3Exception {
+    public JH3ObjectInfo infoObject(String bucketName, String objectName) throws JH3Exception {
         Pointer bucket = new Memory(bucketName.length() + 1);
         Pointer name = new Memory(objectName.length() + 1);
         NativeObjectInfo info = new NativeObjectInfo();
@@ -480,10 +481,11 @@ public class JH3 implements Serializable{
         bucket.setString(0, bucketName);
         name.setString(0, objectName);
 
-        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_InfoObject(handle, token, bucket, name, info));
+        status = JH3Status.fromInt(JH3Interface.INSTANCE.H3_InfoObject(handle, token, bucket, name, info));
         if(operationSucceeded(status)){
-            return new H3ObjectInfo((info.isBad == 1), info.size.longValue(), info.creation.longValue(),
-                    info.lastAccess.longValue(), info.lastModification.longValue());
+            return new JH3ObjectInfo((info.isBad == 1), info.size.longValue(), nativeToJH3(info.creation),
+                    nativeToJH3(info.lastAccess), nativeToJH3(info.lastModification),
+                    nativeToJH3(info.lastChange), info.mode, info.uid, info.gid);
         }
 
         return null;
@@ -494,24 +496,24 @@ public class JH3 implements Serializable{
      * <code>MAX_INTEGER</code> due to Java's array restrictions. The status of the operation is set and can be retrieved
      * by {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
-     * {@link H3Status#H3_SUCCESS} - The operation was successful.
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful.
      * <p>
-     * {@link H3Status#H3_CONTINUE} - The operation was successful, though more data are available.
+     * {@link JH3Status#JH3_CONTINUE} - The operation was successful, though more data are available.
      * <p>
-     * {@link H3Status#H3_FAILURE} - Unable to access bucket or user has no access, or internal buffer allocation error.
+     * {@link JH3Status#JH3_FAILURE} - Unable to access bucket or user has no access, or internal buffer allocation error.
      * <p>
-     * {@link H3Status#H3_NOT_EXISTS} - The object doesn't exist.
+     * {@link JH3Status#JH3_NOT_EXISTS} - The object doesn't exist.
      * <p>
-     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
      *
      * @param bucketName    The name bucket that hosts the object to be read.
      * @param objectName    The name of the object.
      * @param offset        The offset within the object's data.
      * @param size          Size of data to retrieve.
      * @return              The object's information on success, <code>null</code> otherwise.
-     * @throws H3Exception  If an unknown status is received, or requested size exceeds <code>MAX_INTEGER</code> size
+     * @throws JH3Exception  If an unknown status is received, or requested size exceeds <code>MAX_INTEGER</code> size
      */
-    public H3Object readObject(String bucketName, String objectName, long offset,long size) throws H3Exception {
+    public JH3Object readObject(String bucketName, String objectName, long offset, long size) throws JH3Exception {
         Pointer bucket = new Memory(bucketName.length() + 1);
         Pointer name = new Memory(objectName.length() +1);
         PointerByReference data;
@@ -525,13 +527,13 @@ public class JH3 implements Serializable{
         else
             data = new PointerByReference();
 
-        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_ReadObject(handle, token, bucket, name, nOffset, data, nSize));
+        status = JH3Status.fromInt(JH3Interface.INSTANCE.H3_ReadObject(handle, token, bucket, name, nOffset, data, nSize));
         if(operationSucceeded(status)) {
             ByteBuffer buffer = data.getValue().getByteBuffer(0, nSize.getValue().longValue());
             byte[] array = new byte[buffer.remaining()];        // remaining returns int
             buffer.get(array);
 
-            H3Object obj = new H3Object(array, nSize.getValue().longValue());
+            JH3Object obj = new JH3Object(array, nSize.getValue().longValue());
 
             // Free internal buffer that was allocated (only when size is zero)
             if(size == 0)
@@ -546,22 +548,22 @@ public class JH3 implements Serializable{
      * Retrieve full data from an object. Object must not exceed 2GB in order to retrieve it.The status of the
      * operation is set and can be retrieved by {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
-     * {@link H3Status#H3_SUCCESS} - The operation was successful.
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful.
      * <p>
-     * {@link H3Status#H3_CONTINUE} - The operation was successful, though more data are available.
+     * {@link JH3Status#JH3_CONTINUE} - The operation was successful, though more data are available.
      * <p>
-     * {@link H3Status#H3_FAILURE} - Unable to access bucket or user has no access, or internal buffer allocation error.
+     * {@link JH3Status#JH3_FAILURE} - Unable to access bucket or user has no access, or internal buffer allocation error.
      * <p>
-     * {@link H3Status#H3_NOT_EXISTS} - The object doesn't exist.
+     * {@link JH3Status#JH3_NOT_EXISTS} - The object doesn't exist.
      * <p>
-     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
      *
      * @param bucketName    The name bucket that hosts the object to be read.
      * @param objectName    The name of the object.
      * @return              The object's information on success, <code>null</code> otherwise.
-     * @throws H3Exception  If an unknown status is received, or requested size exceeds <code>MAX_INTEGER</code> size
+     * @throws JH3Exception  If an unknown status is received, or requested size exceeds <code>MAX_INTEGER</code> size
      */
-    public H3Object readObject(String bucketName, String objectName) throws H3Exception{
+    public JH3Object readObject(String bucketName, String objectName) throws JH3Exception {
         return readObject(bucketName, objectName, 0, 0);
     }
 
@@ -578,20 +580,20 @@ public class JH3 implements Serializable{
      * The status of the operation is set and can be retrieved by
      * {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
-     * {@link H3Status#H3_SUCCESS} - The operation was successful.
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful.
      * <p>
-     * {@link H3Status#H3_FAILURE} - Unable to access bucket or user has no access.
+     * {@link JH3Status#JH3_FAILURE} - Unable to access bucket or user has no access.
      * <p>
-     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
      *
      * @param    bucketName         The name of the bucket to host the object.
      * @param    objectName         The name of the object to be written.
      * @param    objectData         The object's data
      * @param    offset             Offset from the object's first byte.
      * @return              <code>true</code> if the operation was successful, <code>false</code> otherwise.
-     * @throws H3Exception  If an unknown status is received.
+     * @throws JH3Exception  If an unknown status is received.
      */
-    public boolean writeObject(String bucketName, String objectName, H3Object objectData, long offset) throws H3Exception {
+    public boolean writeObject(String bucketName, String objectName, JH3Object objectData, long offset) throws JH3Exception {
         Pointer bucket = new Memory(bucketName.length() +1);
         Pointer name = new Memory(objectName.length() + 1);
         // Cannot allocate memory of zero size
@@ -603,7 +605,7 @@ public class JH3 implements Serializable{
         name.setString(0, objectName);
         data.getByteBuffer(0, objectData.getSize()).put(objectData.getData());
 
-        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_WriteObject(handle, token, bucket, name, data, nSize, nOffset));
+        status = JH3Status.fromInt(JH3Interface.INSTANCE.H3_WriteObject(handle, token, bucket, name, data, nSize, nOffset));
         return operationSucceeded(status);
     }
 
@@ -620,19 +622,19 @@ public class JH3 implements Serializable{
      * The status of the operation is set and can be retrieved by
      * {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
-     * {@link H3Status#H3_SUCCESS} - The operation was successful.
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful.
      * <p>
-     * {@link H3Status#H3_FAILURE} - Unable to access bucket or user has no access.
+     * {@link JH3Status#JH3_FAILURE} - Unable to access bucket or user has no access.
      * <p>
-     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
      *
      * @param    bucketName         The name of the bucket to host the object.
      * @param    objectName         The name of the object to be written.
      * @param    objectData         The object's data
      * @return              <code>true</code> if the operation was successful, <code>false</code> otherwise.
-     * @throws H3Exception  If an unknown status is received.
+     * @throws JH3Exception  If an unknown status is received.
      */
-    public boolean writeObject(String bucketName, String objectName, H3Object objectData) throws H3Exception {
+    public boolean writeObject(String bucketName, String objectName, JH3Object objectData) throws JH3Exception {
         return writeObject(bucketName, objectName, objectData, 0);
     }
 
@@ -641,13 +643,13 @@ public class JH3 implements Serializable{
      * Note that both objects will rest within the same bucket. The status of the operation is set and can be
      * retrieved by {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
-     * {@link H3Status#H3_SUCCESS} - The operation was successful.
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful.
      * <p>
-     * {@link H3Status#H3_FAILURE} - Unable to access bucket or user has no access.
+     * {@link JH3Status#JH3_FAILURE} - Unable to access bucket or user has no access.
      * <p>
-     * {@link H3Status#H3_NOT_EXISTS} - The object doesn't exist.
+     * {@link JH3Status#JH3_NOT_EXISTS} - The object doesn't exist.
      * <p>
-     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
      *
      * @param    bucketName         The name of the bucket to host the object.
      * @param    srcObjectName      The name of the object to be copied.
@@ -657,10 +659,10 @@ public class JH3 implements Serializable{
      * @param    size               The amount of data to copy.
      *
      * @return  The number of bytes actually copied if the operation was successful, <code>-1</code> otherwise.
-     * @throws H3Exception  If an unknown status is received.
+     * @throws JH3Exception  If an unknown status is received.
      */
     public long writeObjectCopy(String bucketName, String srcObjectName, long srcOffset,
-                                   long size, String dstObjectName,  long dstOffset) throws H3Exception {
+                                   long size, String dstObjectName,  long dstOffset) throws JH3Exception {
         Pointer bucket = new Memory(bucketName.length() +1 );
         Pointer src = new Memory(srcObjectName.length() +1);
         Pointer dst = new Memory(dstObjectName.length() +1);
@@ -672,7 +674,7 @@ public class JH3 implements Serializable{
         src.setString(0, srcObjectName);
         dst.setString(0, dstObjectName);
 
-        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_WriteObjectCopy(handle, token, bucket, src, srcOff, nSize, dst, dstOff));
+        status = JH3Status.fromInt(JH3Interface.INSTANCE.H3_WriteObjectCopy(handle, token, bucket, src, srcOff, nSize, dst, dstOff));
         if(operationSucceeded(status))
             return nSize.getValue().longValue();
 
@@ -686,14 +688,14 @@ public class JH3 implements Serializable{
      * the same bucket. The status of the operation is set and can be retrieved by {@link JH3#getStatus() getStatus()}.
      * Expected status from operation:
      * <p>
-     * {@link H3Status#H3_SUCCESS} - The operation was successful.
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful.
      * <p>
-     * {@link H3Status#H3_FAILURE} - Unable to access bucket or user has no access, or destination name is in use and
+     * {@link JH3Status#JH3_FAILURE} - Unable to access bucket or user has no access, or destination name is in use and
      * not allowed to overwrite.
      * <p>
-     * {@link H3Status#H3_NOT_EXISTS} - The object doesn't exist.
+     * {@link JH3Status#JH3_NOT_EXISTS} - The object doesn't exist.
      * <p>
-     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
      *
      * @param    bucketName         The name of the bucket to host the object.
      * @param    srcObjectName      The name of the object to be copied.
@@ -701,10 +703,10 @@ public class JH3 implements Serializable{
      * @param    noOverwrite        Overwrite flag.
      *
      * @return              <code>true</code> if the operation was successful, <code>false</code> otherwise.
-     * @throws H3Exception  If an unknown status is received.
+     * @throws JH3Exception  If an unknown status is received.
      */
     public boolean copyObject(String bucketName, String srcObjectName, String dstObjectName,
-                              boolean noOverwrite) throws H3Exception {
+                              boolean noOverwrite) throws JH3Exception {
         Pointer bucket = new Memory(bucketName.length() + 1);
         Pointer src = new Memory(srcObjectName.length() +1);
         Pointer dst = new Memory(dstObjectName.length() +1);
@@ -714,7 +716,7 @@ public class JH3 implements Serializable{
         src.setString(0, srcObjectName);
         dst.setString(0, dstObjectName);
 
-        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_CopyObject(handle, token, bucket, src, dst, overwrite));
+        status = JH3Status.fromInt(JH3Interface.INSTANCE.H3_CopyObject(handle, token, bucket, src, dst, overwrite));
         return operationSucceeded(status);
     }
 
@@ -723,22 +725,22 @@ public class JH3 implements Serializable{
      * already exists.Note that both objects will rest within the same bucket. The status of the operation is set and
      * can be retrieved by {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
-     * {@link H3Status#H3_SUCCESS} - The operation was successful.
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful.
      * <p>
-     * {@link H3Status#H3_FAILURE} - Unable to access bucket or user has no access.
+     * {@link JH3Status#JH3_FAILURE} - Unable to access bucket or user has no access.
      * <p>
-     * {@link H3Status#H3_NOT_EXISTS} - The object doesn't exist.
+     * {@link JH3Status#JH3_NOT_EXISTS} - The object doesn't exist.
      * <p>
-     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
      *
      * @param    bucketName         The name of the bucket to host the object.
      * @param    srcObjectName      The name of the object to be copied.
      * @param    dstObjectName      The name to be written.
      *
      * @return              <code>true</code> if the operation was successful, <code>false</code> otherwise.
-     * @throws H3Exception  If an unknown status is received.
+     * @throws JH3Exception  If an unknown status is received.
      */
-    public boolean copyObject(String bucketName, String srcObjectName, String dstObjectName) throws H3Exception {
+    public boolean copyObject(String bucketName, String srcObjectName, String dstObjectName) throws JH3Exception {
         return copyObject(bucketName, srcObjectName, dstObjectName, false);
     }
 
@@ -748,16 +750,16 @@ public class JH3 implements Serializable{
      * the same bucket.  The status of the operation is set and can be retrieved by {@link JH3#getStatus() getStatus()}.
      * Expected status from operation:
      * <p>
-     * {@link H3Status#H3_SUCCESS} - The operation was successful.
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful.
      * <p>
-     * {@link H3Status#H3_FAILURE} - Unable to access bucket or user has no access, or destination name is in use and
+     * {@link JH3Status#JH3_FAILURE} - Unable to access bucket or user has no access, or destination name is in use and
      * not allowed to overwrite.
      * <p>
-     * {@link H3Status#H3_NOT_EXISTS} - The object doesn't exist.
+     * {@link JH3Status#JH3_NOT_EXISTS} - The object doesn't exist.
      * <p>
-     * {@link H3Status#H3_EXISTS} - The destination object exists and we are not allowed to replace it.
+     * {@link JH3Status#JH3_EXISTS} - The destination object exists and we are not allowed to replace it.
      * <p>
-     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
      *
      * @param    bucketName         The name of the bucket to host the object.
      * @param    srcObjectName      The name of the object to be renamed.
@@ -765,10 +767,10 @@ public class JH3 implements Serializable{
      * @param    noOverwrite        Overwrite flag.
      *
      * @return              <code>true</code> if the operation was successful, <code>false</code> otherwise.
-     * @throws H3Exception  If an unknown status is received.
+     * @throws JH3Exception  If an unknown status is received.
      */
     public boolean moveObject(String bucketName, String srcObjectName, String dstObjectName,
-                              boolean noOverwrite) throws H3Exception {
+                              boolean noOverwrite) throws JH3Exception {
         Pointer bucket = new Memory(bucketName.length() +1);
         Pointer src = new Memory(srcObjectName.length() +1);
         Pointer dst = new Memory(dstObjectName.length() + 1);
@@ -778,7 +780,7 @@ public class JH3 implements Serializable{
         src.setString(0, srcObjectName);
         dst.setString(0, dstObjectName);
 
-        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_MoveObject(handle, token, bucket, src, dst, overwrite));
+        status = JH3Status.fromInt(JH3Interface.INSTANCE.H3_MoveObject(handle, token, bucket, src, dst, overwrite));
         return operationSucceeded(status);
 
     }
@@ -788,25 +790,25 @@ public class JH3 implements Serializable{
      * exists. Note that both objects will rest within the same bucket. The status of the operation is set and can be
      * retrieved by {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
-     * {@link H3Status#H3_SUCCESS} - The operation was successful.
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful.
      * <p>
-     * {@link H3Status#H3_FAILURE} - Unable to access bucket or user has no access, or destination name is in use and
+     * {@link JH3Status#JH3_FAILURE} - Unable to access bucket or user has no access, or destination name is in use and
      * not allowed to overwrite.
      * <p>
-     * {@link H3Status#H3_NOT_EXISTS} - The object doesn't exist.
+     * {@link JH3Status#JH3_NOT_EXISTS} - The object doesn't exist.
      * <p>
-     * {@link H3Status#H3_EXISTS} - The destination object exists and we are not allowed to replace it.
+     * {@link JH3Status#JH3_EXISTS} - The destination object exists and we are not allowed to replace it.
      * <p>
-     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
      *
      * @param    bucketName         The name of the bucket to host the object.
      * @param    srcObjectName      The name of the object to be renamed.
      * @param    dstObjectName      The destination name to be assumed by the object.
      *
      * @return              <code>true</code> if the operation was successful, <code>false</code> otherwise.
-     * @throws H3Exception  If an unknown status is received.
+     * @throws JH3Exception  If an unknown status is received.
      */
-    public boolean moveObject(String bucketName, String srcObjectName, String dstObjectName) throws H3Exception {
+    public boolean moveObject(String bucketName, String srcObjectName, String dstObjectName) throws JH3Exception {
         return moveObject(bucketName, srcObjectName, dstObjectName, false);
     }
 
@@ -814,13 +816,13 @@ public class JH3 implements Serializable{
      * Reduces the size of the object by permanently removing excess data. The status of the operation is set and can be
      * retrieved by {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
-     * {@link H3Status#H3_SUCCESS} - The operation was successful.
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful.
      * <p>
-     * {@link H3Status#H3_FAILURE} - Unable to retrieve object info or user has no access.
+     * {@link JH3Status#JH3_FAILURE} - Unable to retrieve object info or user has no access.
      * <p>
-     * {@link H3Status#H3_NOT_EXISTS} - The object doesn't exist.
+     * {@link JH3Status#JH3_NOT_EXISTS} - The object doesn't exist.
      * <p>
-     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
      *
      * @param bucketName            The name of the bucket hosting the object.
      * @param objectName            The name of the object to be truncated.
@@ -828,9 +830,9 @@ public class JH3 implements Serializable{
      *                              extra data is lost. If the object was previously shorter, it is extended, and the
      *                              extended part reads as null bytes ('\0').
      * @return              <code>true</code> if the operation was successful, <code>false</code> otherwise.
-     * @throws H3Exception  If an unknown status is received.
+     * @throws JH3Exception  If an unknown status is received.
      */
-    public boolean truncateObject(String bucketName, String objectName, long size) throws H3Exception {
+    public boolean truncateObject(String bucketName, String objectName, long size) throws JH3Exception {
         Pointer bucket = new Memory(bucketName.length() +1);
         Pointer name = new Memory(objectName.length() +1);
         NativeLong nSize = new NativeLong(size);
@@ -838,7 +840,7 @@ public class JH3 implements Serializable{
         bucket.setString(0, bucketName);
         name.setString(0, objectName);
 
-        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_TruncateObject(handle, token, bucket, name, nSize));
+        status = JH3Status.fromInt(JH3Interface.INSTANCE.H3_TruncateObject(handle, token, bucket, name, nSize));
 
         return operationSucceeded(status);
     }
@@ -847,21 +849,21 @@ public class JH3 implements Serializable{
      * Reduces the size of the object to zero by permanently removing all data in object. The status of the operation
      * is set and can be retrieved by {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
-     * {@link H3Status#H3_SUCCESS} - The operation was successful.
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful.
      * <p>
-     * {@link H3Status#H3_FAILURE} - Unable to retrieve object info or user has no access.
+     * {@link JH3Status#JH3_FAILURE} - Unable to retrieve object info or user has no access.
      * <p>
-     * {@link H3Status#H3_NOT_EXISTS} - The object doesn't exist.
+     * {@link JH3Status#JH3_NOT_EXISTS} - The object doesn't exist.
      * <p>
-     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
      *
      * @param bucketName            The name of the bucket hosting the object.
      * @param objectName            The name of the object to be truncated.
 
      * @return              <code>true</code> if the operation was successful, <code>false</code> otherwise.
-     * @throws H3Exception  If an unknown status is received.
+     * @throws JH3Exception  If an unknown status is received.
      */
-    public boolean truncateObject(String bucketName, String objectName) throws H3Exception {
+    public boolean truncateObject(String bucketName, String objectName) throws JH3Exception {
         return truncateObject(bucketName, objectName, 0);
     }
 
@@ -870,21 +872,21 @@ public class JH3 implements Serializable{
      * operation is set and can be retrieved by {@link JH3#getStatus() getStatus()}.
      * Expected status from operation:
      * <p>
-     * {@link H3Status#H3_SUCCESS} - The operation was successful.
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful.
      * <p>
-     * {@link H3Status#H3_FAILURE} - Unable to retrieve object info or user has no access.
+     * {@link JH3Status#JH3_FAILURE} - Unable to retrieve object info or user has no access.
      * <p>
-     * {@link H3Status#H3_NOT_EXISTS} - The object doesn't exist.
+     * {@link JH3Status#JH3_NOT_EXISTS} - The object doesn't exist.
      * <p>
-     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
      *
      * @param bucketName            The name of the bucket hosting the objects.
      * @param srcObjectName         The name of the first object to be exchanged.
      * @param dstObjectName         The name of the second object to be exchanged.
      * @return              <code>true</code> if the operation was successful, <code>false</code> otherwise.
-     * @throws H3Exception  If an unknown status is received.
+     * @throws JH3Exception  If an unknown status is received.
      */
-    public boolean exchangeObject(String bucketName, String srcObjectName, String dstObjectName) throws H3Exception {
+    public boolean exchangeObject(String bucketName, String srcObjectName, String dstObjectName) throws JH3Exception {
         Pointer bucket = new Memory(bucketName.length() + 1);
         Pointer firstName = new Memory(srcObjectName.length() + 1);
         Pointer secondName = new Memory(dstObjectName.length() + 1);
@@ -893,7 +895,7 @@ public class JH3 implements Serializable{
         firstName.setString(0, srcObjectName);
         secondName.setString(0, dstObjectName);
 
-        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_ExchangeObject(handle, token, bucket, firstName, secondName));
+        status = JH3Status.fromInt(JH3Interface.INSTANCE.H3_ExchangeObject(handle, token, bucket, firstName, secondName));
 
         return operationSucceeded(status);
     }
@@ -913,33 +915,33 @@ public class JH3 implements Serializable{
      * The status of the operation is set and can be retrieved by {@link JH3#getStatus() getStatus()}.
      * Expected status from operation:
      * <p>
-     * {@link H3Status#H3_SUCCESS} - The operation was successful.
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful.
      * <p>
-     * {@link H3Status#H3_FAILURE} - Unable to access bucket or user has no access.
+     * {@link JH3Status#JH3_FAILURE} - Unable to access bucket or user has no access.
      * <p>
-     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
      *
      * @param    bucketName         The name of the bucket to host the object.
      * @param    objectName         The name of the object to be created.
      *
      * @return              The multipart ID if the operation was successful, <code>null</code> otherwise.
-     * @throws H3Exception  If an unknown status is received.
+     * @throws JH3Exception  If an unknown status is received.
      */
-    public H3MultipartId createMultipart(String bucketName, String objectName) throws H3Exception {
+    public JH3MultipartId createMultipart(String bucketName, String objectName) throws JH3Exception {
         Pointer bucket = new Memory(bucketName.length() +1);
         Pointer name = new Memory(objectName.length() +1);
         PointerByReference multipartId = new PointerByReference();
         bucket.setString(0, bucketName);
         name.setString(0, objectName);
 
-        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_CreateMultipart(handle, token, bucket, name, multipartId));
+        status = JH3Status.fromInt(JH3Interface.INSTANCE.H3_CreateMultipart(handle, token, bucket, name, multipartId));
 
         // Return null on error
         if(!operationSucceeded(status)) {
             return null;
         }
 
-        return new H3MultipartId(multipartId.getValue().getString(0));
+        return new JH3MultipartId(multipartId.getValue().getString(0));
     }
 
     /**
@@ -948,25 +950,25 @@ public class JH3 implements Serializable{
      * invalidated thus the multipart API becomes in-applicable for the object. The status of the operation is set and
      * can be retrieved by {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
-     * {@link H3Status#H3_SUCCESS} - The operation was successful.
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful.
      * <p>
-     * {@link H3Status#H3_NOT_EXISTS} - The multipart object doesn't exist.
+     * {@link JH3Status#JH3_NOT_EXISTS} - The multipart object doesn't exist.
      * <p>
-     * {@link H3Status#H3_FAILURE} - The user has no access or unable to access multipart object, or no parts have been
+     * {@link JH3Status#JH3_FAILURE} - The user has no access or unable to access multipart object, or no parts have been
      * uploaded.
      * <p>
-     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
      *
      * @param   multipartId         The id corresponding to the multipart object.
      *
      * @return              <code>true</code> if the operation was successful, <code>false</code> otherwise.
-     * @throws H3Exception  If an unknown status is received.
+     * @throws JH3Exception  If an unknown status is received.
      */
-    public boolean completeMultipart(H3MultipartId multipartId) throws H3Exception {
+    public boolean completeMultipart(JH3MultipartId multipartId) throws JH3Exception {
         Pointer multipart = new Memory(multipartId.getMultipartId().length() +1);
         multipart.setString(0, multipartId.getMultipartId());
 
-        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_CompleteMultipart(handle, token, multipart));
+        status = JH3Status.fromInt(JH3Interface.INSTANCE.H3_CompleteMultipart(handle, token, multipart));
         return operationSucceeded(status);
     }
 
@@ -975,24 +977,24 @@ public class JH3 implements Serializable{
      * invalidated. The status of the operation is set and can be retrieved by {@link JH3#getStatus() getStatus()}.
      * Expected status from operation:
      * <p>
-     * {@link H3Status#H3_SUCCESS} - The operation was successful.
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful.
      * <p>
-     * {@link H3Status#H3_NOT_EXISTS} - The multipart object doesn't exist.
+     * {@link JH3Status#JH3_NOT_EXISTS} - The multipart object doesn't exist.
      * <p>
-     * {@link H3Status#H3_FAILURE} - The user has no access or unable to access multipart object.
+     * {@link JH3Status#JH3_FAILURE} - The user has no access or unable to access multipart object.
      * <p>
-     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
      *
      * @param    multipartId        The id corresponding to the multipart object.
      *
      * @return              <code>true</code> if the operation was successful, <code>false</code> otherwise.
-     * @throws H3Exception  If an unknown status is received.
+     * @throws JH3Exception  If an unknown status is received.
      */
-    public boolean abortMultipart(H3MultipartId multipartId) throws H3Exception {
+    public boolean abortMultipart(JH3MultipartId multipartId) throws JH3Exception {
         Pointer multipart = new Memory(multipartId.getMultipartId().length() +1);
         multipart.setString(0, multipartId.getMultipartId());
 
-        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_AbortMultipart(handle, token, multipart));
+        status = JH3Status.fromInt(JH3Interface.INSTANCE.H3_AbortMultipart(handle, token, multipart));
         return operationSucceeded(status);
     }
 
@@ -1002,41 +1004,41 @@ public class JH3 implements Serializable{
      * offset in order to retrieve the next batch of multiparts. The status of the operation is set and can be
      * retrieved by {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
-     * {@link H3Status#H3_SUCCESS} - The operation was successful (no more matching names exist).
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful (no more matching names exist).
      * <p>
-     * {@link H3Status#H3_CONTINUE} - The operation was successful (there could be more matching names).
+     * {@link JH3Status#JH3_CONTINUE} - The operation was successful (there could be more matching names).
      * <p>
-     * {@link H3Status#H3_FAILURE} - Unable to access bucket or user has no access.
+     * {@link JH3Status#JH3_FAILURE} - Unable to access bucket or user has no access.
      * <p>
-     * {@link H3Status#H3_NOT_EXISTS} - The bucket doesn't exist.
+     * {@link JH3Status#JH3_NOT_EXISTS} - The bucket doesn't exist.
      * <p>
-     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
      *
      * @param bucketName        The name of the bucket.
      * @param offset            The number of multipart IDs to skip.
      *
      * @return                  The list of multipart objects if the operation was successful, <code>null</code>
      * otherwise.
-     * @throws H3Exception      If an unknown status is received.
+     * @throws JH3Exception      If an unknown status is received.
      */
-    public ArrayList<H3MultipartId> listMultiparts(String bucketName, int offset) throws H3Exception {
+    public ArrayList<JH3MultipartId> listMultiparts(String bucketName, int offset) throws JH3Exception {
         Pointer bucket = new Memory(bucketName.length() +1);
         IntBuffer nIds = IntBuffer.allocate(1);
         PointerByReference multipartIdArray = new PointerByReference();
 
         bucket.setString(0, bucketName);
 
-        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_ListMultiparts(handle, token, bucket, offset, multipartIdArray, nIds));
+        status = JH3Status.fromInt(JH3Interface.INSTANCE.H3_ListMultiparts(handle, token, bucket, offset, multipartIdArray, nIds));
         // Return null on failure
         if(!operationSucceeded(status))
             return null;
 
-        ArrayList<H3MultipartId> list = new ArrayList<>();
+        ArrayList<JH3MultipartId> list = new ArrayList<>();
         int off = 0;
         for (int i = 0; i < nIds.get(0); i++){
             String tmp = multipartIdArray.getValue().getString(off);
             off += tmp.length() + 1;     // Also skip null terminated character
-            list.add(new H3MultipartId(tmp));
+            list.add(new JH3MultipartId(tmp));
         }
 
         // Free internal buffer
@@ -1051,23 +1053,23 @@ public class JH3 implements Serializable{
      * offset in order to retrieve the next batch of multiparts. The status of the operation is set and can be
      * retrieved by {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
-     * {@link H3Status#H3_SUCCESS} - The operation was successful (no more matching names exist).
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful (no more matching names exist).
      * <p>
-     * {@link H3Status#H3_CONTINUE} - The operation was successful (there could be more matching names).
+     * {@link JH3Status#JH3_CONTINUE} - The operation was successful (there could be more matching names).
      * <p>
-     * {@link H3Status#H3_FAILURE} - Unable to access bucket or user has no access.
+     * {@link JH3Status#JH3_FAILURE} - Unable to access bucket or user has no access.
      * <p>
-     * {@link H3Status#H3_NOT_EXISTS} - The bucket doesn't exist.
+     * {@link JH3Status#JH3_NOT_EXISTS} - The bucket doesn't exist.
      * <p>
-     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
      *
      * @param bucketName        The name of the bucket.
      *
      * @return                  The list of multipart objects if the operation was successful, <code>null</code>
      * otherwise.
-     * @throws H3Exception      If an unknown status is received.
+     * @throws JH3Exception      If an unknown status is received.
      */
-    public ArrayList<H3MultipartId> listMultiparts(String bucketName) throws H3Exception {
+    public ArrayList<JH3MultipartId> listMultiparts(String bucketName) throws JH3Exception {
         return listMultiparts(bucketName, 0);
     }
 
@@ -1075,26 +1077,26 @@ public class JH3 implements Serializable{
      * Retrieves information for each part of a multipart object. The status of the operation is set and can be
      * retrieved by {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
-     * {@link H3Status#H3_SUCCESS} - The operation was successful.
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful.
      * <p>
-     * {@link H3Status#H3_NOT_EXISTS} - The multipart object doesn't exist.
+     * {@link JH3Status#JH3_NOT_EXISTS} - The multipart object doesn't exist.
      * <p>
-     * {@link H3Status#H3_FAILURE} - The user has no access or unable to access multipart object.
+     * {@link JH3Status#JH3_FAILURE} - The user has no access or unable to access multipart object.
      * <p>
-     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
      *
      * @param   multipartId        The id corresponding to the multipart object.
      *
      * @return                  The list of parts associated with the multipart ID,  <code>null</code> otherwise.
-     * @throws H3Exception      If an unknown status is received.
+     * @throws JH3Exception      If an unknown status is received.
      */
-    public ArrayList<H3PartInfo> listParts(H3MultipartId multipartId) throws H3Exception {
+    public ArrayList<JH3PartInfo> listParts(JH3MultipartId multipartId) throws JH3Exception {
         Pointer multipart = new Memory(multipartId.getMultipartId().length() + 1);
         IntBuffer nParts = IntBuffer.allocate(1);
         multipart.setString(0, multipartId.getMultipartId());
         PointerByReference partInfoPointer = new PointerByReference();
 
-        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_ListParts(handle, token, multipart, partInfoPointer, nParts));
+        status = JH3Status.fromInt(JH3Interface.INSTANCE.H3_ListParts(handle, token, multipart, partInfoPointer, nParts));
         if(!operationSucceeded(status))
             return null;
 
@@ -1104,9 +1106,9 @@ public class JH3 implements Serializable{
         partInfo.read();
         NativePartInfo[] partInfoArray = (NativePartInfo[])  partInfo.toArray(nParts.get(0));
 
-        ArrayList<H3PartInfo> list = new ArrayList<>();
+        ArrayList<JH3PartInfo> list = new ArrayList<>();
         for(int i = 0; i < nParts.get(0); i++) {
-            list.add(new H3PartInfo(partInfoArray[i].partNumber, partInfoArray[i].size.longValue()));
+            list.add(new JH3PartInfo(partInfoArray[i].partNumber, partInfoArray[i].size.longValue()));
         }
 
         // Free internal buffer
@@ -1121,22 +1123,22 @@ public class JH3 implements Serializable{
      * replaced by the new one. The status of the operation is set and can be retrieved by
      * {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
-     * {@link H3Status#H3_SUCCESS} - The operation was successful.
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful.
      * <p>
-     * {@link H3Status#H3_NOT_EXISTS} - The multipart object doesn't exist.
+     * {@link JH3Status#JH3_NOT_EXISTS} - The multipart object doesn't exist.
      * <p>
-     * {@link H3Status#H3_FAILURE} - The user has no access or unable to access multipart object.
+     * {@link JH3Status#JH3_FAILURE} - The user has no access or unable to access multipart object.
      * <p>
-     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
      *
      * @param   objectData         The data to be written.
      * @param   multipartId        The ID of the multipart object.
      * @param   partNumber         The part number
      *
      * @return              <code>true</code> if the operation was successful, <code>false</code> otherwise.
-     * @throws H3Exception  If an unknown status is received.
+     * @throws JH3Exception  If an unknown status is received.
      */
-    public boolean createPart(H3Object objectData, H3MultipartId multipartId, int partNumber) throws H3Exception {
+    public boolean createPart(JH3Object objectData, JH3MultipartId multipartId, int partNumber) throws JH3Exception {
         Pointer multipart = new Memory(multipartId.getMultipartId().length() +1);
         // Cannot allocate memory of zero size
         long s = objectData.getSize() > 0? objectData.getSize() : 1;
@@ -1146,7 +1148,7 @@ public class JH3 implements Serializable{
         multipart.setString(0, multipartId.getMultipartId());
         data.getByteBuffer(0, objectData.getSize()).put(objectData.getData());
 
-        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_CreatePart(handle, token, multipart, partNumber, data, size));
+        status = JH3Status.fromInt(JH3Interface.INSTANCE.H3_CreatePart(handle, token, multipart, partNumber, data, size));
         return operationSucceeded(status);
     }
 
@@ -1156,13 +1158,13 @@ public class JH3 implements Serializable{
      * as the multipart one. The status of the operation is set and can be retrieved by
      * {@link JH3#getStatus() getStatus()}. Expected status from operation:
      * <p>
-     * {@link H3Status#H3_SUCCESS} - The operation was successful.
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful.
      * <p>
-     * {@link H3Status#H3_NOT_EXISTS} - The multipart object doesn't exist.
+     * {@link JH3Status#JH3_NOT_EXISTS} - The multipart object doesn't exist.
      * <p>
-     * {@link H3Status#H3_FAILURE} - The user has no access or unable to access multipart object.
+     * {@link JH3Status#JH3_FAILURE} - The user has no access or unable to access multipart object.
      * <p>
-     * {@link H3Status#H3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
      *
      * @param   objectName         The name of the object to be copied.
      * @param   offset             The offset with respect to the source object's first byte.
@@ -1171,10 +1173,10 @@ public class JH3 implements Serializable{
      * @param   partNumber         The part number
      *
      * @return              <code>true</code> if the operation was successful, <code>false</code> otherwise.
-     * @throws H3Exception  If an unknown status is received.
+     * @throws JH3Exception  If an unknown status is received.
      */
     public boolean createPartCopy(String objectName, long offset, long size,
-                                  H3MultipartId multipartId, int partNumber) throws H3Exception {
+                                  JH3MultipartId multipartId, int partNumber) throws JH3Exception {
         Pointer name = new Memory(objectName.length() +1);
         Pointer multipart = new Memory(multipartId.getMultipartId().length() +1);
         NativeLong nOffset = new NativeLong(offset);
@@ -1183,30 +1185,39 @@ public class JH3 implements Serializable{
         name.setString(0, objectName);
         multipart.setString(0, multipartId.getMultipartId());
 
-        status = H3Status.fromInt(JH3Interface.INSTANCE.H3_CreatePartCopy(handle, token, name, nOffset, nSize, multipart, partNumber));
+        status = JH3Status.fromInt(JH3Interface.INSTANCE.H3_CreatePartCopy(handle, token, name, nOffset, nSize, multipart, partNumber));
         return operationSucceeded(status);
+    }
+
+    /**
+     * Helper function to convert a native timespec to a JH3Timespec.
+     * @param timespec      The native timespec
+     * @return              A JH3Timespec
+     */
+    private JH3Timespec nativeToJH3(NativeTimespec timespec){
+        return new JH3Timespec(timespec.tv_sec.longValue(), timespec.tv_nsec.longValue());
     }
 
     /**
      * Checks if operation has succeeded, based on the operation's status.
      * @param status        The status of the operation to be checked.
      * @return              <code>true</code> if operation was successful, <code>false</code> otherwise.
-     * @throws H3Exception  If an unknown status was received.
+     * @throws JH3Exception  If an unknown status was received.
      */
-    private boolean operationSucceeded(H3Status status) throws H3Exception {
+    private boolean operationSucceeded(JH3Status status) throws JH3Exception {
         switch (status) {
-            case H3_FAILURE:
-            case H3_INVALID_ARGS:
-            case H3_STORE_ERROR:
-            case H3_EXISTS:
-            case H3_NOT_EXISTS:
-            case H3_NOT_EMPTY:
+            case JH3_FAILURE:
+            case JH3_INVALID_ARGS:
+            case JH3_STORE_ERROR:
+            case JH3_EXISTS:
+            case JH3_NOT_EXISTS:
+            case JH3_NOT_EMPTY:
                 return false;
-            case H3_SUCCESS:
-            case H3_CONTINUE:
+            case JH3_SUCCESS:
+            case JH3_CONTINUE:
                 return true;
             default:
-                throw new H3Exception("Received unknown status: " + status);
+                throw new JH3Exception("Received unknown status: " + status);
         }
     }
 

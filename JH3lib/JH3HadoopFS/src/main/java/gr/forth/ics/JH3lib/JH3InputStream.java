@@ -49,7 +49,7 @@ public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 
 
 	/* Keep value of object in byte buffer */
-	H3Object data;
+	JH3Object data;
 
 	public JH3InputStream(JH3 client, String bucket,
 						  String key, long contentLength, long readahead) throws IOException {
@@ -74,7 +74,7 @@ public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 			setReadahead(readahead);
 			// Read whole object
 			data = client.readObject(bucket, key, 0L, contentLength);
-		} catch (H3Exception e) {
+		} catch (JH3Exception e) {
 			throw new IOException(e);
 		}
 
