@@ -15,8 +15,8 @@
 #include "common.h"
 #include "util.h"
 
-int ValidBucketName(char* name){
-    int status = TRUE;
+H3_Status ValidBucketName(char* name){
+	H3_Status status = H3_SUCCESS;
     regex_t regex;
 
     // https://regex101.com/
@@ -25,14 +25,16 @@ int ValidBucketName(char* name){
 
     // Too small/big
     size_t nameSize = strnlen(name, H3_BUCKET_NAME_SIZE+1);
-    if( nameSize == 0 || nameSize > H3_BUCKET_NAME_SIZE     ||
-        regcomp(&regex, "[^_0-9a-zA-Z.-]", REG_EXTENDED) != REG_NOERROR    ){
-        return FALSE;
+    if(nameSize > H3_BUCKET_NAME_SIZE){
+    	status = H3_NAME_TO_LONG;
+    }
+    if( nameSize == 0 || regcomp(&regex, "[^_0-9a-zA-Z.-]", REG_EXTENDED) != REG_NOERROR    ){
+        return H3_INVALID_ARGS;
     }
 
     // Contains invalid characters
     if(regexec(&regex, name, 0, NULL, 0) != REG_NOMATCH){
-        status = FALSE;
+        status = H3_INVALID_ARGS;
     }
 
     regfree(&regex);
@@ -53,6 +55,7 @@ int ValidBucketName(char* name){
  * @result \b H3_EXISTS             Bucket already exists
  * @result \b H3_INVALID_ARGS       Missing or malformed arguments
  * @result \b H3_STORE_ERROR        Storage provider error
+ * @result \b H3_NAME_TO_LONG       Bucket name is longer than H3_BUCKET_NAME_SIZE
  *
  */
 H3_Status H3_CreateBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
@@ -61,7 +64,8 @@ H3_Status H3_CreateBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
     H3_BucketMetadata bucketMetadata;
     H3_UserMetadata* userMetadata;
     KV_Value value = NULL;
-    KV_Status status;
+    H3_Status status;
+
 
     // Argument check
     if(!handle || !token  || !bucketName){
@@ -72,10 +76,15 @@ H3_Status H3_CreateBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
     KV_Handle _handle = ctx->handle;
     KV_Operations* op = ctx->operation;
     size_t metaSize = 0;
+    KV_Status kvStatus;
 
 
     // Validate bucketName & extract userId from token
-    if( !ValidBucketName(bucketName) || !GetUserId(token, userId) || !GetBucketId(bucketName, bucketId)){
+    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS){
+        return status;
+    }
+
+    if( !GetUserId(token, userId) || !GetBucketId(bucketName, bucketId)){
         return H3_INVALID_ARGS;
     }
 
@@ -84,9 +93,9 @@ H3_Status H3_CreateBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
     clock_gettime(CLOCK_REALTIME, &bucketMetadata.creation);
     bucketMetadata.mode = S_IFDIR | 0777;
 
-    if( (status = op->metadata_create(_handle, bucketId, (KV_Value)&bucketMetadata, 0, sizeof(H3_BucketMetadata))) == KV_SUCCESS){
+    if( (kvStatus = op->metadata_create(_handle, bucketId, (KV_Value)&bucketMetadata, 0, sizeof(H3_BucketMetadata))) == KV_SUCCESS){
 
-        if( (status = op->metadata_read(_handle, userId, 0, &value, &metaSize)) == KV_SUCCESS){
+        if( (kvStatus = op->metadata_read(_handle, userId, 0, &value, &metaSize)) == KV_SUCCESS){
             // Extend existing user's metadata to fit new bucket-id if needed
             userMetadata = (H3_UserMetadata*)value;
             if(userMetadata->nBuckets == 0){
@@ -98,7 +107,7 @@ H3_Status H3_CreateBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
                 userMetadata = realloc(userMetadata, metaSize);
             }
         }
-        else if(status == KV_KEY_NOT_EXIST){
+        else if(kvStatus == KV_KEY_NOT_EXIST){
             // Create user's metadata i.e. create the user
             metaSize = sizeof(H3_UserMetadata) + H3_BUCKET_BATCH_SIZE * sizeof(H3_BucketId);
             userMetadata = calloc(1, sizeof(H3_UserMetadata) + H3_BUCKET_BATCH_SIZE * sizeof(H3_BucketId));
@@ -116,8 +125,10 @@ H3_Status H3_CreateBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
 
         return H3_SUCCESS;
     }
-    else if(status == KV_KEY_EXIST)
+    else if(kvStatus == KV_KEY_EXIST)
         return H3_EXISTS;
+    else if(kvStatus == KV_NAME_TO_LONG)
+    	return H3_NAME_TO_LONG;
 
     return H3_STORE_ERROR;
 }
@@ -138,6 +149,7 @@ H3_Status H3_CreateBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
  * @result \b H3_NOT_EMPTY         	Bucket is not empty
  * @result \b H3_INVALID_ARGS       Missing or malformed arguments
  * @result \b H3_FAILURE            Storage provider error or the user has no access rights to this bucket
+ * @result \b H3_NAME_TO_LONG       Bucket name is longer than H3_BUCKET_NAME_SIZE
  *
  */
 H3_Status H3_DeleteBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
@@ -145,7 +157,7 @@ H3_Status H3_DeleteBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
     H3_BucketId bucketId;
     KV_Value value = NULL;
     uint32_t nKeys = 0;
-    H3_Status status = H3_FAILURE;
+    H3_Status status;
 
     // Argument check
     if(!handle || !token  || !bucketName){
@@ -159,16 +171,16 @@ H3_Status H3_DeleteBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
     size_t size = 0;
 
     // Validate bucketName & extract userId from token
-    if( !ValidBucketName(bucketName) || !GetUserId(token, userId) || !GetBucketId(bucketName, bucketId)){
+    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS){
+        return status;
+    }
+
+    if( !GetUserId(token, userId) || !GetBucketId(bucketName, bucketId)){
         return H3_INVALID_ARGS;
     }
 
-
-    if((kvStatus = op->metadata_read(_handle, bucketId, 0, &value, &size)) == KV_KEY_NOT_EXIST){
-        return H3_NOT_EXISTS;
-    }
-
-    if(kvStatus == KV_SUCCESS){
+    status = H3_FAILURE;
+    if((kvStatus = op->metadata_read(_handle, bucketId, 0, &value, &size)) == KV_SUCCESS){
 
         // Make sure the bucket is empty and the user has access to the bucket prior deletion
         H3_ObjectId prefix;
@@ -176,9 +188,9 @@ H3_Status H3_DeleteBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
         H3_BucketMetadata* bucketMetadata = (H3_BucketMetadata*)value;
         value = NULL; size = 0;
         if( GrantBucketAccess(userId, bucketMetadata)                              &&
-            op->list(_handle, prefix, 0, NULL, 0, &nKeys) == KV_SUCCESS && !nKeys  &&
-            op->metadata_read(_handle, userId, 0, &value, &size) == KV_SUCCESS     &&
-            op->metadata_delete(_handle, bucketId) == KV_SUCCESS                     ){
+        	(kvStatus = op->list(_handle, prefix, 0, NULL, 0, &nKeys)) == KV_SUCCESS && !nKeys  &&
+			(kvStatus = op->metadata_read(_handle, userId, 0, &value, &size)) == KV_SUCCESS     &&
+			(kvStatus = op->metadata_delete(_handle, bucketId)) == KV_SUCCESS                     ){
 
             H3_UserMetadata* userMetadata = (H3_UserMetadata*)value;
             int index = GetBucketIndex(userMetadata, bucketName);
@@ -201,12 +213,21 @@ H3_Status H3_DeleteBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
 
             free(userMetadata);
         }
+        else if(kvStatus == KV_NAME_TO_LONG){
+        	return H3_NAME_TO_LONG;
+        }
         else if(nKeys){
         	status = H3_NOT_EMPTY;
         }
 
         free(bucketMetadata);
     }
+    else if(kvStatus == KV_KEY_NOT_EXIST){
+    	return H3_NOT_EXISTS;
+    }
+    else if(kvStatus == KV_NAME_TO_LONG)
+    	return H3_NAME_TO_LONG;
+
 
     return status;
 }
@@ -299,6 +320,7 @@ H3_Status H3_ListBuckets(H3_Handle handle, H3_Token token, H3_Name* bucketNameAr
  * @result \b H3_NOT_EXISTS         The bucket doesn't exist
  * @result \b H3_INVALID_ARGS       Missing or malformed arguments
  * @result \b H3_FAILURE            Storage provider error
+ * @result \b H3_NAME_TO_LONG       Bucket name is longer than H3_BUCKET_NAME_SIZE
  *
  */
 H3_Status H3_InfoBucket(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_BucketInfo* bucketInfo, uint8_t getStats){
@@ -306,7 +328,8 @@ H3_Status H3_InfoBucket(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
     H3_BucketId bucketId;
     KV_Value value = NULL;
     size_t size = 0;
-    H3_Status status = H3_FAILURE;
+    H3_Status status;
+    KV_Status kvStatus;
 
     // Argument check
     if(!handle || !token  || !bucketName || !bucketInfo){
@@ -318,11 +341,15 @@ H3_Status H3_InfoBucket(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
     KV_Operations* op = ctx->operation;
 
     // Validate bucketName & extract userId from token
-    if( !ValidBucketName(bucketName) || !GetUserId(token, userId) || !GetBucketId(bucketName, bucketId) ){
+    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS){
+        return status;
+    }
+
+    if( !GetUserId(token, userId) || !GetBucketId(bucketName, bucketId)){
         return H3_INVALID_ARGS;
     }
 
-    KV_Status kvStatus;
+    status = H3_FAILURE;
     if( (kvStatus = op->metadata_read(_handle, bucketId, 0, &value, &size)) == KV_SUCCESS){
         H3_BucketMetadata* bucketMetadata = (H3_BucketMetadata*)value;
 
@@ -376,6 +403,8 @@ H3_Status H3_InfoBucket(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
                     bucketInfo->stats.size = bucketSize;
                     status = H3_SUCCESS;
                 }
+                else if(kvStatus == KV_NAME_TO_LONG)
+                	status = H3_NAME_TO_LONG;
             }
             else{
                 status = H3_SUCCESS;
@@ -385,8 +414,11 @@ H3_Status H3_InfoBucket(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
         free(bucketMetadata);
     }
     else if(kvStatus == KV_KEY_NOT_EXIST){
-        status = H3_NOT_EXISTS;
+        return H3_NOT_EXISTS;
     }
+    else if(kvStatus == KV_NAME_TO_LONG)
+    	return H3_NAME_TO_LONG;
+
 
     return status;
 }
@@ -452,6 +484,7 @@ H3_Status H3_ForeachBucket(H3_Handle handle, H3_Token token, h3_name_iterator_cb
  * @result \b H3_NOT_EXISTS         The bucket doesn't exist
  * @result \b H3_INVALID_ARGS       Missing or malformed arguments
  * @result \b H3_FAILURE            Storage provider error
+ * @result \b H3_NAME_TO_LONG       Bucket name is longer than H3_BUCKET_NAME_SIZE
  *
  */
 H3_Status H3_SetBucketAttributes(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Attribute attrib){
@@ -459,7 +492,7 @@ H3_Status H3_SetBucketAttributes(H3_Handle handle, H3_Token token, H3_Name bucke
     H3_BucketId bucketId;
     KV_Value value = NULL;
     size_t size = 0;
-    H3_Status status = H3_FAILURE;
+    H3_Status status;
 
     // Argument check
     if(!handle || !token  || !bucketName || attrib.type >= H3_NumOfAttributes){
@@ -469,13 +502,18 @@ H3_Status H3_SetBucketAttributes(H3_Handle handle, H3_Token token, H3_Name bucke
     H3_Context* ctx = (H3_Context*)handle;
     KV_Handle _handle = ctx->handle;
     KV_Operations* op = ctx->operation;
+    KV_Status kvStatus;
 
     // Validate bucketName & extract userId from token
-    if( !ValidBucketName(bucketName) || !GetUserId(token, userId) || !GetBucketId(bucketName, bucketId) ){
+    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS){
+        return status;
+    }
+
+    if( !GetUserId(token, userId) || !GetBucketId(bucketName, bucketId)){
         return H3_INVALID_ARGS;
     }
 
-    KV_Status kvStatus;
+    status = H3_FAILURE;
     if( (kvStatus = op->metadata_read(_handle, bucketId, 0, &value, &size)) == KV_SUCCESS){
         H3_BucketMetadata* bucketMetadata = (H3_BucketMetadata*)value;
 
@@ -495,7 +533,10 @@ H3_Status H3_SetBucketAttributes(H3_Handle handle, H3_Token token, H3_Name bucke
         free(bucketMetadata);
     }
     else if(kvStatus == KV_KEY_NOT_EXIST){
-        status = H3_NOT_EXISTS;
+    	return H3_NOT_EXISTS;
+    }
+    else if(kvStatus == KV_NAME_TO_LONG){
+    	return H3_NAME_TO_LONG;
     }
 
     return status;

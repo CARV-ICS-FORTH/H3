@@ -48,6 +48,7 @@ int ComparePartMetadataByNumber(const void* a, const void* b) {
  * @result \b H3_SUCCESS            Operation completed successfully
  * @result \b H3_FAILURE            Bucket does not exist or user has no access
  * @result \b H3_INVALID_ARGS       Missing or malformed arguments
+ * @result \b H3_NAME_TO_LONG       Bucket or Object name is longer than H3_BUCKET_NAME_SIZE or H3_OBJECT_NAME_SIZE respectively
  *
  */
 H3_Status H3_CreateMultipart(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, H3_MultipartId* multipartId){
@@ -62,7 +63,7 @@ H3_Status H3_CreateMultipart(H3_Handle handle, H3_Token token, H3_Name bucketNam
         return H3_INVALID_ARGS;
     }
 
-    H3_Status status = H3_FAILURE;
+    H3_Status status;
     H3_Context* ctx = (H3_Context*)handle;
     KV_Handle _handle = ctx->handle;
     KV_Operations* op = ctx->operation;
@@ -71,17 +72,25 @@ H3_Status H3_CreateMultipart(H3_Handle handle, H3_Token token, H3_Name bucketNam
     H3_BucketId bucketId;
     KV_Value value = NULL;
     size_t mSize = 0;
+    KV_Status storeStatus;
 
     // Validate bucketName & extract userId from token
-    if( !ValidBucketName(bucketName) || !ValidObjectName(objectName) || !GetUserId(token, userId) || !GetBucketId(bucketName, bucketId)){
+    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS || (status = ValidObjectName(objectName)) != H3_SUCCESS){
+        return status;
+    }
+
+    if( !GetUserId(token, userId) || !GetBucketId(bucketName, bucketId)){
         return H3_INVALID_ARGS;
     }
 
     // Make sure user has access to the bucket
-    if(op->metadata_read(_handle, bucketId, 0, &value, &mSize) != KV_SUCCESS){
-        return H3_FAILURE;
+    if((storeStatus = op->metadata_read(_handle, bucketId, 0, &value, &mSize)) == KV_NAME_TO_LONG){
+    	return H3_NAME_TO_LONG;
     }
+    else if(storeStatus != KV_SUCCESS)
+    	return H3_FAILURE;
 
+    status = H3_FAILURE;
     H3_BucketMetadata* bucketMetadata = (H3_BucketMetadata*)value;
     if(GrantBucketAccess(userId, bucketMetadata)){
 
@@ -102,13 +111,16 @@ H3_Status H3_CreateMultipart(H3_Handle handle, H3_Token token, H3_Name bucketNam
         clock_gettime(CLOCK_REALTIME, &objMeta.creation);
 
         // Upload multipart and temp object metadata
-        if(op->metadata_create(_handle, multiMeta.objectId, (KV_Value)&objMeta, 0, sizeof(H3_ObjectMetadata)) == KV_SUCCESS){
-            if(op->metadata_create(_handle, *multipartId, (KV_Value)&multiMeta, 0, sizeof(H3_MultipartMetadata)) == KV_SUCCESS){
+        if((storeStatus = op->metadata_create(_handle, multiMeta.objectId, (KV_Value)&objMeta, 0, sizeof(H3_ObjectMetadata))) == KV_SUCCESS){
+            if( (storeStatus = op->metadata_create(_handle, *multipartId, (KV_Value)&multiMeta, 0, sizeof(H3_MultipartMetadata))) == KV_SUCCESS){
                 status = H3_SUCCESS;
             }
             else
                 op->metadata_delete(_handle, multiMeta.objectId);
         }
+
+        if(storeStatus == KV_NAME_TO_LONG)
+        	status = H3_NAME_TO_LONG;
     }
 
     free(bucketMetadata);
@@ -282,6 +294,7 @@ H3_Status H3_AbortMultipart(H3_Handle handle, H3_Token token, H3_MultipartId mul
  * @result \b H3_NOT_EXISTS         Bucket does not exist
  * @result \b H3_FAILURE            User has no access or unable to access bucket
  * @result \b H3_INVALID_ARGS       Missing or malformed arguments
+ * @result \b H3_NAME_TO_LONG       Bucket name is longer than H3_BUCKET_NAME_SIZE
  *
  */
 H3_Status H3_ListMultiparts(H3_Handle handle, H3_Token token, H3_Name bucketName, uint32_t offset, H3_MultipartId* multipartIdArray, uint32_t* nIds){
@@ -291,7 +304,7 @@ H3_Status H3_ListMultiparts(H3_Handle handle, H3_Token token, H3_Name bucketName
         return H3_INVALID_ARGS;
     }
 
-    H3_Status status = H3_FAILURE;
+    H3_Status status;
     H3_Context* ctx = (H3_Context*)handle;
     KV_Handle _handle = ctx->handle;
     KV_Operations* op = ctx->operation;
@@ -303,10 +316,15 @@ H3_Status H3_ListMultiparts(H3_Handle handle, H3_Token token, H3_Name bucketName
     size_t mSize = 0;
 
     // Validate bucketName & extract userId from token
-    if( !ValidBucketName(bucketName) || !GetUserId(token, userId) || !GetBucketId(bucketName, bucketId)){
+    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS){
+        return status;
+    }
+
+    if( !GetUserId(token, userId) || !GetBucketId(bucketName, bucketId)){
         return H3_INVALID_ARGS;
     }
 
+    status = H3_FAILURE;
     if( (kvStatus = op->metadata_read(_handle, bucketId, 0, &value, &mSize)) == KV_SUCCESS){
 
         // Make sure the token grants access to the bucket
@@ -330,7 +348,9 @@ H3_Status H3_ListMultiparts(H3_Handle handle, H3_Token token, H3_Name bucketName
         free(bucketMetadata);
     }
     else if(kvStatus == KV_KEY_NOT_EXIST)
-        status = H3_NOT_EXISTS;
+        return H3_NOT_EXISTS;
+    else if(kvStatus == KV_NAME_TO_LONG)
+    	return H3_NAME_TO_LONG;
 
     return status;
 }
@@ -553,6 +573,7 @@ H3_Status H3_CreatePart(H3_Handle handle, H3_Token token, H3_MultipartId multipa
  * @result \b H3_NOT_EXISTS         Multipart or ordinary object does not exist
  * @result \b H3_FAILURE            User has no access or unable to access multipart object
  * @result \b H3_INVALID_ARGS       Missing or malformed arguments
+ * @result \b H3_NAME_TO_LONG       Object name is longer than H3_OBJECT_NAME_SIZE
  *
  */
 H3_Status H3_CreatePartCopy(H3_Handle handle, H3_Token token, H3_Name objectName, off_t offset, size_t size, H3_MultipartId multipartId, uint32_t partNumber){
@@ -562,7 +583,7 @@ H3_Status H3_CreatePartCopy(H3_Handle handle, H3_Token token, H3_Name objectName
         return H3_INVALID_ARGS;
     }
 
-    H3_Status status = H3_FAILURE;
+    H3_Status status;
     H3_Context* ctx = (H3_Context*)handle;
     KV_Handle _handle = ctx->handle;
     KV_Operations* op = ctx->operation;
@@ -570,6 +591,10 @@ H3_Status H3_CreatePartCopy(H3_Handle handle, H3_Token token, H3_Name objectName
     KV_Status kvStatus;
     KV_Value value = NULL;
     size_t mSize = 0;
+
+    if( (status = ValidObjectName(objectName)) != H3_SUCCESS){
+        return status;
+    }
 
     // Extract userId from token...
     if(!GetUserId(token, userId)){
@@ -584,6 +609,7 @@ H3_Status H3_CreatePartCopy(H3_Handle handle, H3_Token token, H3_Name objectName
         return H3_FAILURE;
 
     // Make sure user has access to the multipart-object
+    status = H3_FAILURE;
     H3_MultipartMetadata* multiMeta = (H3_MultipartMetadata*)value;
     if( GrantMultipartAccess(userId, multiMeta)){
         H3_ObjectId srcObjId;
@@ -639,6 +665,9 @@ H3_Status H3_CreatePartCopy(H3_Handle handle, H3_Token token, H3_Name objectName
         }
         else if(kvStatus == KV_KEY_NOT_EXIST)
             status = H3_NOT_EXISTS;
+
+        else if(kvStatus == KV_NAME_TO_LONG)
+        	status = H3_NAME_TO_LONG;
     }
 
     free(multiMeta);
