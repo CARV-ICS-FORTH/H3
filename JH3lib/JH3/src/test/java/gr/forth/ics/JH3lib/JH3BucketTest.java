@@ -128,7 +128,7 @@ public class JH3BucketTest {
             // Large bucket name
             String largeName = new String(new char[JH3.H3_BUCKET_NAME_SIZE + 1]).replace("\0", "a");
             assertFalse(client.createBucket(largeName));
-            assertEquals(JH3Status.JH3_INVALID_ARGS, client.getStatus());
+            assertEquals(JH3Status.JH3_NAME_TOO_LONG, client.getStatus());
 
             // Invalid bucket names
             assertFalse(client.createBucket("/bucketId"));

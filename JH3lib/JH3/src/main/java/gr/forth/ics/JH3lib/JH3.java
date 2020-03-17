@@ -1211,6 +1211,7 @@ public class JH3 implements Serializable{
             case JH3_STORE_ERROR:
             case JH3_EXISTS:
             case JH3_NOT_EXISTS:
+            case JH3_NAME_TOO_LONG:
             case JH3_NOT_EMPTY:
                 return false;
             case JH3_SUCCESS:

@@ -29,6 +29,7 @@ public class JH3HadoopFS extends FileSystem {
 
   public static final int DEFAULT_BLOCKSIZE = 32 * 1024 * 1024;
   public static final boolean DELETE_CONSIDERED_IDEMPOTENT = true;
+  private static final String DIR_CHAR = "%";
 
   private Path workingDir;
   private URI uri;
@@ -191,16 +192,15 @@ public class JH3HadoopFS extends FileSystem {
     }
 
     // At this point, the directory can be created
+
     // Path only contains bucket, create bucket instead of object
     if (key.isEmpty()) {
       //client.createBucket(bucket);
       return true;
     }
 
-    // Add slash if key doesnt have one
-    if (!key.endsWith("/")) {
-      key = key + "/";
-    }
+    // Add directory character if key doesnt have one
+    key = maybeAddDirectoryCharacter(key);
 
 
     try {
@@ -331,9 +331,8 @@ public class JH3HadoopFS extends FileSystem {
         }
 
         // Add trailing slash to emulate a directory
-        if(!key.endsWith("/")){
-          key = key + "/";
-        }
+        key = maybeAddDirectoryCharacter(key);
+        
         // If directory (non-root) is empty, recursive doesnt matter; also it might actually
         // not exist
         if(isEmptyDir){
@@ -486,8 +485,8 @@ public class JH3HadoopFS extends FileSystem {
       } else {
         // src directory -> dst directory
         // Add trailing slash to keys since they emulate directories
-        dstKey = maybeAddTrailingSlash(dstKey);
-        srcKey = maybeAddTrailingSlash(srcKey);
+        dstKey = maybeAddDirectoryCharacter(dstKey);
+        srcKey = maybeAddDirectoryCharacter(srcKey);
 
         // Verify dest is not a descendant of source
         if (dstKey.startsWith(srcKey) && srcBucket.equals(dstBucket)) {
@@ -506,7 +505,7 @@ public class JH3HadoopFS extends FileSystem {
 
           // Emulate directory if child is one
           if (dirStatus.isDirectory()) {
-            newDstKey = newDstKey + '/';
+            newDstKey = maybeAddDirectoryCharacter(newDstKey);
           }
 
           boolean result = client.moveObject(srcBucket, childKey, newDstKey);
@@ -690,13 +689,13 @@ public class JH3HadoopFS extends FileSystem {
   }
 
   /**
-   *  Add trailing slash if the path is not the root and does not already have one.
+   *  Add special character to indicate the key is a directory if the path is not the root and does not already have one.
    * @param key key or ""
-   * @return the key with a trailing slash or ""
+   * @return the key with a special character and the end or ""
    */
-  private String maybeAddTrailingSlash(String key){
-    if(!key.isEmpty() && !key.endsWith("/")) {
-      return key + '/';
+  private String maybeAddDirectoryCharacter(String key){
+    if(!key.isEmpty() && !key.endsWith(DIR_CHAR)) {
+      return key + DIR_CHAR;
     }
 
     return key;

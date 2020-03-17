@@ -89,6 +89,11 @@ public class JH3ObjectTest {
             byte[] data = new byte[3 * MEGABYTE];
             new Random().nextBytes(data);
             JH3Object dataObj = new JH3Object(data, 3* MEGABYTE);
+            
+            // Large object name
+            String largeName = new String(new char[JH3.H3_OBJECT_NAME_SIZE + 1]).replace("\0", "a");
+            assertFalse(client.createObject("b1", largeName, dataObj));
+            assertEquals(JH3Status.JH3_NAME_TOO_LONG, client.getStatus());
 
             // Write the first object
             assertTrue(client.createObject("b1", "o1", dataObj));
