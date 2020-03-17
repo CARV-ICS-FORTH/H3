@@ -196,6 +196,7 @@ class H3(object, metaclass=H3Version):
         ``creation``           <timestamp>
         ``last_access``        <timestamp>
         ``last_modification``  <timestamp>
+        ``last_change``        <timestamp>
         =====================  ===========
         """
 

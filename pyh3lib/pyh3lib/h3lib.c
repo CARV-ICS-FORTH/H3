@@ -17,6 +17,8 @@
 #include <Python.h>
 #include <h3lib/h3lib.h>
 
+#define TIMESPEC_TO_DOUBLE(t) (t.tv_sec + ((double)t.tv_nsec / 1000000000ULL))
+
 // Named tuples returned
 static PyTypeObject bucket_stats_type;
 static PyTypeObject bucket_info_type;
@@ -43,6 +45,7 @@ static PyStructSequence_Field object_info_fields[] = {
     {"creation",          NULL},
     {"last_access",       NULL},
     {"last_modification", NULL},
+    {"last_change",       NULL},
     {NULL}
 };
 
@@ -86,6 +89,7 @@ static PyObject *invalid_args_status;
 static PyObject *store_error_status;
 static PyObject *exists_status;
 static PyObject *not_exists_status;
+static PyObject *name_too_long_status;
 static PyObject *not_empty_status;
 
 static int did_raise_exception(H3_Status status) {
@@ -104,6 +108,9 @@ static int did_raise_exception(H3_Status status) {
             return 1;
         case H3_NOT_EXISTS:
             PyErr_SetNone(not_exists_status);
+            return 1;
+        case H3_NAME_TOO_LONG:
+            PyErr_SetNone(name_too_long_status);
             return 1;
         case H3_NOT_EMPTY:
             PyErr_SetNone(not_empty_status);
@@ -213,8 +220,8 @@ static PyObject *h3lib_info_bucket(PyObject* self, PyObject *args, PyObject *kw)
         }
         PyStructSequence_SET_ITEM(bucket_stats, 0, Py_BuildValue("k", bucketInfo.stats.size));
         PyStructSequence_SET_ITEM(bucket_stats, 1, Py_BuildValue("K", bucketInfo.stats.nObjects));
-        PyStructSequence_SET_ITEM(bucket_stats, 2, Py_BuildValue("l", bucketInfo.stats.lastAccess));
-        PyStructSequence_SET_ITEM(bucket_stats, 3, Py_BuildValue("l", bucketInfo.stats.lastModification));
+        PyStructSequence_SET_ITEM(bucket_stats, 2, Py_BuildValue("d", TIMESPEC_TO_DOUBLE(bucketInfo.stats.lastAccess)));
+        PyStructSequence_SET_ITEM(bucket_stats, 3, Py_BuildValue("d", TIMESPEC_TO_DOUBLE(bucketInfo.stats.lastModification)));
         if (PyErr_Occurred()) {
             Py_DECREF(bucket_stats);
             PyErr_NoMemory();
@@ -229,7 +236,7 @@ static PyObject *h3lib_info_bucket(PyObject* self, PyObject *args, PyObject *kw)
         PyErr_NoMemory();
         return NULL;
     }
-    PyStructSequence_SET_ITEM(bucket_info, 0, Py_BuildValue("l", bucketInfo.creation));
+    PyStructSequence_SET_ITEM(bucket_info, 0, Py_BuildValue("d", TIMESPEC_TO_DOUBLE(bucketInfo.creation)));
     if (getStats) {
         PyStructSequence_SET_ITEM(bucket_info, 1, bucket_stats);
         // XXX Py_DECREF(bucket_stats);...
@@ -361,9 +368,10 @@ static PyObject *h3lib_info_object(PyObject* self, PyObject *args, PyObject *kw)
     }
     PyStructSequence_SET_ITEM(object_info, 0, Py_BuildValue("O", (objectInfo.isBad ? Py_True : Py_False)));
     PyStructSequence_SET_ITEM(object_info, 1, Py_BuildValue("k", objectInfo.size));
-    PyStructSequence_SET_ITEM(object_info, 2, Py_BuildValue("l", objectInfo.creation));
-    PyStructSequence_SET_ITEM(object_info, 3, Py_BuildValue("l", objectInfo.lastAccess));
-    PyStructSequence_SET_ITEM(object_info, 4, Py_BuildValue("l", objectInfo.lastModification));
+    PyStructSequence_SET_ITEM(object_info, 2, Py_BuildValue("d", TIMESPEC_TO_DOUBLE(objectInfo.creation)));
+    PyStructSequence_SET_ITEM(object_info, 3, Py_BuildValue("d", TIMESPEC_TO_DOUBLE(objectInfo.lastAccess)));
+    PyStructSequence_SET_ITEM(object_info, 4, Py_BuildValue("d", TIMESPEC_TO_DOUBLE(objectInfo.lastModification)));
+    PyStructSequence_SET_ITEM(object_info, 5, Py_BuildValue("d", TIMESPEC_TO_DOUBLE(objectInfo.lastChange)));
     if (PyErr_Occurred()) {
         Py_DECREF(object_info);
         PyErr_NoMemory();
@@ -924,12 +932,14 @@ PyMODINIT_FUNC PyInit_h3lib(void) {
     store_error_status = PyErr_NewException("pyh3lib.h3lib.StoreError", NULL, NULL);
     exists_status = PyErr_NewException("pyh3lib.h3lib.ExistsError", NULL, NULL);
     not_exists_status = PyErr_NewException("pyh3lib.h3lib.NotExistsError", NULL, NULL);
+    name_too_long_status = PyErr_NewException("pyh3lib.h3lib.NameTooLongError", NULL, NULL);
     not_empty_status = PyErr_NewException("pyh3lib.h3lib.NotEmptyError", NULL, NULL);
     PyModule_AddObject(module, "FailureError", failure_status);
     PyModule_AddObject(module, "InvalidArgsError", invalid_args_status);
     PyModule_AddObject(module, "StoreError", store_error_status);
     PyModule_AddObject(module, "ExistsError", exists_status);
     PyModule_AddObject(module, "NotExistsError", not_exists_status);
+    PyModule_AddObject(module, "NameTooLongError", name_too_long_status);
     PyModule_AddObject(module, "NotEmptyError", not_empty_status);
 
     return module;

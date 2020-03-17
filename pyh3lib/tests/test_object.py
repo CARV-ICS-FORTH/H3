@@ -59,9 +59,10 @@ def test_simple(h3):
     object_info = h3.info_object('b1', 'o1')
     assert not object_info.is_bad
     assert object_info.size == (3 * MEGABYTE)
-    assert type(object_info.creation) == int
-    assert type(object_info.last_access) == int
-    assert type(object_info.last_modification) == int
+    assert type(object_info.creation) == float
+    assert type(object_info.last_access) == float
+    assert type(object_info.last_modification) == float
+    assert type(object_info.last_change) == float
 
     object_data = h3.read_object('b1', 'o1')
     assert object_data == data
@@ -83,9 +84,10 @@ def test_simple(h3):
     object_info = h3.info_object('b1', 'o2')
     assert not object_info.is_bad
     assert object_info.size == (3 * MEGABYTE)
-    assert type(object_info.creation) == int
-    assert type(object_info.last_access) == int
-    assert type(object_info.last_modification) == int
+    assert type(object_info.creation) == float
+    assert type(object_info.last_access) == float
+    assert type(object_info.last_modification) == float
+    assert type(object_info.last_change) == float
 
     object_data = h3.read_object('b1', 'o2')
     assert object_data == data
@@ -98,9 +100,10 @@ def test_simple(h3):
     object_info = h3.info_object('b1', 'o2')
     assert not object_info.is_bad
     assert object_info.size == (3 * MEGABYTE)
-    assert type(object_info.creation) == int
-    assert type(object_info.last_access) == int
-    assert type(object_info.last_modification) == int
+    assert type(object_info.creation) == float
+    assert type(object_info.last_access) == float
+    assert type(object_info.last_modification) == float
+    assert type(object_info.last_change) == float
 
     object_data = h3.read_object('b1', 'o2')
     assert object_data == data
@@ -113,9 +116,10 @@ def test_simple(h3):
     object_info = h3.info_object('b1', 'o2')
     assert not object_info.is_bad
     assert object_info.size == (3 * MEGABYTE)
-    assert type(object_info.creation) == int
-    assert type(object_info.last_access) == int
-    assert type(object_info.last_modification) == int
+    assert type(object_info.creation) == float
+    assert type(object_info.last_access) == float
+    assert type(object_info.last_modification) == float
+    assert type(object_info.last_change) == float
 
     object_data = h3.read_object('b1', 'o2', offset=0, size=MEGABYTE)
     assert object_data == data[:MEGABYTE]
@@ -165,9 +169,10 @@ def test_simple(h3):
     object_info = h3.info_object('b1', 'o2')
     assert not object_info.is_bad
     assert object_info.size == (3 * MEGABYTE)
-    assert type(object_info.creation) == int
-    assert type(object_info.last_access) == int
-    assert type(object_info.last_modification) == int
+    assert type(object_info.creation) == float
+    assert type(object_info.last_access) == float
+    assert type(object_info.last_modification) == float
+    assert type(object_info.last_change) == float
 
     object_data = h3.read_object('b1', 'o2', offset=0, size=MEGABYTE)
     assert object_data == data[:MEGABYTE]

@@ -28,7 +28,7 @@ def test_simple(h3):
 
     bucket_info = h3.info_bucket('b1')
     assert bucket_info.stats == None
-    assert type(bucket_info.creation) == int
+    assert type(bucket_info.creation) == float
 
     bucket_info = h3.info_bucket('b1', get_stats=True)
     assert bucket_info.stats != None
@@ -58,13 +58,13 @@ def test_arguments(h3):
         h3.create_bucket(None)
 
     # Large name
-    with pytest.raises(pyh3lib.H3InvalidArgsError):
+    with pytest.raises(pyh3lib.H3NameTooLongError):
         h3.create_bucket('a' * (h3.BUCKET_NAME_SIZE + 1))
 
     # Invalid name
     with pytest.raises(pyh3lib.H3InvalidArgsError):
         h3.create_bucket('/bucketId')
-        
+
     with pytest.raises(pyh3lib.H3InvalidArgsError):
         h3.create_bucket('\bucketId')
 
@@ -85,7 +85,7 @@ def test_many(h3):
     for i in range(count):
         bucket_info = h3.info_bucket('bucket%d' % i)
         assert bucket_info.stats == None
-        assert type(bucket_info.creation) == int
+        assert type(bucket_info.creation) == float
 
     assert h3.list_buckets() == [('bucket%d' % i) for i in range(count)]
 

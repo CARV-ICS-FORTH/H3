@@ -27,7 +27,7 @@ typedef unsigned char* KV_Value;
 
 // Error codes
 typedef enum {
-    KV_FAILURE, KV_KEY_EXIST, KV_KEY_NOT_EXIST, KV_SUCCESS, KV_CONTINUE
+    KV_FAILURE, KV_KEY_EXIST, KV_KEY_NOT_EXIST, KV_SUCCESS, KV_CONTINUE, KV_NAME_TO_LONG
 }KV_Status;
 
 
