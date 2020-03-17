@@ -702,6 +702,18 @@ public class JH3HadoopFS extends FileSystem {
   }
 
   /**
+   * Add trailing slash to the key. Used only for rename operations.
+   * @param key ker or ""
+   * @return the key with a trailing slash at the end or ""
+   */
+  private String maybeAddTrailingSlash(String key){
+    if(!key.isEmpty() && !key.endsWith("/")){
+      return key + '/';
+    }
+    return key;
+  }
+
+  /**
    * Qualify a path
    */
   public Path qualify(Path p) {
