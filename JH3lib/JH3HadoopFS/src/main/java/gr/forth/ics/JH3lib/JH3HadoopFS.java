@@ -424,8 +424,6 @@ public class JH3HadoopFS extends FileSystem {
         // If destination doesn't exist, an exception is raised.
         // In this code sequence we assume that destination exists and we only need to
         // check if destination is valid for rename operation
-
-
         if (srcStatus.isDirectory()) {
           // Get status for each element in destination directory
           FileStatus[] dstDirStatus = listStatus(dst);
@@ -485,18 +483,21 @@ public class JH3HadoopFS extends FileSystem {
       } else {
         // src directory -> dst directory
         // Add trailing slash to keys since they emulate directories
-        dstKey = maybeAddDirectoryCharacter(dstKey);
-        srcKey = maybeAddDirectoryCharacter(srcKey);
+        // srcKey = maybeAddDirectoryCharacter(srcKey);
+        // dstKey = maybeAddTrailingSlash(dstKey);
 
         // Verify dest is not a descendant of source
         if (dstKey.startsWith(srcKey) && srcBucket.equals(dstBucket)) {
           throw new IOException("Cannot rename a directory to a subdirectory of itself");
         }
 
-        // Calculate key size up to directory
-        int srcSize = srcKey.length();
         // Retrieve status for each element under directory
         FileStatus[] srcDirStatus = listStatus(src);
+
+        // Calculate key size up to directory (including special character at the end)
+        int srcSize = srcKey.length() + 1;
+        // Add trailing slash to destination prefix key since it emulates a directory
+        dstKey = maybeAddTrailingSlash(dstKey);
         for (FileStatus dirStatus : srcDirStatus) {
           // Calculate destination
           String childKey = pathToKey(qualify(dirStatus.getPath()));
@@ -510,9 +511,14 @@ public class JH3HadoopFS extends FileSystem {
 
           boolean result = client.moveObject(srcBucket, childKey, newDstKey);
 
+
           // Failure in H3; used for debug
           if (H3_DEBUG && !result) {
             System.out.println("Rename failed");
+            System.out.println(client.getStatus());
+            System.out.println("srcBucket=" + srcBucket);
+            System.out.println("childKey= " + childKey);
+            System.out.println("newDstKey= " + newDstKey);
             System.exit(-1);
           }
         }
