@@ -5,22 +5,20 @@ import java.io.EOFException;
 
 import org.apache.hadoop.fs.CanSetReadahead;
 import org.apache.hadoop.fs.FSInputStream;
+import org.apache.log4j.Logger;
 import org.apache.hadoop.fs.FSExceptionMessages;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.classification.InterfaceAudience;
 
 import com.google.common.base.Preconditions;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
 public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 
-	private final Logger LOG = LoggerFactory.getLogger(JH3InputStream.class);
-	private boolean ISDebug = true;
+	private final Logger log = Logger.getLogger(JH3InputStream.class);
 
 	/* Position that is set by seek() and returned by getPos() */
 	private long pos;
@@ -31,7 +29,7 @@ public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 	private final JH3 client;
 	private final String bucket;
 	private final String key;
-	private final String pathStr;
+	//private final String pathStr;
 	private final long contentLength;
 	private final String uri;
 	/* Default readahead in S3A */
@@ -51,15 +49,10 @@ public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 	/* Keep value of object in byte buffer */
 	JH3Object data;
 
-	public JH3InputStream(JH3 client, String bucket,
-						  String key, long contentLength, long readahead) throws IOException {
-
-		if(ISDebug)
-			System.out.println("JH3InputSteam - "
-					+ "client: " + client + ", bucket: " + bucket 
-					+ ", key: " + key + ", contentLength: " + contentLength 
-					+ ", readahead: " + readahead);
-
+	public JH3InputStream(JH3 client, String bucket, String key, long contentLength, long readahead)
+			throws IOException {
+		log.trace("JH3InputSteam - " + "client: " + client + ", bucket: " + bucket + ", key: " + key
+				+ ", contentLength: " + contentLength + ", readahead: " + readahead);
 		try {
 
 			// Both bucket and key must be non empty
@@ -67,7 +60,7 @@ public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 			Preconditions.checkArgument(!("".equals(key)), "Empty key");
 			this.bucket = bucket;
 			this.key = key;
-			this.pathStr = "tempValue";
+			//this.pathStr = "tempValue";
 			this.contentLength = contentLength;
 			this.client = client;
 			this.uri = "h3://" + this.bucket + "/" + this.key;
@@ -82,13 +75,9 @@ public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 		this.pos = 0;
 	}
 
-
-
 	@Override
 	public synchronized void seek(long targetPos) throws IOException {
-
-		if(ISDebug)
-			System.out.println("JH3InputStream:seek - targetPos = " + targetPos);
+		log.trace("JH3InputStream:seek - targetPos = " + targetPos);
 
 		checkNotClosed();
 
@@ -97,7 +86,7 @@ public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 			throw new EOFException(FSExceptionMessages.NEGATIVE_SEEK + " " + targetPos);
 		}
 
-		if (this.contentLength <= 0){
+		if (this.contentLength <= 0) {
 			return;
 		}
 
@@ -108,57 +97,44 @@ public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 
 	@Override
 	public synchronized long getPos() throws IOException {
-		if(ISDebug)
-			System.out.println("JH3InputStream:getPos");
+		log.trace("JH3InputStream:getPos");
 		return pos;
-		//return (nextReadPos < 0) ? 0 : nextReadPos;
+		// return (nextReadPos < 0) ? 0 : nextReadPos;
 	}
-
 
 	@Override
 	public boolean seekToNewSource(long targetPos) throws IOException {
-
-		if(ISDebug)
-			System.out.println("JH3InputStream:seekToNewSource - "
-					+ "targetPos: " + targetPos);
+		log.trace("JH3InputStream:seekToNewSource - " + "targetPos: " + targetPos);
 		return false;
 	}
 
 	@Override
 	public synchronized int read() throws IOException {
-
-		if(ISDebug)
-			System.out.println("JH3InputStream:read");
+		log.trace("JH3InputStream:read");
 
 		checkNotClosed();
 
-		if(this.contentLength == 0 || (getPos() >= contentLength))
+		if (this.contentLength == 0 || (getPos() >= contentLength))
 			return -1;
 
-		int b = data.getData()[(int)pos];
+		int b = data.getData()[(int) pos];
 		pos++;
 		return b;
 	}
 
 	@Override
 	public synchronized int read(byte[] buffer, int offset, int length) throws IOException {
-
-
-		if(ISDebug)
-			System.out.println("JH3InputStream:read - buffer = " + buffer + ", offset = "
-					+ offset + ", length = " + length);
+		log.trace("JH3InputStream:read - buffer = " + buffer + ", offset = " + offset + ", length = " + length);
 
 		checkNotClosed();
-		//validatePositionedReadArgs(pos, buffer, offset, length);
+		// validatePositionedReadArgs(pos, buffer, offset, length);
 
 		if (length == 0)
 			return 0;
 
 		else if (this.contentLength == 0 || (getPos() >= this.contentLength))
-			//else if (getPos() > this.available())
 			return -1;
-		else{
-
+		else {
 			// Calculate how many bytes to read
 			int remaining = this.available();
 			int bytesToRead = Math.min(remaining, length);
@@ -168,8 +144,7 @@ public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 
 			// Move position depending on how many bytes were read
 			pos += bytesToRead;
-			if( ISDebug)
-				System.out.println("bytesRead: " + bytesToRead);
+			log.debug("bytesRead: " + bytesToRead);
 
 			return bytesToRead;
 
@@ -177,26 +152,24 @@ public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 	}
 
 	/**
-	 * Operation which only seeks at the start of the series of operations; seeking back at the end
+	 * Operation which only seeks at the start of the series of operations; seeking
+	 * back at the end
 	 */
 	@Override
 	public void readFully(long position, byte[] buffer, int offset, int length) throws IOException {
-
-		if(ISDebug)
-			System.out.println("JH3InputStream:readFully - "
-					+ "position: " + position + ", buffer: " + buffer
-					+ ", offset: " + offset + ", length: " + length);
+		log.trace("JH3InputStream:readFully - " + "position: " + position + ", buffer: " + buffer + ", offset: "
+				+ offset + ", length: " + length);
 
 		checkNotClosed();
-		//validatePositionedReadArgs(position, buffer, offset, length);
+		// validatePositionedReadArgs(position, buffer, offset, length);
 		int nread = 0;
-		synchronized(this){
+		synchronized (this) {
 			long oldPos = getPos();
-			try{
+			try {
 				seek(position);
-				while(nread < length){
+				while (nread < length) {
 					int nbytes = read(buffer, offset + nread, length - nread);
-					if(nbytes < 0){
+					if (nbytes < 0) {
 						throw new EOFException(FSExceptionMessages.EOF_IN_READ_FULLY);
 					}
 					nread += nbytes;
@@ -209,9 +182,7 @@ public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 
 	@Override
 	public synchronized int available() throws IOException {
-
-		if(ISDebug)
-			System.out.println("JH3InputStream:available");
+		log.trace("JH3InputStream:available");
 
 		long remaining = remainingInFile();
 
@@ -223,26 +194,21 @@ public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 
 	@Override
 	public synchronized void close() throws IOException {
+		log.trace("JH3InputStream:close");
 
-		if(ISDebug)
-			System.out.println("JH3InputStream:close");
-
-		if(!closed){
+		if (!closed) {
 			closed = true;
-			try{
+			try {
 				super.close();
-			}finally{
-				LOG.debug("Ignoring IOE on superclass close()", uri);
+			} finally {
+				log.debug("Ignoring IOE on superclass close(). uri= " + uri);
 			}
 		}
 	}
 
 	@Override
 	public synchronized void setReadahead(Long readahead) {
-
-		if(ISDebug)
-			System.out.println("JH3InputStream:setReadahead - "
-					+ "readahead: " + readahead);
+		log.trace("JH3InputStream:setReadahead - " + "readahead: " + readahead);
 
 		if (readahead == null) {
 			/* Default value */
@@ -255,34 +221,22 @@ public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 
 	/* How many bytes are left to read */
 	public synchronized long remainingInFile() {
-
-		if(ISDebug)
-			System.out.println("JH3InputStream:remainingInFile: " + (this.contentLength - this.pos));
-
+		log.trace("JH3InputStream:remainingInFile: " + (this.contentLength - this.pos));
 		return this.contentLength - this.pos;
 	}
 
-	public synchronized long getContentRangeStart(){
-
-		if(ISDebug)
-			System.out.println("JH3InputStream:getContentRangeStart");
-
+	public synchronized long getContentRangeStart() {
+		log.trace("JH3InputStream:getContentRangeStart");
 		return this.contentRangeStart;
 	}
 
-	public synchronized long getContentRangeFinish(){
-
-		if(ISDebug)
-			System.out.println("JH3InputStream:getContentRangeFinish");
-
+	public synchronized long getContentRangeFinish() {
+		log.trace("JH3InputStream:getContentRangeFinish");
 		return this.contentRangeFinish;
 	}
 
-	public synchronized long getReadahead(){
-
-		if(ISDebug)
-			System.out.println("JH3InputStream:getReadahead");
-
+	public synchronized long getReadahead() {
+		log.trace("JH3InputStream:getReadahead");
 		return readahead;
 	}
 
@@ -290,24 +244,17 @@ public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 	 * H3 Input stream does not support the mark and reset methods.
 	 */
 	@Override
-	public boolean markSupported(){
-
-		if(ISDebug)
-			System.out.println("JH3InputStream:markSupported");
-
+	public boolean markSupported() {
+		log.trace("JH3InputStream:markSupported");
 		return false;
 	}
 
-	private void lazySeek(long targetPos, long len) throws IOException {
-
-	}
+	// private void lazySeek(long targetPos, long len) throws IOException {}
 
 	private void checkNotClosed() throws IOException {
+		log.trace("JH3InputStream:checkNotClosed");
 
-		if(ISDebug)
-			System.out.println("JH3InputStream:checkNotClosed");
-
-		if (closed){
+		if (closed) {
 			throw new IOException(uri + ": " + FSExceptionMessages.STREAM_IS_CLOSED);
 		}
 	}
@@ -316,11 +263,8 @@ public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 	private void seekQuietly(long positiveTargetPos) {
 		try {
 			seek(positiveTargetPos);
-		}catch (IOException ioe){
-			LOG.debug("Ignoring IOE on seek of {} to {}", uri, positiveTargetPos, ioe);
+		} catch (IOException ioe) {
+			log.debug("Ignoring IOE on seek of " + uri + " to " + positiveTargetPos);
 		}
 	}
 }
-
-
-

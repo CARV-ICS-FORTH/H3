@@ -9,21 +9,17 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.fs.StreamCapabilities;
+import org.apache.log4j.Logger;
 
 import com.google.common.base.Preconditions;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
 class JH3OutputStream extends OutputStream
-  implements StreamCapabilities {
+    implements StreamCapabilities {
 
-  private static final Logger LOG =
-    LoggerFactory.getLogger(JH3OutputStream.class);
+  private static final Logger log = Logger.getLogger(JH3OutputStream.class);
 
-  private boolean OSDebug = false;
   private final JH3 client;
 
   /** Bucket to which object is uploaded */
@@ -59,73 +55,62 @@ class JH3OutputStream extends OutputStream
   /** Index up to where data is written */
   private int position;
 
+  JH3OutputStream(JH3 client, String bucket, String key, boolean overwrite, long blockSize) throws IOException {
+    log.trace("JH3OutputStream - client: " + client + ", bucket: " + bucket + ", key: " 
+      + key + ", blockSize: " + blockSize);
 
-  JH3OutputStream(JH3 client, String bucket, String key, boolean overwrite, long blockSize)
-      throws IOException {
-
-      if(OSDebug)
-        System.out.println("JH3OutputStream - client: " + client
-            + ", bucket: " + bucket + ", key: " + key 
-            + ", blockSize: " + blockSize);
-
-      this.client = client;
-      this.bucket = bucket;
-      this.key = key;
-      this.overwrite = overwrite;
-      this.blockSize = (int) blockSize;
-      this.bytesSubmitted = 0;
-      // create the first block. This guarantees that an open + close sequence
-      // writes a 0-byte entry.
-      createBlockIfNeeded();
+    this.client = client;
+    this.bucket = bucket;
+    this.key = key;
+    this.overwrite = overwrite;
+    this.blockSize = (int) blockSize;
+    this.bytesSubmitted = 0;
+    // create the first block. This guarantees that an open + close sequence
+    // writes a 0-byte entry.
+    createBlockIfNeeded();
   }
 
   @Override
-  public synchronized void flush() throws IOException{
-    // no-op 
-    if(OSDebug)
-      System.out.println("JH3OutputStream:flush");
+  public synchronized void flush() throws IOException {
+    log.trace("JH3OutputStream:flush");
+    // no-op
   }
 
   @Override
-  public synchronized void write(int b) throws IOException{
-    if(OSDebug)
-      System.out.println("JH3OutputStream:write - b: " + b);
+  public synchronized void write(int b) throws IOException {
+    log.trace("JH3OutputStream:write - b: " + b);
 
     singleCharWrite[0] = (byte) b;
     write(singleCharWrite, 0, 1);
   }
 
   @Override
-  public synchronized void write(byte[] source, int offset, int length)
-    throws IOException {
-
-    if(OSDebug)
-      System.out.println("JH3OutputStream:write - "
-          + "source: " + Arrays.toString(source)
-          + ", offset: " + offset
+  public synchronized void write(byte[] source, int offset, int length) throws IOException {
+    log.trace("JH3OutputStream:write - " + "source: " + Arrays.toString(source) + ", offset: " + offset
           + ", length: " + length);
 
     validateWriteArgs(source, offset, length);
     checkOpen();
 
     // Nothing to write
-    if(length == 0)
+    if (length == 0)
       return;
 
-    // Create a block if there is none 
+    // Create a block if there is none
     createBlockIfNeeded();
 
     int written = writeToBlock(source, offset, length);
     int remaining = remainingBlockCapacity();
-    if(written < length) {
-      LOG.debug("writing more data than block has capacity -triggering upload");
+    if (written < length) {
+      log.debug("writing more data than block has capacity; triggering upload");
       // not everything was written, block is full
       uploadCurrentBlock();
 
       // remaining bytes must be written to a new block
       this.write(source, offset + written, length - written);
 
-    }else if (remaining == 0){
+    } else if (remaining == 0) {
+      log.debug("the block is full after write; triggering upload");
       // the block is full after write, trigger an upload
       uploadCurrentBlock();
     }
@@ -133,104 +118,93 @@ class JH3OutputStream extends OutputStream
 
   @Override
   public void close() throws IOException {
-    if(OSDebug)
-      System.out.println("JH3OutputStream:close");
+    log.trace("JH3OutputStream:close");
 
-    if(closed.getAndSet(true)) {
+    if (closed.getAndSet(true)) {
+      log.debug("Ignoring close(), stream is already closed");
       // already closed
-      LOG.debug("Ignoring close(), stream is already closed");
       return;
     }
 
-    LOG.debug("{}: Closing block #{}", this, blockCount);
+    log.debug("JH3OutputStream: Closing block #" + blockCount);
     boolean hasBlock = hasActiveBlock();
     long bytes;
 
-    if(multipartUploadId == null) {
+    if (multipartUploadId == null) {
       // No multipart upload has started, data fit in a single block
       if (hasBlock) {
-        bytes = putObject(); 
+        bytes = putObject();
         bytesSubmitted += bytes;
       }
     } else {
-      // Upload last part and complete multipart 
-      if(hasBlock && (dataSize() > 0)) {
+      // Upload last part and complete multipart
+      if (hasBlock && (dataSize() > 0)) {
         uploadCurrentBlock();
         completeMultipartUpload();
       }
     }
   }
-  @Override
-  public boolean hasCapability(String capability){
-    if(OSDebug)
-      System.out.println("JH3OutputStream:hasCapability - capability: "
-          + capability);
 
+  @Override
+  public boolean hasCapability(String capability) {
+    log.trace("JH3OutputStream:hasCapability - capability: " + capability);
     return false;
   }
 
   void checkOpen() throws IOException {
-    if(OSDebug)
-      System.out.println("JH3OutputStream:checkOpen");
+    log.trace("JH3OutputStream:checkOpen");
 
-    if(closed.get()){
+    if (closed.get()) {
       throw new IOException("JH3OutputStream is closed");
     }
   }
 
   private void validateWriteArgs(byte[] b, int offset, int length) {
+    log.trace("JH3OutputStream:validateWriteArgs - b: " + Arrays.toString(b) + ", offset: " + offset
+      + ", length: " + length);
 
-      if(OSDebug)
-        System.out.println("JH3OutputStream:validateWriteArgs - b: " + Arrays.toString(b)
-            + ", offset: " + offset + ", length: " + length);
+    Preconditions.checkNotNull(b);
 
-      Preconditions.checkNotNull(b);
-
-      if(( offset < 0) || (offset > b.length) || ( length < 0) ||
-          ((offset + length) > b.length) || ((offset + length) < 0)) {
-        throw new IndexOutOfBoundsException(
-            "write (b[" + b.length + "], " + offset + ", " +
-            length + ')');
-          }
+    if ((offset < 0) || (offset > b.length) || (length < 0) || ((offset + length) > b.length)
+        || ((offset + length) < 0)) {
+      throw new IndexOutOfBoundsException("write (b[" + b.length + "], " + offset + ", " + length + ')');
+    }
   }
 
   private int putObject() throws IOException {
-    if(OSDebug)
-      System.out.println("JH3OutputStream:putObject");
+    log.trace("JH3OutputStream:putObject");
 
-    LOG.debug("Executing regular upload");
     try {
+
       int size = dataSize();
       JH3Object dataObj = new JH3Object(dataBlock.toByteArray(), size);
       client.createObject(bucket, key, dataObj);
+      log.debug("Executing regular upload. size= " + size +", status= " + client.getStatus());
       clearBlock();
       return size;
-    }catch (JH3Exception e){
+    } catch (JH3Exception e) {
       throw new IOException(e);
     }
   }
 
   /* Multipart Operations */
 
-  /** Init multipart upload. Assumption: this is called from a 
-   * synchronized block. 
-   * no-op if multipart has already started 
-   * */
-  private void initMultipartUpload() throws IOException{
-
-    if(OSDebug)
-      System.out.println("JH3OutputStream:initMultipartUpload");
+  /**
+   * Init multipart upload. Assumption: this is called from a synchronized block.
+   * no-op if multipart has already started
+   */
+  private void initMultipartUpload() throws IOException {
+    log.trace("JH3OutputStream:initMultipartUpload");
 
     // No need to init a multipart upload if one already exists
-    if(multipartUploadId == null) {
-      LOG.debug("Initiating Multipart upload {}/{}", bucket, key);
+    if (multipartUploadId == null) {
       try {
+        log.debug("Initiating Multipart upload. path: " + bucket + "/" + key);
         multipartUploadId = client.createMultipart(bucket, key);
 
         // if id is null, error has occurred
         if (multipartUploadId == null) {
-          throw new JH3Exception("Cannot create a new multipart upload for: "
-                  + bucket + "/" + key);
+          throw new JH3Exception("Cannot create a new multipart upload for: " + bucket + "/" + key);
         }
       } catch (JH3Exception e) {
         throw new IOException(e);
@@ -240,14 +214,11 @@ class JH3OutputStream extends OutputStream
   }
 
   private void completeMultipartUpload() throws IOException {
-
-    if(OSDebug)
-      System.out.println("JH3OutputStream:completeMultipartUpload");
+    log.trace("JH3OutputStream:completeMultipartUpload");
 
     try {
-      if(!client.completeMultipart(multipartUploadId))
-        throw new JH3Exception("Cannot complete multipart upload for: "
-            + bucket + "/" + key);
+      if (!client.completeMultipart(multipartUploadId))
+        throw new JH3Exception("Cannot complete multipart upload for: " + bucket + "/" + key);
     } catch (JH3Exception e) {
       abortMultipartUpload();
       throw new IOException(e);
@@ -255,14 +226,11 @@ class JH3OutputStream extends OutputStream
   }
 
   private void abortMultipartUpload() throws IOException {
-
-    if(OSDebug)
-      System.out.println("JH3OutputStream:abortMultipartUpload");
+    log.trace("JH3OutputStream:abortMultipartUpload");
 
     try {
-      if(!client.abortMultipart(multipartUploadId))
-        throw new JH3Exception("Cannot abort multipart upload for: "
-            + bucket + "/" + key);
+      if (!client.abortMultipart(multipartUploadId))
+        throw new JH3Exception("Cannot abort multipart upload for: " + bucket + "/" + key);
     } catch (JH3Exception e) {
       throw new IOException(e);
     }
@@ -271,42 +239,34 @@ class JH3OutputStream extends OutputStream
   /*** Block operations ***/
 
   private synchronized void createBlockIfNeeded() {
+    log.trace("JH3OutputStream:createBlockIfNeeded");
 
-    if(OSDebug)
-      System.out.println("JH3OutputStream:createBlockIfNeeded");
-
-    if(dataBlock == null) {
+    if (dataBlock == null) {
       dataBlock = new ByteArrayOutputStream(blockSize);
       blockCount++;
     }
   }
 
-
   private synchronized void uploadCurrentBlock() throws IOException {
-
-    if(OSDebug)
-      System.out.println("JH3OutputStream:uploadCurrentBlock");
+    log.trace("JH3OutputStream:uploadCurrentBlock");
 
     Preconditions.checkState(hasActiveBlock(), "No active block");
-    LOG.debug("Writing block # {}", blockCount);
-
+    log.debug("uploadCurrentBlock: Writing block #" + blockCount);
     initMultipartUpload();
     try {
       int size = dataSize();
       JH3Object dataObj = new JH3Object(dataBlock.toByteArray(), size);
       client.createPart(dataObj, multipartUploadId, blockCount);
       bytesSubmitted += size;
-    }catch(JH3Exception e){
+    } catch (JH3Exception e) {
       abortMultipartUpload();
       throw new IOException(e);
-    }finally{
+    } finally {
       clearBlock();
     }
   }
 
-  private synchronized int writeToBlock(byte[] source, int offset,
-      int length) {
-
+  private synchronized int writeToBlock(byte[] source, int offset, int length) {
     // Write only as much that can fit in block
     int written = Math.min(remainingBlockCapacity(), length);
     dataBlock.write(source, offset, written);
@@ -314,40 +274,22 @@ class JH3OutputStream extends OutputStream
   }
 
   private synchronized boolean hasActiveBlock() {
-
-    if(OSDebug)
-      System.out.println("JH3OutputStream:hasActiveBlock");
-
     return dataBlock != null;
   }
 
-
-  private synchronized int dataSize(){
-
-    if(OSDebug)
-      System.out.println("JH3OutputStream:dataSize");
-
+  private synchronized int dataSize() {
     return dataBlock.size();
   }
 
-  private int remainingBlockCapacity(){
-
-    if(OSDebug)
-      System.out.println("JH3OutputStream:remainingBlockCapacity");
-
+  private int remainingBlockCapacity() {
     return this.blockSize - dataBlock.size();
   }
 
-  private void clearBlock(){
+  private void clearBlock() {
+    log.trace("JH3OutputStream:clearBlock");
 
-    if(OSDebug)
-      System.out.println("JH3OutputStream:clearBlock");
-
-    if(dataBlock != null) {
-      LOG.debug("Clearing active block");
-    }
-
-    synchronized(this){
+    synchronized (this) {
+      log.debug("Clearing active block");
       dataBlock = null;
     }
   }
