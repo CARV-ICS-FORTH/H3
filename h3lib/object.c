@@ -751,15 +751,20 @@ H3_Status H3_DeleteObject(H3_Handle handle, H3_Token token, H3_Name bucketName, 
  */
 H3_Status H3_TruncateObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, size_t size){
     // Argument check
-    if(!handle || !token  || !bucketName || !objectName || size){
+    if(!handle || !token  || !bucketName || !objectName){
         return H3_INVALID_ARGS;
     }
 
     H3_Context* ctx = (H3_Context*)handle;
+    KV_Handle _handle = ctx->handle;
+    KV_Operations* op = ctx->operation;
 
     H3_UserId userId;
     H3_ObjectId objId;
     H3_Status status;
+    KV_Status storeStatus;
+    KV_Value value = NULL;
+    size_t mSize = 0;
 
     // Validate bucketName & extract userId from token
     if( (status = ValidBucketName(bucketName)) != H3_SUCCESS || (status = ValidObjectName(objectName)) != H3_SUCCESS){
@@ -772,7 +777,97 @@ H3_Status H3_TruncateObject(H3_Handle handle, H3_Token token, H3_Name bucketName
 
     GetObjectId(bucketName, objectName, objId);
 
-    return DeleteObject(ctx, userId, objId, 1);
+    if(!size)
+    	return DeleteObject(ctx, userId, objId, 1);
+
+    status = H3_FAILURE;
+    if((storeStatus = op->metadata_read(_handle, objId, 0, &value, &mSize)) == KV_SUCCESS){
+
+        // Make sure user has access to the object
+        H3_ObjectMetadata* objMeta = (H3_ObjectMetadata*)value;
+        if(GrantObjectAccess(userId, objMeta)){
+
+        	size_t objectSize = 0;
+
+        	if(objMeta->nParts)
+        		objectSize = objMeta->part[objMeta->nParts-1].offset + objMeta->part[objMeta->nParts-1].size;
+
+        	// Append 0x00s
+        	if(size > objectSize){
+        		size_t extra = size - objectSize;
+
+                // Expand object metadata if needed
+                uint nParts = EstimateNumOfParts(objMeta, extra, objectSize);
+                uint nBatch = (nParts + H3_PART_BATCH_SIZE - 1)/H3_PART_BATCH_SIZE;
+                size_t objMetaSize = sizeof(H3_ObjectMetadata) + nBatch * H3_PART_BATCH_SIZE * sizeof(H3_PartMetadata);
+                if(objMetaSize > mSize)
+                    objMeta = realloc(objMeta, objMetaSize);
+
+                // Allocate buffer
+                size_t writeSize = min(H3_CHUNK, extra);
+                KV_Value buffer = calloc(writeSize, 1);
+
+                if(buffer){
+					// Write the nulls
+					while(extra && WriteData(ctx, objMeta, buffer, writeSize, objectSize) == KV_SUCCESS){
+						objectSize += writeSize;
+						extra -= writeSize;
+						writeSize = min(H3_CHUNK, extra);
+					}
+
+					if(extra)
+						objMeta->isBad = 1;
+
+					if(op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, objMetaSize) == KV_SUCCESS && !objMeta->isBad){
+						status = H3_SUCCESS;
+					}
+
+					free(buffer);
+                }
+        	}
+
+        	// Delete last part(s)
+        	else if(size < objectSize){
+        		int i;
+        		size_t extra = objectSize - size;
+
+        		for(i=objMeta->nParts-1; extra && i >= 0; i--){
+
+        			if(objMeta->part[i].size <= extra){
+        				H3_PartId partId;
+        				if( (storeStatus = op->delete(_handle, PartToId(partId, objMeta->uuid, &objMeta->part[i]))) == KV_SUCCESS){
+        					objMeta->nParts--;
+        					extra -= objMeta->part[i].size;
+        				}
+        				else
+        					break;
+        			}
+        			else {
+        				objMeta->part[i].size -= extra;
+        				extra = 0;
+        			}
+        		}
+
+				if(extra)
+					objMeta->isBad = 1;
+
+				clock_gettime(CLOCK_REALTIME, &objMeta->lastModification);
+				if(op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, mSize) == KV_SUCCESS && !objMeta->isBad){
+					status = H3_SUCCESS;
+				}
+        	}
+        	else
+        		status = H3_SUCCESS;
+        }
+        free(objMeta);
+    }
+    else if(storeStatus == KV_KEY_NOT_EXIST)
+        return H3_NOT_EXISTS;
+
+    else if(storeStatus == KV_NAME_TOO_LONG)
+        return H3_NAME_TOO_LONG;
+
+    return status;
 }
 
 
