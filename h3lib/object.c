@@ -279,7 +279,7 @@ KV_Status CopyData(H3_Context* ctx, H3_UserId userId, H3_ObjectId srcObjId, H3_O
             }
 
             // Do not mask Name-Too-Long error
-            else if(status != KV_NAME_TO_LONG)
+            else if(status != KV_NAME_TOO_LONG)
                 status = KV_FAILURE;
         }
         free(srcObjMeta);
@@ -376,7 +376,7 @@ H3_Status H3_CreateObject(H3_Handle handle, H3_Token token, H3_Name bucketName, 
         else if(storeStatus == KV_KEY_EXIST)
             status = H3_EXISTS;
 
-        else if(storeStatus == KV_NAME_TO_LONG)
+        else if(storeStatus == KV_NAME_TOO_LONG)
             status = H3_NAME_TOO_LONG;
 
         free(objMeta);
@@ -480,7 +480,7 @@ H3_Status H3_ReadObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
     else if(storeStatus == KV_KEY_NOT_EXIST)
         return H3_NOT_EXISTS;
 
-    else if(storeStatus == KV_NAME_TO_LONG)
+    else if(storeStatus == KV_NAME_TOO_LONG)
         return H3_NAME_TOO_LONG;
 
     return status;
@@ -562,7 +562,7 @@ H3_Status H3_InfoObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
     else if(storeStatus == KV_KEY_NOT_EXIST)
         return H3_NOT_EXISTS;
 
-    else if(storeStatus == KV_NAME_TO_LONG)
+    else if(storeStatus == KV_NAME_TOO_LONG)
         return H3_NAME_TOO_LONG;
 
     return status;
@@ -639,7 +639,7 @@ H3_Status H3_SetObjectAttributes(H3_Handle handle, H3_Token token, H3_Name bucke
     else if(storeStatus == KV_KEY_NOT_EXIST)
         return H3_NOT_EXISTS;
 
-    else if(storeStatus == KV_NAME_TO_LONG)
+    else if(storeStatus == KV_NAME_TOO_LONG)
         return H3_NAME_TOO_LONG;
 
     return status;
@@ -680,7 +680,7 @@ H3_Status DeleteObject(H3_Context* ctx, H3_UserId userId, H3_ObjectId objId, cha
     else if(storeStatus == KV_KEY_NOT_EXIST)
         return H3_NOT_EXISTS;
 
-    else if(storeStatus == KV_NAME_TO_LONG)
+    else if(storeStatus == KV_NAME_TOO_LONG)
         return H3_NAME_TOO_LONG;
 
     return status;
@@ -860,7 +860,7 @@ H3_Status MoveObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Na
     else if(storeStatus == KV_KEY_NOT_EXIST)
         status = H3_NOT_EXISTS;
 
-    else if(storeStatus == KV_NAME_TO_LONG)
+    else if(storeStatus == KV_NAME_TOO_LONG)
         status = H3_NAME_TOO_LONG;
 
     LogActivity(H3_DEBUG_MSG, "Exit - %d\n", status );
@@ -1024,7 +1024,7 @@ H3_Status H3_CopyObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
     else if(storeStatus == KV_KEY_NOT_EXIST)
         return H3_NOT_EXISTS;
 
-    else if(storeStatus == KV_NAME_TO_LONG)
+    else if(storeStatus == KV_NAME_TOO_LONG)
         return H3_NAME_TOO_LONG;
 
     return status;
@@ -1112,7 +1112,7 @@ H3_Status H3_ListObjects(H3_Handle handle, H3_Token token, H3_Name bucketName, H
     else if(storeStatus == KV_KEY_NOT_EXIST)
         return H3_NOT_EXISTS;
 
-    else if(storeStatus == KV_NAME_TO_LONG)
+    else if(storeStatus == KV_NAME_TOO_LONG)
         return H3_NAME_TOO_LONG;
 
     return status;
@@ -1200,7 +1200,7 @@ H3_Status H3_ForeachObject(H3_Handle handle, H3_Token token, H3_Name bucketName,
     else if(storeStatus == KV_KEY_NOT_EXIST)
         return H3_NOT_EXISTS;
 
-    else if(storeStatus == KV_NAME_TO_LONG)
+    else if(storeStatus == KV_NAME_TOO_LONG)
         return H3_NAME_TOO_LONG;
 
     return status;
@@ -1266,11 +1266,11 @@ H3_Status H3_WriteObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H
     if((storeStatus = op->metadata_exists(_handle, objId)) == KV_KEY_NOT_EXIST){
        return H3_CreateObject(handle, token, bucketName, objectName, data, size);
     }
-    else if(storeStatus == KV_NAME_TO_LONG)
+    else if(storeStatus == KV_NAME_TOO_LONG)
         return H3_NAME_TOO_LONG;
 
     // Get object metadata and make sure we have access
-    if((storeStatus = op->metadata_read(_handle, objId, 0, &value, &mSize)) == KV_NAME_TO_LONG){
+    if((storeStatus = op->metadata_read(_handle, objId, 0, &value, &mSize)) == KV_NAME_TOO_LONG){
         return H3_NAME_TOO_LONG;
     }
     else if(storeStatus != KV_SUCCESS)
@@ -1292,7 +1292,7 @@ H3_Status H3_WriteObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H
             (storeStatus = op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, objMetaSize)) == KV_SUCCESS     ){
             status = H3_SUCCESS;
         }
-        else if(storeStatus == KV_NAME_TO_LONG)
+        else if(storeStatus == KV_NAME_TOO_LONG)
             status = H3_NAME_TOO_LONG;
 #else
         if( (storeStatus = WriteData(ctx, objMeta, data, size, offset)) != KV_SUCCESS ){
@@ -1305,7 +1305,7 @@ H3_Status H3_WriteObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H
         if(storeStatus == KV_SUCCESS)
             status = H3_SUCCESS;
 
-        else if(storeStatus == KV_NAME_TO_LONG)
+        else if(storeStatus == KV_NAME_TOO_LONG)
             status = H3_NAME_TOO_LONG;
 #endif
     }
@@ -1374,7 +1374,7 @@ H3_Status H3_CreateObjectCopy(H3_Handle handle, H3_Token token, H3_Name bucketNa
             status = H3_NOT_EXISTS;
             break;
 
-        case KV_NAME_TO_LONG:
+        case KV_NAME_TOO_LONG:
             status = H3_NAME_TOO_LONG;
             break;
 
@@ -1442,7 +1442,7 @@ H3_Status H3_WriteObjectCopy(H3_Handle handle, H3_Token token, H3_Name bucketNam
             status = H3_NOT_EXISTS;
             break;
 
-        case KV_NAME_TO_LONG:
+        case KV_NAME_TOO_LONG:
             status = H3_NAME_TOO_LONG;
             break;
 

@@ -127,7 +127,7 @@ H3_Status H3_CreateBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
     }
     else if(kvStatus == KV_KEY_EXIST)
         return H3_EXISTS;
-    else if(kvStatus == KV_NAME_TO_LONG)
+    else if(kvStatus == KV_NAME_TOO_LONG)
         return H3_NAME_TOO_LONG;
 
     return H3_STORE_ERROR;
@@ -213,7 +213,7 @@ H3_Status H3_DeleteBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
 
             free(userMetadata);
         }
-        else if(kvStatus == KV_NAME_TO_LONG){
+        else if(kvStatus == KV_NAME_TOO_LONG){
             return H3_NAME_TOO_LONG;
         }
         else if(nKeys){
@@ -225,7 +225,7 @@ H3_Status H3_DeleteBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
     else if(kvStatus == KV_KEY_NOT_EXIST){
         return H3_NOT_EXISTS;
     }
-    else if(kvStatus == KV_NAME_TO_LONG)
+    else if(kvStatus == KV_NAME_TOO_LONG)
         return H3_NAME_TOO_LONG;
 
 
@@ -403,7 +403,7 @@ H3_Status H3_InfoBucket(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
                     bucketInfo->stats.size = bucketSize;
                     status = H3_SUCCESS;
                 }
-                else if(kvStatus == KV_NAME_TO_LONG)
+                else if(kvStatus == KV_NAME_TOO_LONG)
                     status = H3_NAME_TOO_LONG;
             }
             else{
@@ -416,7 +416,7 @@ H3_Status H3_InfoBucket(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
     else if(kvStatus == KV_KEY_NOT_EXIST){
         return H3_NOT_EXISTS;
     }
-    else if(kvStatus == KV_NAME_TO_LONG)
+    else if(kvStatus == KV_NAME_TOO_LONG)
         return H3_NAME_TOO_LONG;
 
 
@@ -535,7 +535,7 @@ H3_Status H3_SetBucketAttributes(H3_Handle handle, H3_Token token, H3_Name bucke
     else if(kvStatus == KV_KEY_NOT_EXIST){
         return H3_NOT_EXISTS;
     }
-    else if(kvStatus == KV_NAME_TO_LONG){
+    else if(kvStatus == KV_NAME_TOO_LONG){
         return H3_NAME_TOO_LONG;
     }
 

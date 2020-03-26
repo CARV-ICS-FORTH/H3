@@ -84,7 +84,7 @@ H3_Status H3_CreateMultipart(H3_Handle handle, H3_Token token, H3_Name bucketNam
     }
 
     // Make sure user has access to the bucket
-    if((storeStatus = op->metadata_read(_handle, bucketId, 0, &value, &mSize)) == KV_NAME_TO_LONG){
+    if((storeStatus = op->metadata_read(_handle, bucketId, 0, &value, &mSize)) == KV_NAME_TOO_LONG){
         return H3_NAME_TOO_LONG;
     }
     else if(storeStatus != KV_SUCCESS)
@@ -119,7 +119,7 @@ H3_Status H3_CreateMultipart(H3_Handle handle, H3_Token token, H3_Name bucketNam
                 op->metadata_delete(_handle, multiMeta.objectId);
         }
 
-        if(storeStatus == KV_NAME_TO_LONG)
+        if(storeStatus == KV_NAME_TOO_LONG)
             status = H3_NAME_TOO_LONG;
     }
 
@@ -349,7 +349,7 @@ H3_Status H3_ListMultiparts(H3_Handle handle, H3_Token token, H3_Name bucketName
     }
     else if(kvStatus == KV_KEY_NOT_EXIST)
         return H3_NOT_EXISTS;
-    else if(kvStatus == KV_NAME_TO_LONG)
+    else if(kvStatus == KV_NAME_TOO_LONG)
         return H3_NAME_TOO_LONG;
 
     return status;
@@ -704,7 +704,7 @@ H3_Status H3_CreatePartCopy(H3_Handle handle, H3_Token token, H3_Name objectName
         else if(kvStatus == KV_KEY_NOT_EXIST)
             status = H3_NOT_EXISTS;
 
-        else if(kvStatus == KV_NAME_TO_LONG)
+        else if(kvStatus == KV_NAME_TOO_LONG)
             status = H3_NAME_TOO_LONG;
     }
 

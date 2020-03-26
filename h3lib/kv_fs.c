@@ -217,7 +217,7 @@ KV_Status KV_FS_List(KV_Handle handle, KV_Key prefix, uint8_t nTrim, KV_Key buff
 
     else if (status < -0){
     	if (errno == ENAMETOOLONG)
-    		status = KV_NAME_TO_LONG;
+    		status = KV_NAME_TOO_LONG;
     	else{
     		status = KV_FAILURE;
     		LogActivity(H3_ERROR_MSG, "Listing from key %s failed - %s\n",fullPrefix, strerror(errno));
@@ -242,7 +242,7 @@ KV_Status KV_FS_Exists(KV_Handle handle, KV_Key key) {
     else if(errno == ENOENT)
         status = KV_KEY_NOT_EXIST;
     else if(errno == ENAMETOOLONG)
-        status = KV_NAME_TO_LONG;
+        status = KV_NAME_TOO_LONG;
     else
     	LogActivity(H3_ERROR_MSG, "Checking key %s failed - %s\n",full_key, strerror(errno));
 
@@ -292,7 +292,7 @@ KV_Status KV_FS_Read(KV_Handle handle, KV_Key key, off_t offset, KV_Value* value
         else {
         	switch(errno){
         		case ENAMETOOLONG:
-        			status = KV_NAME_TO_LONG; break;
+        			status = KV_NAME_TOO_LONG; break;
 
         		case ENOENT:
         		case EISDIR:							// h3fuse guards against this error
@@ -337,7 +337,7 @@ KV_Status KV_FS_Create(KV_Handle handle, KV_Key key, KV_Value value, off_t offse
         status =  KV_KEY_EXIST;
     }
     else if(errno == ENAMETOOLONG){
-    	status = KV_NAME_TO_LONG;
+    	status = KV_NAME_TOO_LONG;
     }
     else {
         LogActivity(H3_ERROR_MSG, "Creating key %s failed - %s\n",full_key, strerror(errno));
@@ -366,7 +366,7 @@ KV_Status KV_FS_Write(KV_Handle handle, KV_Key key, KV_Value value, off_t offset
         status =  KV_KEY_EXIST;
     }
     else if(errno == ENAMETOOLONG){
-    	status = KV_NAME_TO_LONG;
+    	status = KV_NAME_TOO_LONG;
     }
     else {
         LogActivity(H3_ERROR_MSG, "Writing key %s failed - %s\n",key, strerror(errno));
@@ -405,7 +405,7 @@ KV_Status KV_FS_Copy(KV_Handle handle, KV_Key src_key, KV_Key dest_key) {
             close(dstFd);
         }
         else if(errno == ENAMETOOLONG){
-        	status = KV_NAME_TO_LONG;
+        	status = KV_NAME_TOO_LONG;
         }
         close(srcFd);
     }
@@ -413,7 +413,7 @@ KV_Status KV_FS_Copy(KV_Handle handle, KV_Key src_key, KV_Key dest_key) {
         status = KV_KEY_NOT_EXIST;
     }
     else if(errno == ENAMETOOLONG){
-    	status = KV_NAME_TO_LONG;
+    	status = KV_NAME_TOO_LONG;
     }
     else{
         LogActivity(H3_ERROR_MSG, "Copying key %s to %s failed - %s\n",src_key, dest_key, strerror(errno));
@@ -438,7 +438,7 @@ KV_Status KV_FS_Delete(KV_Handle handle, KV_Key key) {
     		status = KV_KEY_NOT_EXIST;
     	}
     	else if(errno == ENAMETOOLONG){
-    		status = KV_NAME_TO_LONG;
+    		status = KV_NAME_TOO_LONG;
     	}
     	else{
     		LogActivity(H3_ERROR_MSG, "Deleting key %s failed - %s\n",key, strerror(errno));
@@ -474,7 +474,7 @@ KV_Status KV_FS_Move(KV_Handle handle, KV_Key src_key, KV_Key dest_key) {
         status = KV_KEY_NOT_EXIST;
     }
 	else if(errno == ENAMETOOLONG){
-		status = KV_NAME_TO_LONG;
+		status = KV_NAME_TOO_LONG;
 	}
     else {
         LogActivity(H3_ERROR_MSG, "Moving key %s to %s failed - %s\n",src_key, dest_key, strerror(errno));
