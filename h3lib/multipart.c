@@ -471,6 +471,43 @@ KV_Status DeletePart(H3_Context* ctx, H3_ObjectMetadata* objMeta, uint32_t partN
     return status;
 }
 
+// The offset is necessary in case we cannot allocate a large enough buffer for the whole part and we have to do it in segments.
+// Note that in this case we do not overwrite, instead we simply append.
+KV_Status CreatePart(H3_Context* ctx, H3_ObjectMetadata* objMeta, KV_Value value, size_t size, off_t offset, uint32_t partNumber){
+    KV_Status status = KV_SUCCESS;
+    uint32_t partSubNumber = offset/H3_PART_SIZE;
+    off_t inPartOffset = offset%H3_PART_SIZE;
+
+    while(size && status == KV_SUCCESS) {
+    	H3_PartId partId;
+    	size_t partSize = min((H3_PART_SIZE - inPartOffset), size);
+    	int partIndex = objMeta->nParts;
+
+    	CreatePartId(partId, objMeta->uuid, partNumber, partSubNumber);
+        if( (status = ctx->operation->write(ctx->handle, partId, value, 0, partSize)) == KV_SUCCESS){
+
+            // Create/Update metadata entry
+        	objMeta->part[partIndex].number = partNumber;
+        	objMeta->part[partIndex].subNumber = partSubNumber++;
+        	objMeta->part[partIndex].offset = 0;					// Will be adjusted when object is completed
+        	objMeta->part[partIndex].size = inPartOffset + partSize;
+
+            // Advance counters
+        	size -= partSize;
+            value += partSize;
+            objMeta->nParts++;
+
+            // Once we append to the last sub-part of the previous run
+            // we create new sub-parts i.e. written from the beginning.
+            inPartOffset = 0;
+        }
+        else
+        	objMeta->isBad = 1;
+    }
+
+    return status;
+}
+
 
 
 /*! \brief  Create a single part of a multipart object from user data.
@@ -535,9 +572,10 @@ H3_Status H3_CreatePart(H3_Handle handle, H3_Token token, H3_MultipartId multipa
                 if(objMetaSize > mSize)
                     objMeta = realloc(objMeta, objMetaSize);
 
-                if( WriteData(ctx, objMeta, data, size, 0, partNumber, DivideInSubParts) == KV_SUCCESS         &&
-                    op->metadata_write(_handle, multiMeta->objectId, (KV_Value)objMeta, 0, objMetaSize) == KV_SUCCESS     ){
-                    status = H3_SUCCESS;
+                // The object has already been modified thus we need to record its state
+                kvStatus = CreatePart(ctx, objMeta, data, size, 0, partNumber);
+                if(op->metadata_write(_handle, multiMeta->objectId, (KV_Value)objMeta, 0, objMetaSize) == KV_SUCCESS && kvStatus == KV_SUCCESS){
+                	status = H3_SUCCESS;
                 }
             }
 
@@ -643,8 +681,8 @@ H3_Status H3_CreatePartCopy(H3_Handle handle, H3_Token token, H3_Name objectName
                     while(remaining && kvStatus == KV_SUCCESS){
 
                         size_t buffSize = min(H3_PART_SIZE, remaining);
-                        if( (kvStatus = ReadData(ctx, srcObjMeta, buffer, &buffSize, srcOffset)) == KV_SUCCESS                    &&
-                            (kvStatus = WriteData(ctx, dstObjMeta, buffer, buffSize, dstOffset, partNumber, DivideInSubParts)) == KV_SUCCESS     ){
+                        if( (kvStatus = ReadData(ctx, srcObjMeta, buffer, &buffSize, srcOffset)) == KV_SUCCESS              &&
+                            (kvStatus = CreatePart(ctx, dstObjMeta, buffer, buffSize, dstOffset, partNumber)) == KV_SUCCESS     ){
 
                             remaining -= buffSize;
                             srcOffset += buffSize;
