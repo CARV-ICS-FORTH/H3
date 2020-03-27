@@ -66,15 +66,15 @@ typedef enum {
     H3_STORE_ROCKSDB,       //!< RocksDB server (not available)
     H3_STORE_REDIS,         //!< Redis cluster  (not available)
     H3_STORE_IME,           //!< IME cluster    (not available)
-    H3_NumOfStores          //!< Not an option, used for iteration purposes.
+    H3_NumOfStores          //!< Not an option, used for iteration purposes
 } H3_StoreType;
 
 
 /*! \brief Object/Bucket attributes supported by H3 */
 typedef enum {
-    H3_ATTRIBUTE_OWNER = 0,     //!< Owner attributes.
-    H3_ATTRIBUTE_PERMISSION,    //!< Permission attribute
-    H3_NumOfAttributes          //!< Not an option, used for iteration purposes.
+    H3_ATTRIBUTE_PERMISSIONS = 0,   //!< Permissions attribute
+    H3_ATTRIBUTE_OWNER,             //!< Owner attributes
+    H3_NumOfAttributes              //!< Not an option, used for iteration purposes
 }H3_AttributeType;
 
 /** @}*/
@@ -100,7 +100,6 @@ typedef struct {
 /*! \brief Bucket information */
 typedef struct {
     struct timespec creation;       //!< Creation timestamp
-    mode_t          mode;           //!< File type and mode (used by h3fuse)
     H3_BucketStats  stats;          //!< Aggregate object statistics
 } H3_BucketInfo;
 

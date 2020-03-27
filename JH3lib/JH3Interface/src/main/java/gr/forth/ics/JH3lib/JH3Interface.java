@@ -28,7 +28,7 @@ public interface JH3Interface extends Library {
 
     /**  This character can only appear at the end of an object-name */
     String H3_LAST_ONLY_CHAR = (String)"%";
-    
+
     /** Storage providers supported by H3;  Represents values of H3_StoreType enum. */
     interface StoreType {
         /** Provider is set in the configuration file. */
@@ -70,10 +70,10 @@ public interface JH3Interface extends Library {
 
     /** Object/Bucket attributes supported by H3. */
     interface AttributeType {
-        /** Owner attributes. */
-        int H3_ATTRIBUTE_OWNER = 0;
         /** Permission attribute. */
-        int H3_ATTRIBUTE_PERMISSION =1;
+        int H3_ATTRIBUTE_PERMISSIONS = 0;
+        /** Owner attributes. */
+        int H3_ATTRIBUTE_OWNER = 1;
         /** Not an option, used for iteration purposes. */
         int H3_NumOfAttributes = 2;
     }

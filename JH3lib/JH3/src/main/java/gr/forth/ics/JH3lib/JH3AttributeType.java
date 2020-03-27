@@ -6,7 +6,7 @@ import java.util.Map;
 
 /**
  * The attribute type of a bucket / object.
- * 
+ *
  * @author Giorgos Kalaentzis
  * @version 0.1-beta
  */
@@ -15,7 +15,7 @@ public enum JH3AttributeType {
     /** Owner attributes. */
     JH3_ATTRIBUTE_OWNER(JH3Interface.AttributeType.H3_ATTRIBUTE_OWNER),
     /** Permission attribute. */
-    JH3_ATTRIBUTE_PERMISSION(JH3Interface.AttributeType.H3_ATTRIBUTE_PERMISSION),
+    JH3_ATTRIBUTE_PERMISSIONS(JH3Interface.AttributeType.H3_ATTRIBUTE_PERMISSIONS),
     /** Not an option, used for iteration purposes. */
     JH3_NumOfAttributes(JH3Interface.AttributeType.H3_NumOfAttributes);
 

@@ -622,7 +622,7 @@ H3_Status H3_SetObjectAttributes(H3_Handle handle, H3_Token token, H3_Name bucke
         H3_ObjectMetadata* objMeta = (H3_ObjectMetadata*)value;
         if(GrantObjectAccess(userId, objMeta)){
 
-            if(attrib.type == H3_ATTRIBUTE_PERMISSION)
+            if(attrib.type == H3_ATTRIBUTE_PERMISSIONS)
                 objMeta->mode = attrib.mode & 0777;
             else {
                 if(attrib.uid >= 0) objMeta->uid = attrib.uid;

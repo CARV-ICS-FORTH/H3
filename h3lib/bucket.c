@@ -91,7 +91,6 @@ H3_Status H3_CreateBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
     // Populate bucket metadata
     memcpy(bucketMetadata.userId, userId, sizeof(H3_UserId));
     clock_gettime(CLOCK_REALTIME, &bucketMetadata.creation);
-    bucketMetadata.mode = S_IFDIR | 0777;
 
     if( (kvStatus = op->metadata_create(_handle, bucketId, (KV_Value)&bucketMetadata, 0, sizeof(H3_BucketMetadata))) == KV_SUCCESS){
 
@@ -356,7 +355,6 @@ H3_Status H3_InfoBucket(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
         // Make sure the token grants access to the bucket
         if( GrantBucketAccess(userId, bucketMetadata) ){
             bucketInfo->creation = bucketMetadata->creation;
-            bucketInfo->mode = bucketMetadata->mode;
 
             if(getStats){
                 KV_Key keyBuffer = calloc(1, KV_LIST_BUFFER_SIZE);
@@ -513,18 +511,17 @@ H3_Status H3_SetBucketAttributes(H3_Handle handle, H3_Token token, H3_Name bucke
         return H3_INVALID_ARGS;
     }
 
+    if(attrib.type == H3_ATTRIBUTE_PERMISSIONS || attrib.type == H3_ATTRIBUTE_OWNER) {
+        return H3_INVALID_ARGS;
+    }
+
     status = H3_FAILURE;
     if( (kvStatus = op->metadata_read(_handle, bucketId, 0, &value, &size)) == KV_SUCCESS){
         H3_BucketMetadata* bucketMetadata = (H3_BucketMetadata*)value;
 
         // Make sure the token grants access to the bucket
         if( GrantBucketAccess(userId, bucketMetadata) ){
-            if(attrib.type == H3_ATTRIBUTE_PERMISSION)
-                bucketMetadata->mode = attrib.mode & 0777;
-            else {
-                if(attrib.uid >= 0) bucketMetadata->uid = attrib.uid;
-                if(attrib.gid >= 0) bucketMetadata->gid = attrib.gid;
-            }
+            // No attributes implemented yet
 
             if(op->metadata_write(_handle, bucketId, (KV_Value)bucketMetadata, 0, size) == KV_SUCCESS){
                 status = H3_SUCCESS;

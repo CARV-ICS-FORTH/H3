@@ -202,6 +202,36 @@ class H3(object, metaclass=H3Version):
 
         return h3lib.info_object(self._handle, bucket_name, object_name, self._user_id)
 
+    def set_object_permissions(self, bucket_name, object_name, mode):
+        """Set object permissions attribute (used by h3fuse).
+
+        :param bucket_name: the bucket name
+        :param object_name: the object name
+        :param mode: permissions mode
+        :type bucket_name: string
+        :type object_name: string
+        :type mode: int
+        :returns: ``True`` if the call was successful
+        """
+
+        return h3lib.set_object_permissions(self._handle, bucket_name, object_name, mode, self._user_id)
+
+    def set_object_owner(self, bucket_name, object_name, uid, gid):
+        """Set object owner attribute (used by h3fuse).
+
+        :param bucket_name: the bucket name
+        :param object_name: the object name
+        :param uid: user id
+        :param gid: group id
+        :type bucket_name: string
+        :type object_name: string
+        :type uid: int
+        :type gid: int
+        :returns: ``True`` if the call was successful
+        """
+
+        return h3lib.set_object_owner(self._handle, bucket_name, object_name, uid, gid, self._user_id)
+
     def create_object(self, bucket_name, object_name, data):
         """Create an object.
 

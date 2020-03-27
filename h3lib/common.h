@@ -89,9 +89,6 @@ typedef struct{
 typedef struct{
     H3_UserId userId;
     struct timespec creation;
-    mode_t mode;
-    uid_t uid;
-    gid_t gid;
 }H3_BucketMetadata;
 
 typedef struct{

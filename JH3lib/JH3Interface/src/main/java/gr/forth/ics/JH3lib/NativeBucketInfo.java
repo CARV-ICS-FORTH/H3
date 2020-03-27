@@ -13,21 +13,19 @@ import java.util.List;
 public class NativeBucketInfo extends Structure {
 
     public NativeTimespec creation;
-    public int mode;                        /* mode_t in native h3lib */
     public NativeBucketStats stats;
 
     public NativeBucketInfo(){ super(); }
 
     @Override
     protected List<String> getFieldOrder() {
-        return Arrays.asList("creation", "mode", "stats");
+        return Arrays.asList("creation", "stats");
     }
 
     @Override
     public String toString() {
         return "NativeBucketInfo{" +
                 "creation=" + creation +
-                ", mode=" + mode +
                 ", stats=" + stats +
                 '}';
     }
@@ -35,13 +33,11 @@ public class NativeBucketInfo extends Structure {
     /**
      * Create native bucket info
      * @param creation  Creation timestamp
-     * @param mode      Bucket type and mode (used by h3fuse)
      * @param stats     Aggregate object statistics
      */
-    public NativeBucketInfo(NativeTimespec creation, int mode, NativeBucketStats stats) {
+    public NativeBucketInfo(NativeTimespec creation, NativeBucketStats stats) {
         super();
         this.creation = creation;
-        this.mode = mode;
         this.stats = stats;
     }
 

@@ -191,7 +191,7 @@ static int H3FS_MkNod(const char* path, mode_t mode, dev_t dev){
 			default: break;
     	}
 
-    	H3_Attribute attrib = {.type = H3_ATTRIBUTE_PERMISSION, .mode = mode};
+    	H3_Attribute attrib = {.type = H3_ATTRIBUTE_PERMISSIONS, .mode = mode};
     	if(res == 0 && H3_SetObjectAttributes(data.handle, &data.token, data.bucket, object, attrib) != H3_SUCCESS){
     		res = -EINVAL;
     	}
@@ -220,7 +220,7 @@ static int H3FS_MkDir(const char* path, mode_t mode){
     		if(!nObjects){
     			if( (status = H3_CreateObject(data.handle, &data.token, data.bucket, object, NULL, 0)) == H3_SUCCESS ){
 
-    				H3_Attribute attrib = {.type = H3_ATTRIBUTE_PERMISSION, .mode = mode};
+    				H3_Attribute attrib = {.type = H3_ATTRIBUTE_PERMISSIONS, .mode = mode};
     				if(H3_SetObjectAttributes(data.handle, &data.token, data.bucket, object, attrib) != H3_SUCCESS)
     					res = -ENOSPC;
     			}
@@ -312,7 +312,7 @@ int ExamineObject(H3_Name object, char* isDir, char* isEmpty){
     H3_Status status;
     H3_Name objectNameArray;
     uint32_t nObjects = 0;
-    
+
     size_t length = strlen(object);
     H3_Name objectCopy = calloc(length + 2, 1);
     memcpy(objectCopy, object, length);
@@ -333,7 +333,7 @@ int ExamineObject(H3_Name object, char* isDir, char* isEmpty){
 		res = 1;
 		free(objectNameArray);
 	}
-	
+
 	free(objectCopy);
 
 	return res;
@@ -442,7 +442,7 @@ static int H3FS_ChMod(const char* path, mode_t mode, struct fuse_file_info* fi){
     	res = -ENAMETOOLONG;
     }
     else{
-    	H3_Attribute attrib = {.type = H3_ATTRIBUTE_PERMISSION, .mode = mode};
+    	H3_Attribute attrib = {.type = H3_ATTRIBUTE_PERMISSIONS, .mode = mode};
     	switch(H3_SetObjectAttributes(data.handle, &data.token, data.bucket, object, attrib)){
 			case H3_SUCCESS:	res = 0; 		break;
 			case H3_NOT_EXISTS:	res = -ENOENT;	break;
@@ -680,7 +680,7 @@ static int H3FS_Create(const char* path , mode_t mode, struct fuse_file_info* fi
 			default: break;
     	}
 
-    	H3_Attribute attrib = {.type = H3_ATTRIBUTE_PERMISSION, .mode = mode};
+    	H3_Attribute attrib = {.type = H3_ATTRIBUTE_PERMISSIONS, .mode = mode};
     	if(status == H3_SUCCESS && H3_SetObjectAttributes(data.handle, &data.token, data.bucket, object, attrib) != H3_SUCCESS){
     		res = -EINVAL;
     	}
