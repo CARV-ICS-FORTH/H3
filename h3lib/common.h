@@ -56,11 +56,6 @@
 #define H3_MULIPARTID_SIZE  (UUID_STR_LEN + 1)
 
 
-// Use typeof to make sure each argument is evaluated only once
-// https://gcc.gnu.org/onlinedocs/gcc-4.9.2/gcc/Typeof.html#Typeof
-#define max(a,b) ({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a > _b ? _a : _b; })
-#define min(a,b) ({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a < _b ? _a : _b; })
-
 typedef char H3_UserId[H3_USERID_SIZE+1];
 typedef char H3_BucketId[H3_BUCKET_NAME_SIZE+2];
 typedef char H3_ObjectId[H3_BUCKET_NAME_SIZE + H3_OBJECT_NAME_SIZE + 1];

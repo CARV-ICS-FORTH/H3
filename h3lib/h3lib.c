@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "common.h"
+#include "util.h"
 
 extern KV_Operations operationsFilesystem;
+extern KV_Operations operationsRocksDB;
 
 /*
     http://man7.org/linux/man-pages/man2/umask.2.html
@@ -112,6 +114,20 @@ char* H3_Version(){
     return buffer;
 }
 
+H3_StoreType H3_String2Type(const char* type){
+	H3_StoreType store = H3_STORE_CONFIG;
+
+    if(type){
+        if(     strcmp(type, "filesystem") == 0)     store = H3_STORE_FILESYSTEM;
+        else if(strcmp(type, "kreon") == 0)          store = H3_STORE_KREON;
+        else if(strcmp(type, "rocksdb") == 0)        store = H3_STORE_ROCKSDB;
+        else if(strcmp(type, "redis") == 0)          store = H3_STORE_REDIS;
+        else if(strcmp(type, "ime") == 0)            store = H3_STORE_IME;
+    }
+
+    return store;
+}
+
 void CreatePartId(H3_PartId partId, uuid_t uuid, int partNumber, int subPartNumber){
     H3_UUID uuidString;
     uuid_unparse_lower(uuid, uuidString);
@@ -170,22 +186,6 @@ int GrantMultipartAccess(H3_UserId id, H3_MultipartMetadata* meta){
     return !strncmp(id, meta->userId, sizeof(H3_UserId));
 }
 
-H3_StoreType GetStoreType(GKeyFile* cfgFile){
-    H3_StoreType store = H3_STORE_CONFIG;
-    char* strStore = g_key_file_get_string (cfgFile, "H3", "store", NULL);
-    if(strStore){
-        if(     strcmp(strStore, "filesystem") == 0)     store = H3_STORE_FILESYSTEM;
-        else if(strcmp(strStore, "kreon") == 0)          store = H3_STORE_KREON;
-        else if(strcmp(strStore, "rocksdb") == 0)        store = H3_STORE_ROCKSDB;
-        else if(strcmp(strStore, "redis") == 0)          store = H3_STORE_REDIS;
-        else if(strcmp(strStore, "ime") == 0)            store = H3_STORE_IME;
-    }
-
-    return store;
-}
-
-
-
 /*! Initialize library
  * @param[in] storageType   The storage provider to be used with this instance
  * @param[in] cfgFileName   The configuration file containing provider specific information
@@ -201,44 +201,44 @@ H3_Handle H3_Init(H3_StoreType storageType, char* cfgFileName) {
     }
 
     if(storageType == H3_STORE_CONFIG){
-        storageType = GetStoreType(cfgFile);
+        storageType = H3_String2Type(g_key_file_get_string (cfgFile, "H3", "store", NULL));
     }
 
     H3_Context* ctx = malloc(sizeof(H3_Context));
-    switch(storageType){
-        case H3_STORE_REDIS:
-            printf("Using REDIS driver...\n");
-            ctx->operation = NULL;
-            break;
+    if(ctx){
+		switch(storageType){
+			case H3_STORE_KREON:
+			case H3_STORE_REDIS:
+			case H3_STORE_IME:
+				printf("WARNING: Driver not available...\n");
+				ctx->operation = NULL;
+				break;
 
-        case H3_STORE_ROCKSDB:
-            printf("Using ROCKSDB driver...\n");
-            ctx->operation = NULL;
-            break;
+			case H3_STORE_FILESYSTEM:
+				printf("Using kv_fs driver...\n");
+				ctx->operation = &operationsFilesystem;
+				break;
 
-        case H3_STORE_KREON:
-            printf("Using KREON driver...\n");
-            ctx->operation = NULL;
-            break;
+			case H3_STORE_ROCKSDB:
+				printf("Using kv_rocksdb driver...\n");
+				ctx->operation = &operationsRocksDB;
+				break;
 
-        case H3_STORE_IME:
-            printf("Using IME driver...\n");
-            ctx->operation = NULL;
-            break;
+			default:
+				printf("ERROR: Driver not recognized\n");
+				ctx->operation = NULL;
+				return NULL;
+		}
 
-        case H3_STORE_FILESYSTEM:
-            printf("Using kv_fs driver...\n");
-            ctx->operation = &operationsFilesystem;
-            break;
-
-        default:
-            printf("WARNING wrong driver name\n");
-            free(ctx);
-            return NULL;
+		if(ctx->operation){
+			ctx->type = storageType;
+			if(!(ctx->handle = ctx->operation->init(cfgFile))){
+				free(ctx);
+				ctx = NULL;
+				printf("ERROR: Failed to initialize storage\n");
+			}
+		}
     }
-
-    ctx->type = storageType;
-    ctx->handle = ctx->operation->init(cfgFile);
 
     return (H3_Handle)ctx;
 }

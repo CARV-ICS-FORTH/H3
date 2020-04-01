@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
 project(h3lib VERSION 1.0 LANGUAGES C)
 
@@ -35,6 +36,7 @@ set(CMAKE_C_STANDARD 11)
 #https://gitlab.kitware.com/cmake/community/wikis/doc/cmake/Useful-Variables
 #https://cmake.org/cmake/help/v3.10/command/add_compile_options.html?highlight=add_compile_options
 #add_compile_options(-Wall -Wno-uninitialized -Wno-unused-result -Werror)
+#add_compile_options(-Wall -Wno-uninitialized -Wno-unused-result -Wl,--no-as-needed) <-- libs are considered irrespective of the order they are presented to the compiler/linker
 add_compile_options(-Wall -Wno-uninitialized -Wno-unused-result)
 
 SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -DDEBUG")
@@ -42,7 +44,7 @@ SET(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3")
 
 
 #https://cmake.org/cmake/help/v3.10/command/add_library.html
-set(SOURCE_FILES h3lib.c bucket.c object.c multipart.c kv_fs.c util.c )
+set(SOURCE_FILES h3lib.c bucket.c object.c multipart.c kv_fs.c kv_rocksdb.c util.c )
 add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES})
 
 #https://cmake.org/cmake/help/v3.10/command/target_include_directories.html
@@ -52,9 +54,10 @@ target_include_directories( ${PROJECT_NAME} PUBLIC
 
 
 find_package(PkgConfig REQUIRED)
+find_package(rocksdb REQUIRED)
 pkg_search_module(GLIB REQUIRED glib-2.0)
-target_include_directories(${PROJECT_NAME} PRIVATE ${GLIB_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} PRIVATE ${GLIB_LDFLAGS} uuid)
+target_include_directories(${PROJECT_NAME} PRIVATE ${GLIB_INCLUDE_DIRS} ${ROCKSDB_INCLUDE_DIR})
+target_link_libraries(${PROJECT_NAME} PRIVATE ${GLIB_LDFLAGS} uuid ${ROCKSDB_LIBRARIES} dl )
 
 
 #target_include_directories( ${PROJECT_NAME} PUBLIC
