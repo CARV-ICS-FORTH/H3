@@ -15,7 +15,10 @@
 #include "util.h"
 
 extern KV_Operations operationsFilesystem;
+
+#ifdef H3LIB_USE_ROCKSDB
 extern KV_Operations operationsRocksDB;
+#endif
 
 /*
     http://man7.org/linux/man-pages/man2/umask.2.html
@@ -220,8 +223,13 @@ H3_Handle H3_Init(H3_StoreType storageType, char* cfgFileName) {
 				break;
 
 			case H3_STORE_ROCKSDB:
+#ifdef H3LIB_USE_ROCKSDB
 				printf("Using kv_rocksdb driver...\n");
 				ctx->operation = &operationsRocksDB;
+#else
+				printf("WARNING: Driver not available...\n");
+				ctx->operation = NULL;
+#endif
 				break;
 
 			default:

@@ -101,7 +101,7 @@ else()
         "See the ${CMAKE_CURRENT_LIST_FILE} for more details.")
     endif()
   endif()
-  find_package_handle_standard_args(ROCKSDB DEFAULT_MSG
+  find_package_handle_standard_args(rocksdb DEFAULT_MSG
                                     ROCKSDB_LIBRARY _ROCKSDB_INCLUDE_DIR)
 endif()
 

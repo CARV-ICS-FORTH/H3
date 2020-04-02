@@ -43,21 +43,29 @@ SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -DDEBUG")
 SET(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3")
 
 
+find_package(PkgConfig REQUIRED)
+pkg_search_module(GLIB REQUIRED glib-2.0)
+
+find_package(rocksdb)
+
+
 #https://cmake.org/cmake/help/v3.10/command/add_library.html
-set(SOURCE_FILES h3lib.c bucket.c object.c multipart.c kv_fs.c kv_rocksdb.c util.c )
+set(SOURCE_FILES h3lib.c bucket.c object.c multipart.c kv_fs.c util.c )
+if(ROCKSDB_FOUND)
+	set(SOURCE_FILES ${SOURCE_FILES} kv_rocksdb.c) 
+	add_definitions(-DH3LIB_USE_ROCKSDB)
+endif()
 add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES})
 
 #https://cmake.org/cmake/help/v3.10/command/target_include_directories.html
-target_include_directories( ${PROJECT_NAME} PUBLIC
-                            "${PROJECT_BINARY_DIR}"
-                            "${GLIB_HEADERS}")
+target_include_directories( ${PROJECT_NAME} PUBLIC "${PROJECT_BINARY_DIR}" "${GLIB_HEADERS}")
+target_include_directories(${PROJECT_NAME}  PRIVATE ${GLIB_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_NAME} PRIVATE ${GLIB_LDFLAGS} uuid)
 
-
-find_package(PkgConfig REQUIRED)
-find_package(rocksdb REQUIRED)
-pkg_search_module(GLIB REQUIRED glib-2.0)
-target_include_directories(${PROJECT_NAME} PRIVATE ${GLIB_INCLUDE_DIRS} ${ROCKSDB_INCLUDE_DIR})
-target_link_libraries(${PROJECT_NAME} PRIVATE ${GLIB_LDFLAGS} uuid ${ROCKSDB_LIBRARIES} dl )
+if(ROCKSDB_FOUND)
+	target_include_directories(${PROJECT_NAME} PRIVATE ${ROCKSDB_INCLUDE_DIR})
+	target_link_libraries(${PROJECT_NAME} PRIVATE ${ROCKSDB_LIBRARIES} dl )
+endif()
 
 
 #target_include_directories( ${PROJECT_NAME} PUBLIC
