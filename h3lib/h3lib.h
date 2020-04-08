@@ -146,6 +146,7 @@ typedef struct {
  * \return Null terminated string
  */
 char* H3_Version();
+H3_StoreType H3_String2Type(const char* type);
 
 /** \defgroup handle Handle management
  *  @{

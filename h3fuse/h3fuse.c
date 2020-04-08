@@ -41,7 +41,7 @@ typedef struct {
      char* cfgFileName;
      char* token;
      char* bucket;
-     H3_StoreType type;
+     char* type;
 } H3FS_Config;
 
 typedef struct {
@@ -127,31 +127,43 @@ static int GetObjectInfo(const char* path, struct stat* stbuf){
     }
     else if(status == H3_NOT_EXISTS  || status == H3_FAILURE){
 
-    	// Check if object is a file within a sub-dir
-    	char* fileName = strrchr(object, '/');
-    	if(fileName && strlen(fileName) > H3_FUSE_MAX_FILENAME){
-    		res = -ENAMETOOLONG;
-    	}
+        // Check if object is a file within a sub-dir
+        char* fileName = strrchr(object, '/');
+        if(fileName && strlen(fileName) > H3_FUSE_MAX_FILENAME){
+        	res = -ENAMETOOLONG;
+        }
 
-    	// Check if object is a subdir
-    	else {
-			if((status = H3_InfoObject(data.handle, &data.token, data.bucket, TurnToDir(&object), &info)) == H3_SUCCESS){
-				stbuf->st_mode = S_IFDIR | info.mode;
-				stbuf->st_nlink = 2;
-				stbuf->st_atim = info.lastAccess;
-				stbuf->st_mtim = info.lastModification;
-				stbuf->st_ctim = info.lastChange;
-				stbuf->st_uid = info.uid;
-				stbuf->st_gid = info.gid;
-			}
-			else if(status == H3_NOT_EXISTS || status == H3_NAME_TOO_LONG){
-				res = -ENOENT;
-			}
-			else
-				res = -EINVAL;
+        // Check if object is...
+        else {
+            size_t length = strlen(object);
+            H3_Name objectCopy = calloc(length + 2, 1);
+            memcpy(objectCopy, object, length);
+            H3_Name objectNameArray;
+            uint32_t nObjects = 0;
 
-			free(object);
-    	}
+        	// ...a fake directory, or
+            if((status = H3_InfoObject(data.handle, &data.token, data.bucket, TurnToDir_NoAlloc(objectCopy, length), &info)) == H3_SUCCESS){
+    			stbuf->st_mode = S_IFDIR | info.mode;
+    			stbuf->st_nlink = 2;
+    			stbuf->st_atim = info.lastAccess;
+    			stbuf->st_mtim = info.lastModification;
+    			stbuf->st_ctim = info.lastChange;
+    			stbuf->st_uid = info.uid;
+    			stbuf->st_gid = info.gid;
+        	}
+
+        	// ...a real one
+        	else if( H3_ListObjects(data.handle, &data.token, data.bucket, object, 0, &objectNameArray, &nObjects) == H3_SUCCESS){
+            	if(nObjects){
+            		stbuf->st_mode = S_IFDIR | 0755;
+        			stbuf->st_nlink = 2;
+            	}
+            	else
+            		res = -ENOENT;
+            }
+
+        	free(objectCopy);
+        }
     }
 
     return res;
@@ -496,6 +508,27 @@ static int H3FS_ChOwn(const char* path, uid_t uid, gid_t gid, struct fuse_file_i
 	return res;
 }
 
+static int H3FS_Truncate(const char* path, off_t size, struct fuse_file_info* fi){
+    int res = 0;
+    H3_Name object = (H3_Name)&path[1];
+    size_t length = strlen(object);
+
+    if(length){
+    	switch(H3_TruncateObject(data.handle, &data.token, data.bucket, object, size)){
+			case H3_SUCCESS: 		res = 0; 				break;
+			case H3_NOT_EXISTS: 	res = -ENOENT; 			break;
+			case H3_NAME_TOO_LONG: 	res = -ENAMETOOLONG; 	break;
+			case H3_FAILURE: 		res = -EIO; 			break;
+			case H3_INVALID_ARGS:
+			default:				res = -EINVAL; 			break;
+    	}
+    }
+    else
+        res = -ENOENT;
+
+    return res;
+}
+
 static int H3FS_Open(const char* path , struct fuse_file_info* fi){
     return 0;
 }
@@ -741,7 +774,7 @@ static struct fuse_operations h3fsOperations = {
 //    NOT SUPPORTED - int (*link) (const char *, const char *);
     .chmod				= H3FS_ChMod,
 	.chown				= H3FS_ChOwn,
-//    NOT SUPPORTED - int (*truncate) (const char *, off_t, struct fuse_file_info *fi);
+	.truncate			= H3FS_Truncate,
     .open       		= H3FS_Open,
     .read       		= H3FS_Read,
     .write      		= H3FS_Write,
@@ -776,7 +809,7 @@ static struct fuse_operations h3fsOperations = {
 
 #define H3FS_OPT(t, p, v) { t, offsetof(H3FS_Config, p), v }
 static struct fuse_opt h3fsOptions[] = {
-        H3FS_OPT("type=%i",     type,           0),
+        H3FS_OPT("type=%s",     type,           0),
         H3FS_OPT("cfg=%s",      cfgFileName,    0),
 		H3FS_OPT("bucket=%s",   bucket,    		0),
 
@@ -794,7 +827,7 @@ static int H3FS_OptionParser(void *data, const char *arg, int key, struct fuse_a
                 fprintf(stderr,"h3fs options:\n"
                                "    -o cfg=STRING          path to configuration file\n"
                 			   "    -o bucket=STRING       bucket name\n"
-                               "    -o type=INT            backend type\n");
+                               "    -o type=STRING         backend type\n");
                 fuse_opt_add_arg(outargs, "-h");
                 fuse_main(outargs->argc, outargs->argv, &h3fsOperations, NULL);
                 exit(1);
@@ -814,6 +847,7 @@ int main(int argc, char *argv[]) {
     struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
     H3FS_Config conf;
     H3_BucketInfo info;
+    H3_StoreType storeType = H3_STORE_CONFIG;
 
 
     // Allow full access to newly created files/directories
@@ -823,7 +857,7 @@ int main(int argc, char *argv[]) {
        fuse_opt_parse can free the defaults if other
        values are specified */
     conf.cfgFileName = strdup("config.ini");
-    conf.type = H3_STORE_CONFIG;
+    conf.type = NULL;
 
     fuse_opt_parse(&args, &conf, h3fsOptions, H3FS_OptionParser);
 
@@ -837,21 +871,17 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    if(conf.type >= H3_NumOfStores){
-        fprintf(stderr, "Invalid store type\n");
-        exit(1);
-    }
+    storeType = H3_String2Type(conf.type);
 
     // Initialize h3lib
-    printf("cfgFileName:%s  type:%d\n", conf.cfgFileName, conf.type);
-
+    printf("cfgFileName:%s  type:%s\n", conf.cfgFileName, conf.type);
 
     // TODO: Replace the hard-coded token
     data.token.userId = 0;
 
     // H3lib cleanup will be handled by fuse.destroy
     data.bucket = strdup(conf.bucket);
-    data.handle = H3_Init(conf.type, conf.cfgFileName);
+    data.handle = H3_Init(storeType, conf.cfgFileName);
     if(H3_InfoBucket(data.handle, &data.token, data.bucket, &info, 0) == H3_SUCCESS){
         ret = fuse_main(args.argc, args.argv, &h3fsOperations, (void*)&data);
         fuse_opt_free_args(&args);

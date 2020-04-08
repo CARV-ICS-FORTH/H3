@@ -4,7 +4,10 @@
 #include <stdint.h>
 #include <time.h>
 
-
+// Use typeof to make sure each argument is evaluated only once
+// https://gcc.gnu.org/onlinedocs/gcc-4.9.2/gcc/Typeof.html#Typeof
+#define max(a,b) ({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a > _b ? _a : _b; })
+#define min(a,b) ({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a < _b ? _a : _b; })
 
 #define H3_MSG_SIZE     1024
 #define H3_HEADER_SIZE  80

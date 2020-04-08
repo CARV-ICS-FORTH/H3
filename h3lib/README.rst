@@ -14,3 +14,11 @@ Run tests::
     make test
 
 For more options, consult the `documentation <../docs/>`_.
+
+
+RocksDB
+=======
+Install all dependencies as per https://github.com/facebook/rocksdb/blob/master/INSTALL.md
+make shared_lib
+make install-shared
+

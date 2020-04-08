@@ -48,4 +48,6 @@ SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${FUSE_CFLAGS}")
 enable_testing()
 add_subdirectory(tests)
 
+message(STATUS "Fuse version: ${FUSE_VERSION}" )
+
 
