@@ -1,18 +1,16 @@
 package gr.forth.ics.JH3lib;
 
-import java.io.IOException;
 import java.io.EOFException;
-
-import org.apache.hadoop.fs.CanSetReadahead;
-import org.apache.hadoop.fs.FSInputStream;
-import org.apache.log4j.Logger;
-import org.apache.hadoop.fs.FSExceptionMessages;
-import org.apache.hadoop.classification.InterfaceStability;
-import org.apache.hadoop.classification.InterfaceAudience;
+import java.io.IOException;
 
 import com.google.common.base.Preconditions;
 
-
+import org.apache.hadoop.classification.InterfaceAudience;
+import org.apache.hadoop.classification.InterfaceStability;
+import org.apache.hadoop.fs.CanSetReadahead;
+import org.apache.hadoop.fs.FSExceptionMessages;
+import org.apache.hadoop.fs.FSInputStream;
+import org.apache.log4j.Logger;
 
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
@@ -22,57 +20,78 @@ public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 
 	/* Position that is set by seek() and returned by getPos() */
 	private long pos;
-	/* Closed bit. Volatile so reads are non-blocking. Updates must be in a
-	 * synchronized block to guarantee an atomic check and set 
+
+	/*
+	 * Closed bit. Volatile so reads are non-blocking. Updates must be in a
+	 * synchronized block to guarantee an atomic check and set
 	 */
 	private volatile boolean closed;
 	private final JH3 client;
 	private final String bucket;
 	private final String key;
-	//private final String pathStr;
-	private final long contentLength;
 	private final String uri;
-	/* Default readahead in S3A */
-	private long readahead = 64 * 1024; 
-	/* This is the actual position within the object, used by lazy seek
-	 * to decide whether to seek on the next read or not.
+
+	/**
+	 * 
 	 */
-	private long nextReadPos;
-	/* The end of the content range of the last request. This is anbsolute 
-	 * value of the range, not a length field.
+	private final long contentLength;
+
+	/**
+	 * The start of the content range of the last request. This is an absolute value
+	 * of the range, not a length field.
 	 */
-	private long contentRangeFinish;
-	/* The start of the content range of the last request. */
 	private long contentRangeStart;
 
+	/**
+	 * How many bytes were read ahead of the stream.
+	 */
+	private long readahead;
+	/*
+	 * The end of the content range of the last request. This is an absolute value
+	 * of the range, not a length field.
+	 */
+	private long contentRangeFinish;
 
-	/* Keep value of object in byte buffer */
-	JH3Object data;
+	/*
+	 * This is the actual position within the object, used by lazy seek to decide
+	 * whether to seek on the next read or not.
+	 */
+	// private long nextReadPos;
+
+	/**
+	 * Current chunk of data that has been read
+	 */
+	private JH3Object dataChunk;
 
 	public JH3InputStream(JH3 client, String bucket, String key, long contentLength, long readahead)
 			throws IOException {
 		log.trace("JH3InputSteam - " + "client: " + client + ", bucket: " + bucket + ", key: " + key
 				+ ", contentLength: " + contentLength + ", readahead: " + readahead);
-		try {
 
-			// Both bucket and key must be non empty
-			Preconditions.checkArgument(!("".equals(bucket)), "Empty bucket");
-			Preconditions.checkArgument(!("".equals(key)), "Empty key");
-			this.bucket = bucket;
-			this.key = key;
-			//this.pathStr = "tempValue";
-			this.contentLength = contentLength;
-			this.client = client;
-			this.uri = "h3://" + this.bucket + "/" + this.key;
-			setReadahead(readahead);
-			// Read whole object
-			data = client.readObject(bucket, key, 0L, contentLength);
+		// Both bucket and key must be non empty
+		Preconditions.checkArgument(!("".equals(bucket)), "Empty bucket");
+		Preconditions.checkArgument(!("".equals(key)), "Empty key");
+		this.bucket = bucket;
+		this.key = key;
+		this.contentLength = contentLength;
+		this.client = client;
+		this.uri = "h3://" + this.bucket + "/" + this.key;
+		this.readahead = readahead;
+		setReadahead(readahead);
+		try {
+			dataChunk = client.readObject(bucket, key, 0, readahead);
+			log.debug("(Constructor) reading object. uri= " + uri + ", offset= 0, readahead= " + readahead + ", status= "
+					+ client.getStatus());
+			if (dataChunk == null)
+				throw new IOException("Couldnt read file at: " + uri);
+
+			// Set ranges of first request
+			contentRangeStart = 0;
+			contentRangeFinish = dataChunk.getSize();
+			log.debug("initialized contentRanges:[" + contentRangeStart +", " + contentRangeFinish +"]");
 		} catch (JH3Exception e) {
 			throw new IOException(e);
 		}
-
-		// Set position to beginning
-		this.pos = 0;
 	}
 
 	@Override
@@ -114,12 +133,53 @@ public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 
 		checkNotClosed();
 
+		// EOF condition
 		if (this.contentLength == 0 || (getPos() >= contentLength))
 			return -1;
 
-		int b = data.getData()[(int) pos];
-		pos++;
-		return b;
+		try {
+			if (pos >= contentRangeFinish) {
+				// Need to read next chunk into buffer
+				log.debug("read - Reading next chunk of data");
+
+				dataChunk = client.readObject(bucket, key, pos, readahead);
+				if (dataChunk == null)
+					throw new IOException("Couldn't read file at: " + uri);
+
+				log.debug("read - readObject. uri= " + uri + ", offset= " + pos + ", readahead= " + readahead
+						+ ", status= " + client.getStatus());
+
+				log.debug("read - contentRanges: [" + contentRangeStart + ", " + contentRangeFinish + "]");
+				// update request ranges
+				contentRangeStart = pos;
+				contentRangeFinish = pos + dataChunk.getSize();
+				log.debug("read - updated contentRanges: [" + contentRangeStart + ", " + contentRangeFinish + "]");
+			} else if (pos < contentRangeStart) {
+				// Backwards seek
+				log.debug("read - Reading previous chunk of data");
+				dataChunk = client.readObject(bucket, key, pos, readahead);
+				if (dataChunk == null)
+					throw new IOException("Couldn't read file at: " + uri);
+
+				log.debug("read -readObject: uri= " + uri + ", offset= " + pos + ", readahead= " + readahead + ", status= "
+						+ client.getStatus());
+				
+				log.debug("read - contentRanges: [" + contentRangeStart + ", " + contentRangeFinish + "]");
+				// update request ranges
+				contentRangeStart = pos;
+				contentRangeFinish = pos + dataChunk.getSize();
+				log.debug("read - updated contentRanges: [" + contentRangeStart + ", " + contentRangeFinish + "]");
+			}
+
+			// Get index based on offsets
+			int positionedIndex = contentRangeStart == 0 ? 0 : (int) (pos % contentRangeStart);
+			int b = dataChunk.getData()[positionedIndex];
+			pos++;
+			log.debug("read - updated offset: " + pos);
+			return b;
+		} catch (JH3Exception e) {
+			throw new IOException(e);
+		}
 	}
 
 	@Override
@@ -132,22 +192,81 @@ public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 		if (length == 0)
 			return 0;
 
-		else if (this.contentLength == 0 || (getPos() >= this.contentLength))
+		if (this.contentLength == 0 || (getPos() >= this.contentLength))
 			return -1;
-		else {
-			// Calculate how many bytes to read
-			int remaining = this.available();
-			int bytesToRead = Math.min(remaining, length);
 
-			// Copy read bytes to given buffer
-			System.arraycopy(data.getData(), (int) getPos(), buffer, offset, bytesToRead);
+		// Calculate how many bytes to read
+		int remaining = this.available();
+		int bytesToRead = Math.min(remaining, length);
+		try {
+			if (pos >= contentRangeFinish) {
+				// Need to read next chunk into buffer
+				log.debug("readMany - Reading next chunk of data");
+
+				dataChunk = client.readObject(bucket, key, pos, readahead);
+				if (dataChunk == null)
+					throw new IOException("Couldn't read file at: " + uri);
+
+				log.debug("readMany - readObject. uri= " + uri + ", offset= " + pos + ", readahead= " + readahead
+						+ ", status= " + client.getStatus());
+
+				log.debug("readMany - contentRanges: [" + contentRangeStart + ", " + contentRangeFinish + "]");
+				// update request ranges
+				contentRangeStart = pos;
+				contentRangeFinish = pos + dataChunk.getSize();
+				log.debug("readMany - updated contentRanges: [" + contentRangeStart + ", " + contentRangeFinish + "]");
+
+			} else if (pos < contentRangeStart) {
+				// Backwards seek
+				log.debug("readMany - Reading previous chunk of data");
+				dataChunk = client.readObject(bucket, key, pos, readahead);
+				if (dataChunk == null)
+					throw new IOException("Couldn't read file at: " + uri);
+
+				log.debug("readMany - readObject: uri= " + uri + ", offset= " + pos + ", readahead= " + readahead
+						+ ", status= " + client.getStatus());
+
+				log.debug("readMany - contentRanges: [" + contentRangeStart + ", " + contentRangeFinish + "]");
+				// update request ranges
+				contentRangeStart = pos;
+				contentRangeFinish = pos + dataChunk.getSize();
+				log.debug("readMany - updated contentRanges: [" + contentRangeStart + ", " + contentRangeFinish + "]");
+			}
+
+			// Get index based on offsets
+			int positionedIndex = contentRangeStart == 0 ? 0 : (int) (pos % contentRangeStart);
+			int nread = Math.min(bytesToRead, (int) dataChunk.getSize() - positionedIndex);
+			log.debug("readMany - copying from offset: " + positionedIndex + " #" + nread + " bytes");
+			log.debug("readMany - position: " + pos + " ContentRanges: [" + contentRangeStart + ", " + contentRangeFinish + "]");
+				System.arraycopy(dataChunk.getData(), positionedIndex, buffer, 0, nread);
+
+			while (nread < bytesToRead) {
+				dataChunk = client.readObject(bucket, key, contentRangeFinish, readahead);
+
+				if (dataChunk == null)
+					throw new IOException("Couldn't read file at: " + uri);
+
+				log.debug("readObject: uri= " + uri + ", offset= " + contentRangeFinish + ", readahead= " + readahead
+						+ ", status= " + client.getStatus());
+
+				contentRangeStart = contentRangeFinish;
+				contentRangeFinish = contentRangeFinish + readahead;
+				pos = contentRangeStart;
+				int nbytes = Math.min(bytesToRead - nread, (int) dataChunk.getSize());
+				log.debug("readMany - copying from offset: 0" + "to offset: " + nread + " #" + nbytes + " bytes");
+				System.arraycopy(dataChunk.getData(), 0, buffer, nread, nbytes);
+				nread += nbytes;
+			}
 
 			// Move position depending on how many bytes were read
+			log.debug("readMany - offset: " + pos);
 			pos += bytesToRead;
-			log.debug("bytesRead: " + bytesToRead);
+			log.debug("readMany - updated offset: " + pos);
+			log.debug("readMany - bytesRead: " + bytesToRead);
 
 			return bytesToRead;
-
+		} catch (JH3Exception e) {
+			throw new IOException(e);
 		}
 	}
 
@@ -223,16 +342,6 @@ public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 	public synchronized long remainingInFile() {
 		log.trace("JH3InputStream:remainingInFile: " + (this.contentLength - this.pos));
 		return this.contentLength - this.pos;
-	}
-
-	public synchronized long getContentRangeStart() {
-		log.trace("JH3InputStream:getContentRangeStart");
-		return this.contentRangeStart;
-	}
-
-	public synchronized long getContentRangeFinish() {
-		log.trace("JH3InputStream:getContentRangeFinish");
-		return this.contentRangeFinish;
 	}
 
 	public synchronized long getReadahead() {

@@ -32,7 +32,7 @@ public class JH3HadoopFS extends FileSystem {
   public static final boolean DELETE_CONSIDERED_IDEMPOTENT = true;
   private static final String DIR_CHAR = "%";
   private static final Logger log = Logger.getLogger(JH3HadoopFS.class);
-
+  private static final long readahead = 64 * 1024;   // default readAhead: 64KB
   private Path workingDir;
   private URI uri;
   private String bucket;
@@ -594,7 +594,7 @@ public class JH3HadoopFS extends FileSystem {
     if (status.isDirectory())
       throw new FileNotFoundException("Can't open " + f + " because it is a directory");
 
-    JH3InputStream s = new JH3InputStream(client, bucket, key, status.getLen(), 0);
+    JH3InputStream s = new JH3InputStream(client, bucket, key, status.getLen(), readahead);
     return new FSDataInputStream(s);
   }
 
