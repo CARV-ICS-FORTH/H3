@@ -16,6 +16,10 @@
 
 extern KV_Operations operationsFilesystem;
 
+#ifdef H3LIB_USE_KREON
+extern KV_Operations operationsKreon;
+#endif
+
 #ifdef H3LIB_USE_ROCKSDB
 extern KV_Operations operationsRocksDB;
 #endif
@@ -208,9 +212,9 @@ H3_Handle H3_Init(H3_StoreType storageType, char* cfgFileName) {
     }
 
     H3_Context* ctx = malloc(sizeof(H3_Context));
+
     if(ctx){
 		switch(storageType){
-			case H3_STORE_KREON:
 			case H3_STORE_REDIS:
 			case H3_STORE_IME:
 				printf("WARNING: Driver not available...\n");
@@ -232,20 +236,30 @@ H3_Handle H3_Init(H3_StoreType storageType, char* cfgFileName) {
 #endif
 				break;
 
+			case H3_STORE_KREON:
+#ifdef H3LIB_USE_KREON
+				printf("Using kv_kreon driver...\n");
+				ctx->operation = &operationsKreon;
+#else
+				printf("WARNING: Driver not available...\n");
+				ctx->operation = NULL;
+#endif
+				break;
+
 			default:
 				printf("ERROR: Driver not recognized\n");
 				ctx->operation = NULL;
 				return NULL;
 		}
 
-		if(ctx->operation){
-			ctx->type = storageType;
-			if(!(ctx->handle = ctx->operation->init(cfgFile))){
-				free(ctx);
-				ctx = NULL;
-				printf("ERROR: Failed to initialize storage\n");
-			}
+
+		if(!ctx->operation || !(ctx->handle = ctx->operation->init(cfgFile))){
+			free(ctx);
+			ctx = NULL;
+			printf("ERROR: Failed to initialize storage\n");
 		}
+		else
+			ctx->type = storageType;
     }
 
     return (H3_Handle)ctx;

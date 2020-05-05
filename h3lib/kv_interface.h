@@ -39,12 +39,12 @@ typedef struct KV_Operations {
 	/*
 	 * --- Read Operations --
 	 * For functions metadata_read() and read() argument "size" is in/out, i.e.
-	 * the caller sets it with the chunk size to retrieve (0x00 for all) and the
-	 * storage-backend sets it to the size it managed to retrieve.
+	 * the caller sets it with the chunk size to retrieve and the storage-backend
+	 * sets it to the size it managed to retrieve.
 	 *
-	 * If argument "*value" is NULL then the storage-backend will allocate the data
-	 * buffer and the caller is expected to release it. Otherwise the backend will fill
-	 * it with up to "size" data.
+	 * If argument "*value" is NULL then the storage-backend will allocate a data buffer
+	 * big enough to hold the whole value and the caller is expected to release it.
+	 * Otherwise the backend will fill it with up to "size" data.
 	 *
 	 *
 	 * --- Write Operations ---

@@ -170,30 +170,30 @@ KV_Status KV_RocksDb_Read(KV_Handle handle, KV_Key key, off_t offset, KV_Value* 
 		return KV_SUCCESS;
 	}
 
-	if(!offset && !*value){
-		*value = (KV_Value)buffer;
-		*size = *size?min(bufferSize, *size):bufferSize;
-		return KV_SUCCESS;
-	}
+	if(*value == NULL){
+		if(!offset){
+			*value = (KV_Value)buffer;
+			*size = bufferSize;
+			return KV_SUCCESS;
+		}
 
-	if(*size == 0)
 		segmentSize = bufferSize - offset;
-	else
+		if((segment = malloc(segmentSize))){
+			memcpy(segment, buffer + offset, segmentSize);
+			*value = (KV_Value)segment;
+			*size = segmentSize;
+			status = KV_SUCCESS;
+		}
+	}
+	else{
 		segmentSize = min(bufferSize - offset, *size);
-
-	if(*value){
 		memcpy(*value, buffer + offset, segmentSize);
+		*size = segmentSize;
 		status = KV_SUCCESS;
-	}
-	else if((segment = malloc(segmentSize))){
-		memcpy(segment, buffer + offset, segmentSize);
-		*value = (KV_Value)segment;
-		status = KV_SUCCESS;
+
 	}
 
-	*size = segmentSize;
 	free(buffer);
-
 	return status;
 }
 

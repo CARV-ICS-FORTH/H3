@@ -261,57 +261,49 @@ KV_Status KV_FS_Read(KV_Handle handle, KV_Key key, off_t offset, KV_Value* value
         return KV_FAILURE;
     }
 
-    // Check if we need to allocate the buffer
-    if(*value == NULL){
-        // Retrieve size if not set
-        if( *size == 0){
-            struct stat stats;
-            if(stat(fullKey, &stats) == 0){
-                *size = stats.st_size;
-            }
+    if( (fd = open(fullKey, O_RDONLY)) != -1){
+
+        // Check if we need to allocate the buffer
+        if(*value == NULL){
+        	*size = lseek(fd, 0, SEEK_END);
+			*value = malloc(*size);
+			freeOnError = 1;
         }
 
-        // Allocate buffer
-        *value = malloc(*size);
-        freeOnError = 1;
+        // At this point we MUST have a buffer
+        if( *value ){
+			// Read the data
+			if(lseek(fd, offset, SEEK_SET) != offset){
+				LogActivity(H3_ERROR_MSG, "Error read seeking in offset %" PRIu64 "\n",offset);
+			}
+			else if((*size = read(fd, *value, *size)) != -1){
+				status = KV_SUCCESS;
+			}
+
+	        if(status != KV_SUCCESS && freeOnError){
+	        	free(*value);
+	        }
+        }
+        close(fd);
     }
+    else {
+    	switch(errno){
+    		case ENAMETOOLONG:
+    			status = KV_NAME_TOO_LONG; break;
 
-    // At this point we MUST have a buffer
-    if( *value ){
+    		case ENOENT:
+    		case EISDIR:							// h3fuse guards against this error
+    			status = KV_KEY_NOT_EXIST; break;
 
-        // Read the data
-        if( (fd = open(fullKey, O_RDONLY)) != -1){
-            if(lseek(fd, offset, SEEK_SET) != offset){
-                LogActivity(H3_ERROR_MSG, "Error read seeking in offset %" PRIu64 "\n",offset);
-            }
-            else if((*size = read(fd, *value, *size)) != -1){
-                status = KV_SUCCESS;
-            }
-            close(fd);
-        }
-        else {
-        	switch(errno){
-        		case ENAMETOOLONG:
-        			status = KV_NAME_TOO_LONG; break;
+    		case ENOTDIR:
+    			if(strchr(key, '/')) status = KV_KEY_NOT_EXIST;
+    			break;
 
-        		case ENOENT:
-        		case EISDIR:							// h3fuse guards against this error
-        			status = KV_KEY_NOT_EXIST; break;
-
-        		case ENOTDIR:
-        			if(strchr(key, '/')) status = KV_KEY_NOT_EXIST;
-        			break;
-
-        		default:{
-        			status = KV_FAILURE;
-        			LogActivity(H3_ERROR_MSG, "Reading from key %s failed - %s\n",fullKey, strerror(errno));
-        		}
-        	}
-        }
-
-        if(status != KV_SUCCESS && freeOnError){
-        	free(*value);
-        }
+    		default:{
+    			status = KV_FAILURE;
+    			LogActivity(H3_ERROR_MSG, "Reading from key %s failed - %s\n",fullKey, strerror(errno));
+    		}
+    	}
     }
 
     free(fullKey);

@@ -22,3 +22,7 @@ Install all dependencies as per https://github.com/facebook/rocksdb/blob/master/
 make shared_lib
 make install-shared
 
+Kreon
+======
+cmake .. -DCMAKE_BUILD_TYPE=Release -DKREON_BUILD_CPACK=TRUE
+

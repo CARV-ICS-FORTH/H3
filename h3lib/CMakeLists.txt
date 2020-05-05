@@ -47,6 +47,7 @@ find_package(PkgConfig REQUIRED)
 pkg_search_module(GLIB REQUIRED glib-2.0)
 
 find_package(rocksdb)
+find_package(kreon)
 
 
 #https://cmake.org/cmake/help/v3.10/command/add_library.html
@@ -54,6 +55,11 @@ set(SOURCE_FILES h3lib.c bucket.c object.c multipart.c kv_fs.c util.c )
 if(ROCKSDB_FOUND)
 	set(SOURCE_FILES ${SOURCE_FILES} kv_rocksdb.c) 
 	add_definitions(-DH3LIB_USE_ROCKSDB)
+endif()
+
+if(KREON_FOUND)
+	set(SOURCE_FILES ${SOURCE_FILES} kv_kreon.c) 
+	add_definitions(-DH3LIB_USE_KREON)
 endif()
 add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES})
 
@@ -65,6 +71,11 @@ target_link_libraries(${PROJECT_NAME} PRIVATE ${GLIB_LDFLAGS} uuid)
 if(ROCKSDB_FOUND)
 	target_include_directories(${PROJECT_NAME} PRIVATE ${ROCKSDB_INCLUDE_DIR})
 	target_link_libraries(${PROJECT_NAME} PRIVATE ${ROCKSDB_LIBRARIES} dl )
+endif()
+
+if(KREON_FOUND)
+	target_include_directories(${PROJECT_NAME} PRIVATE ${KREON_INCLUDE_DIR})
+	target_link_libraries(${PROJECT_NAME} PRIVATE ${KREON_LIBRARIES} zookeeper_mt rdmacm ibverbs log)
 endif()
 
 

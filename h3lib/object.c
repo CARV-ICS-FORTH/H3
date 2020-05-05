@@ -55,17 +55,21 @@ uint EstimateNumOfParts(H3_ObjectMetadata* objMeta, size_t size, off_t offset){
 
 	// Required number of parts to fit this segment
     int nParts = ((offset % H3_PART_SIZE) +  size + H3_PART_SIZE - 1)/H3_PART_SIZE;
-    uint i, regionPartNumber = offset / H3_PART_SIZE;
 
     // i.e. brand new object
     if(objMeta == NULL)
     	return nParts;
 
+    uint i, regionFirstPartNumber, regionLastPartNumber;
+
+    regionFirstPartNumber = offset / H3_PART_SIZE;
+    regionLastPartNumber = regionFirstPartNumber + nParts - 1;
+
     for(i=0; i<objMeta->nParts; i++){
     	uint partNumber = objMeta->part[i].offset / H3_PART_SIZE;
 
     	// Remove overlapping parts
-    	if( partNumber == regionPartNumber ){
+    	if(regionFirstPartNumber <= partNumber && partNumber <= regionLastPartNumber){
     		nParts--;
     	}
 
@@ -132,14 +136,14 @@ KV_Status WriteData(H3_Context* ctx, H3_ObjectMetadata* meta, KV_Value value, si
 		}
 
 		if(overWrite){
-			partIndex = i - 1; // Account for the auto-increment in the overlap detection loop
+			partIndex = --i; // Account for the auto-increment in the overlap detection loop
 			partNumber = meta->part[partIndex].number;
 			partSubNumber = meta->part[partIndex].subNumber;
 			partOffset = meta->part[partIndex].offset;
 
             // Check the next part for size restriction in case object was created as multipart
             if( i < meta->nParts -1){
-                partSize = min(meta->part[i+1].offset - inPartOffset, size);
+                partSize = min(meta->part[i+1].offset - (inPartOffset + partOffset), size);
             }
             else
             	partSize = min((H3_PART_SIZE - inPartOffset), size);

@@ -45,7 +45,7 @@
 #define REG_NOERROR 0
 #endif
 
-#define H3_PART_SIZE (1048576 * 2) // = 2Mb - Key - 4Kb kreon metadata
+#define H3_PART_SIZE (1048576 * 1) // = 2Mb - Key - 4Kb kreon metadata
 #define H3_CHUNK	 (H3_PART_SIZE * 16)
 #define H3_SYSTEM_ID    0x00
 
