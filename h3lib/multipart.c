@@ -572,10 +572,12 @@ H3_Status H3_CreatePart(H3_Handle handle, H3_Token token, H3_MultipartId multipa
                 if(objMetaSize > mSize)
                     objMeta = realloc(objMeta, objMetaSize);
 
-                // The object has already been modified thus we need to record its state
-                kvStatus = CreatePart(ctx, objMeta, data, size, 0, partNumber);
-                if(op->metadata_write(_handle, multiMeta->objectId, (KV_Value)objMeta, 0, objMetaSize) == KV_SUCCESS && kvStatus == KV_SUCCESS){
-                	status = H3_SUCCESS;
+                if(objMeta){
+					// The object has already been modified thus we need to record its state
+					kvStatus = CreatePart(ctx, objMeta, data, size, 0, partNumber);
+					if(op->metadata_write(_handle, multiMeta->objectId, (KV_Value)objMeta, 0, objMetaSize) == KV_SUCCESS && kvStatus == KV_SUCCESS){
+						status = H3_SUCCESS;
+					}
                 }
             }
 
@@ -584,7 +586,8 @@ H3_Status H3_CreatePart(H3_Handle handle, H3_Token token, H3_MultipartId multipa
                 op->metadata_write(_handle, multiMeta->objectId, (KV_Value)objMeta, 0, mSize);
             }
 
-            free(objMeta);
+            if(objMeta)
+            	free(objMeta);
         }
     }
 
@@ -672,32 +675,35 @@ H3_Status H3_CreatePartCopy(H3_Handle handle, H3_Token token, H3_Name objectName
                     if(dstObjMetaSize > mSize)
                         dstObjMeta = realloc(dstObjMeta, dstObjMetaSize);
 
-                    // Copy the data in parts
-                    KV_Value buffer = malloc(H3_PART_SIZE);
-                    size_t remaining = size;
-                    off_t srcOffset = offset;
-                    off_t dstOffset = 0;
+                    if(dstObjMeta){
+						// Copy the data in parts
+						KV_Value buffer = malloc(H3_PART_SIZE);
+						size_t remaining = size;
+						off_t srcOffset = offset;
+						off_t dstOffset = 0;
 
-                    while(remaining && kvStatus == KV_SUCCESS){
+						while(remaining && kvStatus == KV_SUCCESS){
 
-                        size_t buffSize = min(H3_PART_SIZE, remaining);
-                        if( (kvStatus = ReadData(ctx, srcObjMeta, buffer, &buffSize, srcOffset)) == KV_SUCCESS              &&
-                            (kvStatus = CreatePart(ctx, dstObjMeta, buffer, buffSize, dstOffset, partNumber)) == KV_SUCCESS     ){
+							size_t buffSize = min(H3_PART_SIZE, remaining);
+							if( (kvStatus = ReadData(ctx, srcObjMeta, buffer, &buffSize, srcOffset)) == KV_SUCCESS              &&
+								(kvStatus = CreatePart(ctx, dstObjMeta, buffer, buffSize, dstOffset, partNumber)) == KV_SUCCESS     ){
 
-                            remaining -= buffSize;
-                            srcOffset += buffSize;
-                            dstOffset += buffSize;
-                        }
-                    }// while()
+								remaining -= buffSize;
+								srcOffset += buffSize;
+								dstOffset += buffSize;
+							}
+						}// while()
 
 
-                    // We have to update metadata even if writing failed because we might have already deleted the previous
-                    // version of the part.
-                    if(op->metadata_write(_handle, multiMeta->objectId, (KV_Value)dstObjMeta, 0, dstObjMetaSize) == KV_SUCCESS){
-                        status = H3_SUCCESS;
+						// We have to update metadata even if writing failed because we might have already deleted the previous
+						// version of the part.
+						if(op->metadata_write(_handle, multiMeta->objectId, (KV_Value)dstObjMeta, 0, dstObjMetaSize) == KV_SUCCESS){
+							status = H3_SUCCESS;
+						}
                     }
                 }
-                free(dstObjMeta);
+                if(dstObjMeta)
+                	free(dstObjMeta);
             }
             free(srcObjMeta);
         }

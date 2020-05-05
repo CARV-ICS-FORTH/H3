@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
+#include <unistd.h>
 
 #include "common.h"
 #include "util.h"
@@ -391,6 +391,117 @@ H3_Status H3_CreateObject(H3_Handle handle, H3_Token token, H3_Name bucketName, 
 }
 
 
+/*! \brief  Create an object with data retrieved from a file
+ *
+ * Create an object associated with a specific user( derived from the token). The bucket must exist and the object should not.
+ * The object name must not exceed a certain size and conform to the following rules:
+ *  1. May only consist of characters 0-9, a-z, A-Z, _ (underscore). / (slash) , - (minus) and . (dot).
+ *  2. Must not start with a slash
+ *  3. A slash must not be followed by another one
+ *
+ * @param[in]    handle             An h3lib handle
+ * @param[in]    token              Authentication information
+ * @param[in]    bucketName         The name of the bucket to host the object
+ * @param[in]    objectName         The name of the object to be created
+ * @param[in]    fd               	File descriptor to source data
+ * @param[in]    size               Size of the object data
+ *
+ * @result \b H3_SUCCESS            Operation completed successfully
+ * @result \b H3_FAILURE            Bucket does not exist or user has no access
+ * @result \b H3_EXISTS             Object already exists
+ * @result \b H3_INVALID_ARGS       Missing or malformed arguments
+ * @result \b H3_NAME_TOO_LONG      Bucket or Object name is longer than H3_BUCKET_NAME_SIZE or H3_OBJECT_NAME_SIZE respectively
+ *
+ */
+H3_Status H3_CreateObjectFromFile(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, int fd, size_t size){
+
+    // Argument check. Note we allow zero-sized objects.
+    if(!handle || !token  || !bucketName || !objectName ){
+        return H3_INVALID_ARGS;
+    }
+
+    H3_Status status;
+    H3_Context* ctx = (H3_Context*)handle;
+    KV_Handle _handle = ctx->handle;
+    KV_Operations* op = ctx->operation;
+
+    H3_UserId userId;
+    H3_BucketId bucketId;
+    H3_ObjectId objId;
+    KV_Status storeStatus;
+    KV_Value value = NULL;
+    size_t mSize = 0;
+
+    // Validate bucketName & extract userId from token
+    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS || (status = ValidObjectName(objectName)) != H3_SUCCESS){
+        return status;
+    }
+
+    if( !GetUserId(token, userId) || !GetBucketId(bucketName, bucketId)){
+        return H3_INVALID_ARGS;
+    }
+
+    // Make sure user has access to the bucket
+    if(op->metadata_read(_handle, bucketId, 0, &value, &mSize) != KV_SUCCESS){
+        return H3_FAILURE;
+    }
+
+    // TODO - Check there is no multipart object with that name
+
+    status = H3_FAILURE;
+    H3_BucketMetadata* bucketMetadata = (H3_BucketMetadata*)value;
+    if(GrantBucketAccess(userId, bucketMetadata)){
+
+        GetObjectId(bucketName, objectName, objId);
+
+        // Allocate & populate Object metadata
+        uint nParts = EstimateNumOfParts(NULL, size, 0);
+        uint nBatch = (nParts + H3_PART_BATCH_SIZE - 1)/H3_PART_BATCH_SIZE;
+        size_t objMetaSize = sizeof(H3_ObjectMetadata) + nBatch * H3_PART_BATCH_SIZE * sizeof(H3_PartMetadata);
+        H3_ObjectMetadata* objMeta = calloc(1, objMetaSize);
+        memcpy(objMeta->userId, userId, sizeof(H3_UserId));
+        uuid_generate(objMeta->uuid);
+        InitMode(objMeta);
+
+        // Reserve object
+        if( (storeStatus = op->metadata_create(_handle, objId, (KV_Value)objMeta, 0, objMetaSize)) == KV_SUCCESS){
+
+        	size_t readSize, bufferSize = min(H3_CHUNK, size);
+        	KV_Value buffer = malloc(bufferSize);
+
+        	if(buffer){
+        		off_t offset = 0;
+    			while(size && (readSize = read(fd, buffer, bufferSize)) != -1 && readSize && (storeStatus = WriteData(ctx, objMeta, buffer, readSize, offset)) == KV_SUCCESS){
+    				offset += readSize;
+    				size -= readSize;
+    			}
+
+                // Update metadata
+                clock_gettime(CLOCK_REALTIME, &objMeta->creation);
+                objMeta->lastAccess = objMeta->lastModification;
+                objMeta->isBad = storeStatus != KV_SUCCESS?1:0;
+
+                if(op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, objMetaSize) == KV_SUCCESS && readSize != -1 && !objMeta->isBad){
+					status = H3_SUCCESS;
+				}
+
+				free(buffer);
+        	}
+        }
+        else if(storeStatus == KV_KEY_EXIST)
+            status = H3_EXISTS;
+
+        else if(storeStatus == KV_NAME_TOO_LONG)
+            status = H3_NAME_TOO_LONG;
+
+        free(objMeta);
+    }
+    free(bucketMetadata);
+
+    return status;
+}
+
+
 
 
 /*! \brief  Retrieve data from an object
@@ -479,6 +590,112 @@ H3_Status H3_ReadObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
             }
         }
 
+        free(objMeta);
+    }
+    else if(storeStatus == KV_KEY_NOT_EXIST)
+        return H3_NOT_EXISTS;
+
+    else if(storeStatus == KV_NAME_TOO_LONG)
+        return H3_NAME_TOO_LONG;
+
+    return status;
+}
+
+
+/*! \brief  Retrieve data from an object and store in a file
+ *
+ * Retrieve an object's content staring at offset. If both size and data arguments are 0x00 and NULL respectively then a buffer
+ * is allocated internally to fit the entire object. In this case it is the responsibility of the user to free the buffer.
+ * If a size is provided it is expected that a valid buffer of appropriate size has also been provided.
+ *
+ * @param[in]    handle             An h3lib handle
+ * @param[in]    token              Authentication information
+ * @param[in]    bucketName         The name of the bucket to host the object
+ * @param[in]    objectName         The name of the object to be created
+ * @param[in]    offset             Offset within the object's data
+ * @param[in]    fd               	File descriptor to data sink
+ * @param[inout] size               Size of data to retrieve or have been retrieved
+ *
+ * @result \b H3_SUCCESS            Operation completed successfully
+ * @result \b H3_CONTINUE           Operation completed successfully, though more data are available
+ * @result \b H3_FAILURE            Bucket does not exist or user has no access or unable to allocate a buffer to fit the entire object
+ * @result \b H3_NOT_EXISTS         Object does not exist
+ * @result \b H3_INVALID_ARGS       Missing or malformed arguments
+ * @result \b H3_NAME_TOO_LONG      Bucket or Object name is longer than H3_BUCKET_NAME_SIZE or H3_OBJECT_NAME_SIZE respectively
+ *
+ */
+H3_Status H3_ReadObjectToFile(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, off_t offset, int fd, size_t* size){
+
+    // Argument check
+    if(!handle || !token  || !bucketName || !objectName || fd < 0 || !size ){
+        return H3_INVALID_ARGS;
+    }
+
+    H3_Status status;
+    H3_Context* ctx = (H3_Context*)handle;
+    KV_Handle _handle = ctx->handle;
+    KV_Operations* op = ctx->operation;
+
+    H3_UserId userId;
+    H3_ObjectId objId;
+    KV_Status storeStatus;
+    KV_Value value = NULL;
+    size_t mSize = 0;
+
+    // Validate bucketName & extract userId from token
+    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS || (status = ValidObjectName(objectName)) != H3_SUCCESS){
+        return status;
+    }
+
+    if( !GetUserId(token, userId) ){
+        return H3_INVALID_ARGS;
+    }
+
+    status = H3_FAILURE;
+    GetObjectId(bucketName, objectName, objId);
+    if( (storeStatus = op->metadata_read(_handle, objId, 0, &value, &mSize)) == KV_SUCCESS){
+        H3_ObjectMetadata* objMeta = (H3_ObjectMetadata*)value;
+        size_t availableSize = 0, objectSize = 0;
+
+        if(objMeta->nParts){
+            objectSize = objMeta->part[objMeta->nParts-1].offset + objMeta->part[objMeta->nParts-1].size;
+            availableSize = objectSize - offset;
+        }
+
+        // User has access, the object is healthy and the offset is reasonable
+        if(GrantObjectAccess(userId, objMeta) && !objMeta->isBad && offset < objectSize){
+        	size_t bufferSize = min(objectSize - offset, H3_CHUNK);
+        	KV_Value buffer = malloc(bufferSize);
+
+        	if(buffer){
+        		ssize_t chunkSize = bufferSize;
+        		size_t requiredSize = *size;
+        		if(!requiredSize)
+        			requiredSize = availableSize;
+
+        		while(requiredSize && (storeStatus = ReadData(ctx, objMeta, buffer, (size_t*)&chunkSize, offset)) == KV_SUCCESS && chunkSize && (chunkSize = write(fd, buffer, (size_t)chunkSize)) != -1){
+        			offset += chunkSize;
+        			requiredSize -= chunkSize;
+        			chunkSize = bufferSize;
+        		}
+
+        		free(buffer);
+
+        		clock_gettime(CLOCK_REALTIME, &objMeta->lastAccess);
+        		if(storeStatus == KV_SUCCESS && chunkSize != -1 && op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, mSize) == KV_SUCCESS){
+
+        			if(*size)
+        				*size -= requiredSize;
+        			else
+        				*size = availableSize - requiredSize;
+
+                    if(availableSize > *size)
+                        status = H3_CONTINUE;
+                    else
+                        status = H3_SUCCESS;
+        		}
+        	}
+        }
         free(objMeta);
     }
     else if(storeStatus == KV_KEY_NOT_EXIST)
@@ -807,26 +1024,28 @@ H3_Status H3_TruncateObject(H3_Handle handle, H3_Token token, H3_Name bucketName
                 if(objMetaSize > mSize)
                     objMeta = realloc(objMeta, objMetaSize);
 
-                // Allocate buffer
-                size_t writeSize = min(H3_CHUNK, extra);
-                KV_Value buffer = calloc(writeSize, 1);
+                if(objMeta){
+					// Allocate buffer
+					size_t writeSize = min(H3_CHUNK, extra);
+					KV_Value buffer = calloc(writeSize, 1);
 
-                if(buffer){
-					// Write the nulls
-					while(extra && WriteData(ctx, objMeta, buffer, writeSize, objectSize) == KV_SUCCESS){
-						objectSize += writeSize;
-						extra -= writeSize;
-						writeSize = min(H3_CHUNK, extra);
+					if(buffer){
+						// Write the nulls
+						while(extra && WriteData(ctx, objMeta, buffer, writeSize, objectSize) == KV_SUCCESS){
+							objectSize += writeSize;
+							extra -= writeSize;
+							writeSize = min(H3_CHUNK, extra);
+						}
+
+						if(extra)
+							objMeta->isBad = 1;
+
+						if(op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, objMetaSize) == KV_SUCCESS && !objMeta->isBad){
+							status = H3_SUCCESS;
+						}
+
+						free(buffer);
 					}
-
-					if(extra)
-						objMeta->isBad = 1;
-
-					if(op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, objMetaSize) == KV_SUCCESS && !objMeta->isBad){
-						status = H3_SUCCESS;
-					}
-
-					free(buffer);
                 }
         	}
 
@@ -863,7 +1082,9 @@ H3_Status H3_TruncateObject(H3_Handle handle, H3_Token token, H3_Name bucketName
         	else
         		status = H3_SUCCESS;
         }
-        free(objMeta);
+
+        if(objMeta)
+        	free(objMeta);
     }
     else if(storeStatus == KV_KEY_NOT_EXIST)
         return H3_NOT_EXISTS;
@@ -1386,36 +1607,141 @@ H3_Status H3_WriteObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H
         if(objMetaSize > mSize)
             objMeta = realloc(objMeta, objMetaSize);
 
+        if(objMeta){
+
 #ifndef DEBUG
-        if( (storeStatus = WriteData(ctx, objMeta, data, size, offset)) == KV_SUCCESS         &&
-            (storeStatus = op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, objMetaSize)) == KV_SUCCESS     ){
-            status = H3_SUCCESS;
-        }
-        else if(storeStatus == KV_NAME_TOO_LONG)
-            status = H3_NAME_TOO_LONG;
+			if( (storeStatus = WriteData(ctx, objMeta, data, size, offset)) == KV_SUCCESS         &&
+				(storeStatus = op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, objMetaSize)) == KV_SUCCESS     ){
+				status = H3_SUCCESS;
+			}
+			else if(storeStatus == KV_NAME_TOO_LONG)
+				status = H3_NAME_TOO_LONG;
 #else
-        if( (storeStatus = WriteData(ctx, objMeta, data, size, offset)) != KV_SUCCESS ){
-            LogActivity(H3_ERROR_MSG, "failed to write data\n");
-        }
-        else if( (storeStatus = op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, objMetaSize)) != KV_SUCCESS){
-            LogActivity(H3_ERROR_MSG, "failed to update meta-data\n");
-        }
+			if( (storeStatus = WriteData(ctx, objMeta, data, size, offset)) != KV_SUCCESS ){
+				LogActivity(H3_ERROR_MSG, "failed to write data\n");
+			}
+			else if( (storeStatus = op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, objMetaSize)) != KV_SUCCESS){
+				LogActivity(H3_ERROR_MSG, "failed to update meta-data\n");
+			}
 
-        if(storeStatus == KV_SUCCESS)
-            status = H3_SUCCESS;
+			if(storeStatus == KV_SUCCESS)
+				status = H3_SUCCESS;
 
-        else if(storeStatus == KV_NAME_TOO_LONG)
-            status = H3_NAME_TOO_LONG;
+			else if(storeStatus == KV_NAME_TOO_LONG)
+				status = H3_NAME_TOO_LONG;
 #endif
+        }
     }
 #ifdef DEBUG
     else
         LogActivity(H3_DEBUG_MSG, "failed to grant access userid:%s Vs metadata:%s\n", userId, objMeta->userId);
 #endif
 
-    free(objMeta);
+    if(objMeta)
+    	free(objMeta);
 
     LogActivity(H3_DEBUG_MSG, "Exit - %d\n", status );
+    return status;
+}
+
+
+/*! \brief  Write an object with data retrieved from a file
+ *
+ * Write an object associated with a specific user( derived from the token). If the object exists it
+ * will be overwritten. Sparse objects are supported.
+ * The object name must not exceed a certain size and conform to the following rules:
+ *  1. May only consist of characters 0-9, a-z, A-Z, _ (underscore). / (slash) , - (minus) and . (dot).
+ *  2. Must not start with a slash
+ *  3. A slash must not be followed by another one
+ *
+ * @param[in]    handle             An h3lib handle
+ * @param[in]    token              Authentication information
+ * @param[in]    bucketName         The name of the bucket to host the object
+ * @param[in]    objectName         The name of the object to be created
+ * @param[in]    fd               	File descriptor to source data
+ * @param[in]    size               Size of the object data
+ * @param[in]    offset             Offset from the object's 0x00 byte
+ *
+ * @result \b H3_SUCCESS            Operation completed successfully
+ * @result \b H3_FAILURE            Bucket does not exist or user has no access
+ * @result \b H3_INVALID_ARGS       Missing or malformed arguments
+ * @result \b H3_NAME_TOO_LONG      Bucket or Object name is longer than H3_BUCKET_NAME_SIZE or H3_OBJECT_NAME_SIZE respectively
+ *
+ */
+H3_Status H3_WriteObjectFromFile(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, int fd, size_t size, off_t offset){
+
+    if(!handle || !token  || !bucketName || !objectName || fd < 0){
+        return H3_INVALID_ARGS;
+    }
+
+    H3_Status status = H3_FAILURE;
+    H3_Context* ctx = (H3_Context*)handle;
+    KV_Handle _handle = ctx->handle;
+    KV_Operations* op = ctx->operation;
+
+    H3_UserId userId;
+    H3_ObjectId objId;
+    KV_Value value = NULL;
+    KV_Status storeStatus;
+    size_t mSize = 0;
+
+    // Validate bucketName & extract userId from token
+    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS || (status = ValidObjectName(objectName)) != H3_SUCCESS){
+        return status;
+    }
+
+    if( !GetUserId(token, userId) ){
+        return H3_INVALID_ARGS;
+    }
+
+    // TODO - Check the object is not a pending multipart-upload
+
+    GetObjectId(bucketName, objectName, objId);
+    if((storeStatus = op->metadata_exists(_handle, objId)) == KV_KEY_NOT_EXIST){
+       return H3_CreateObjectFromFile(handle, token, bucketName, objectName, fd, size);
+    }
+    else if(storeStatus == KV_NAME_TOO_LONG)
+        return H3_NAME_TOO_LONG;
+
+    // Get object metadata and make sure we have access
+    if((storeStatus = op->metadata_read(_handle, objId, 0, &value, &mSize)) == KV_NAME_TOO_LONG){
+        return H3_NAME_TOO_LONG;
+    }
+    else if(storeStatus != KV_SUCCESS)
+        return H3_FAILURE;
+
+    status = H3_FAILURE;
+    H3_ObjectMetadata* objMeta = (H3_ObjectMetadata*)value;
+    if(GrantObjectAccess(userId, objMeta)){
+
+        // Expand object metadata if needed
+        uint nParts = EstimateNumOfParts(objMeta, size, offset);
+        uint nBatch = (nParts + H3_PART_BATCH_SIZE - 1)/H3_PART_BATCH_SIZE;
+        size_t objMetaSize = sizeof(H3_ObjectMetadata) + nBatch * H3_PART_BATCH_SIZE * sizeof(H3_PartMetadata);
+        if(objMetaSize > mSize)
+            objMeta = realloc(objMeta, objMetaSize);
+
+        // Check in case we had to increase the metadata
+        if(objMeta){
+			size_t readSize, bufferSize = min(H3_CHUNK, size);
+			KV_Value buffer = malloc(bufferSize);
+
+			if(buffer){
+				while(size && (readSize = read(fd, buffer, bufferSize)) != -1 && readSize && (storeStatus = WriteData(ctx, objMeta, buffer, readSize, offset)) == KV_SUCCESS){
+					offset += readSize;
+					size -= readSize;
+				}
+
+				if(readSize != -1 && storeStatus == KV_SUCCESS && op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, objMetaSize) == KV_SUCCESS ){
+					status = H3_SUCCESS;
+				}
+
+				free(buffer);
+			}
+        }
+    }
+    free(objMeta);
+
     return status;
 }
 

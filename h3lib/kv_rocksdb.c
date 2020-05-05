@@ -223,9 +223,12 @@ KV_Status KV_RocksDb_Write(KV_Handle handle, KV_Key key, KV_Value value, off_t o
 	// Brand new KV pair
 	if(!buffer){
 		if(offset){
-			value = realloc(value, offset + size);
-			memmove(value + offset, value, size);
-			memset(value, 0, offset);
+			if((value = realloc(value, offset + size))){
+				memmove(value + offset, value, size);
+				memset(value, 0, offset);
+			}
+			else
+				return KV_FAILURE;
 		}
 
 		rocksdb_put(storeHandle->db, storeHandle->writeoptions, key, strlen(key), (char*)value, offset + size, &error);
@@ -240,8 +243,11 @@ KV_Status KV_RocksDb_Write(KV_Handle handle, KV_Key key, KV_Value value, off_t o
 	else {
 		char* patchedBuffer = buffer;
 		if((offset + size) > bufferSize){
-			patchedBuffer = realloc(buffer, offset + size);
+			if( (patchedBuffer = realloc(buffer, offset + size)) ){
 			memset(patchedBuffer+bufferSize, 0, (offset + size) - bufferSize);
+			}
+			else
+				return KV_FAILURE;
 		}
 
 		memcpy(patchedBuffer+offset, value, size);

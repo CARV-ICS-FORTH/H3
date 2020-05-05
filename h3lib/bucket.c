@@ -52,6 +52,7 @@ H3_Status ValidBucketName(char* name){
  * @param[in]    bucketName         The name of the bucket to be created
  *
  * @result \b H3_SUCCESS            Operation completed successfully
+ * @result \b H3_FAILURE        	Internal error
  * @result \b H3_EXISTS             Bucket already exists
  * @result \b H3_INVALID_ARGS       Missing or malformed arguments
  * @result \b H3_STORE_ERROR        Storage provider error
@@ -117,15 +118,20 @@ H3_Status H3_CreateBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
             return H3_STORE_ERROR;
         }
 
-        // Populate metadata and push them to the store
-        strncpy(userMetadata->bucket[userMetadata->nBuckets++], bucketName, sizeof(H3_BucketId));
-        op->metadata_write(_handle, userId, (KV_Value)userMetadata, 0, metaSize);
-        free(userMetadata);
+        if(userMetadata){
+			// Populate metadata and push them to the store
+			strncpy(userMetadata->bucket[userMetadata->nBuckets++], bucketName, sizeof(H3_BucketId));
+			op->metadata_write(_handle, userId, (KV_Value)userMetadata, 0, metaSize);
+			free(userMetadata);
 
-        return H3_SUCCESS;
+			return H3_SUCCESS;
+        }
+        else
+        	return H3_FAILURE;
     }
     else if(kvStatus == KV_KEY_EXIST)
         return H3_EXISTS;
+
     else if(kvStatus == KV_NAME_TOO_LONG)
         return H3_NAME_TOO_LONG;
 
