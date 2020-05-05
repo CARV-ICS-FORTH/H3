@@ -545,6 +545,20 @@ H3_Status H3_SetBucketAttributes(H3_Handle handle, H3_Token token, H3_Name bucke
     return status;
 }
 
+
+/*! \brief Delete all objects of a bucket
+ *
+ * @param[in]    handle             An h3lib handle
+ * @param[in]    token              Authentication information
+ * @param[in]    bucketName         Name of bucket
+ *
+ * @result \b H3_SUCCESS            Operation completed successfully
+ * @result \b H3_NOT_EXISTS         The bucket doesn't exist
+ * @result \b H3_INVALID_ARGS       Missing or malformed arguments
+ * @result \b H3_FAILURE            Storage provider error
+ * @result \b H3_NAME_TOO_LONG      Bucket name is longer than H3_BUCKET_NAME_SIZE
+ *
+ */
 H3_Status H3_PurgeBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
 	H3_UserId userId;
 	H3_BucketId bucketId;
