@@ -135,6 +135,19 @@ H3_StoreType H3_String2Type(const char* type){
     return store;
 }
 
+
+const char* const StoreType[] = {"config", "filesystem", "kreon", "rocksdb", "redis", "ime", "unknown"};
+const char* H3_Type2String(H3_StoreType type){
+	const char* string;
+
+	if (type < 0 || type >= H3_NumOfStores)
+		string = StoreType[H3_NumOfStores];
+	else
+		string = StoreType[type];
+
+	return string;
+}
+
 void CreatePartId(H3_PartId partId, uuid_t uuid, int partNumber, int subPartNumber){
     H3_UUID uuidString;
     uuid_unparse_lower(uuid, uuidString);

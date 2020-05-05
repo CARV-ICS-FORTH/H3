@@ -19,8 +19,11 @@
 #ifndef H3LIB_H_
 #define H3LIB_H_
 
+#define _GNU_SOURCE
 #include <stdint.h>
 #include <time.h>
+#include <unistd.h>
+#include <ftw.h>
 
 /** \defgroup Macros
  *  @{
@@ -147,6 +150,7 @@ typedef struct {
  */
 char* H3_Version();
 H3_StoreType H3_String2Type(const char* type);
+const char* H3_Type2String(H3_StoreType type);
 
 /** \defgroup handle Handle management
  *  @{
@@ -165,6 +169,7 @@ H3_Status H3_InfoBucket(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
 H3_Status H3_SetBucketAttributes(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Attribute attrib);
 H3_Status H3_CreateBucket(H3_Handle handle, H3_Token token, H3_Name bucketName);
 H3_Status H3_DeleteBucket(H3_Handle handle, H3_Token token, H3_Name bucketName);
+H3_Status H3_PurgeBucket(H3_Handle handle, H3_Token token, H3_Name bucketName);
 /** @}*/
 
 /** \defgroup object Object management

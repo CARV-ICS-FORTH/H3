@@ -544,3 +544,83 @@ H3_Status H3_SetBucketAttributes(H3_Handle handle, H3_Token token, H3_Name bucke
 
     return status;
 }
+
+H3_Status H3_PurgeBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
+	H3_UserId userId;
+	H3_BucketId bucketId;
+	KV_Value value = NULL;
+	size_t size = 0;
+	H3_Status status;
+	KV_Status kvStatus;
+
+	// Argument check
+	if(!handle || !token  || !bucketName){
+		return H3_INVALID_ARGS;
+	}
+
+	H3_Context* ctx = (H3_Context*)handle;
+	KV_Handle _handle = ctx->handle;
+	KV_Operations* op = ctx->operation;
+
+	// Validate bucketName & extract userId from token
+	if( (status = ValidBucketName(bucketName)) != H3_SUCCESS){
+		return status;
+	}
+
+	if( !GetUserId(token, userId) || !GetBucketId(bucketName, bucketId)){
+		return H3_INVALID_ARGS;
+	}
+
+	status = H3_FAILURE;
+	if( (kvStatus = op->metadata_read(_handle, bucketId, 0, &value, &size)) == KV_SUCCESS){
+
+		// Make sure the token grants access to the bucket
+		H3_BucketMetadata* bucketMetadata = (H3_BucketMetadata*)value;
+		if( GrantBucketAccess(userId, bucketMetadata) ){
+
+			KV_Key keyBuffer = calloc(1, KV_LIST_BUFFER_SIZE);
+			H3_ObjectId prefix;
+			uint32_t keyOffset = 0, nKeys = 0;
+
+			// Apply no trim so we don't need to recreate the object-ID for the entries
+			GetObjectId(bucketName, NULL, prefix);
+			while((kvStatus = op->list(_handle, prefix, 0, keyBuffer, keyOffset, &nKeys)) == KV_CONTINUE || kvStatus == KV_SUCCESS){
+				uint32_t i = 0;
+				KV_Key objId = keyBuffer;
+
+				while(i < nKeys && DeleteObject(ctx, userId, objId, 0) == H3_SUCCESS){
+					objId += strlen(objId)+1;
+					i++;
+				}
+
+				// Check for error in deletion
+				if(i < nKeys){
+					kvStatus = KV_FAILURE;
+					break;
+				}
+
+				// It's not an error to get an empty list
+				if(!nKeys)
+					break;
+
+				keyOffset += nKeys;
+				nKeys = 0;
+			}
+
+			free(keyBuffer);
+			if(kvStatus == KV_SUCCESS){
+				status = H3_SUCCESS;
+			}
+			else if(kvStatus == KV_NAME_TOO_LONG)
+				status = H3_NAME_TOO_LONG;
+		}
+		free(bucketMetadata);
+	}
+	else if(kvStatus == KV_KEY_NOT_EXIST){
+		return H3_NOT_EXISTS;
+	}
+	else if(kvStatus == KV_NAME_TOO_LONG)
+		return H3_NAME_TOO_LONG;
+
+	return status;
+}
