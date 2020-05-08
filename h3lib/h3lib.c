@@ -230,37 +230,37 @@ H3_Handle H3_Init(H3_StoreType storageType, char* cfgFileName) {
 		switch(storageType){
 			case H3_STORE_REDIS:
 			case H3_STORE_IME:
-				printf("WARNING: Driver not available...\n");
+				LogActivity(H3_INFO_MSG, "WARNING: Driver not available...\n");
 				ctx->operation = NULL;
 				break;
 
 			case H3_STORE_FILESYSTEM:
-				printf("Using kv_fs driver...\n");
+				LogActivity(H3_INFO_MSG, "Using kv_fs driver...\n");
 				ctx->operation = &operationsFilesystem;
 				break;
 
 			case H3_STORE_ROCKSDB:
 #ifdef H3LIB_USE_ROCKSDB
-				printf("Using kv_rocksdb driver...\n");
+				LogActivity(H3_INFO_MSG, "Using kv_rocksdb driver...\n");
 				ctx->operation = &operationsRocksDB;
 #else
-				printf("WARNING: Driver not available...\n");
+				LogActivity(H3_INFO_MSG, "WARNING: Driver not available...\n");
 				ctx->operation = NULL;
 #endif
 				break;
 
 			case H3_STORE_KREON:
 #ifdef H3LIB_USE_KREON
-				printf("Using kv_kreon driver...\n");
+				LogActivity(H3_INFO_MSG, "Using kv_kreon driver...\n");
 				ctx->operation = &operationsKreon;
 #else
-				printf("WARNING: Driver not available...\n");
+				LogActivity(H3_INFO_MSG, "WARNING: Driver not available...\n");
 				ctx->operation = NULL;
 #endif
 				break;
 
 			default:
-				printf("ERROR: Driver not recognized\n");
+				LogActivity(H3_ERROR_MSG, "ERROR: Driver not recognized\n");
 				ctx->operation = NULL;
 				return NULL;
 		}
@@ -269,7 +269,7 @@ H3_Handle H3_Init(H3_StoreType storageType, char* cfgFileName) {
 		if(!ctx->operation || !(ctx->handle = ctx->operation->init(cfgFile))){
 			free(ctx);
 			ctx = NULL;
-			printf("ERROR: Failed to initialize storage\n");
+			LogActivity(H3_ERROR_MSG, "ERROR: Failed to initialize storage\n");
 		}
 		else
 			ctx->type = storageType;

@@ -109,7 +109,12 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E
 add_subdirectory(tools)                                                             
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
                                                              ${CMAKE_SOURCE_DIR}/tests/config.ini
-                                                             ${CMAKE_CURRENT_BINARY_DIR}/tools/config.ini)                                                             
+                                                             ${CMAKE_CURRENT_BINARY_DIR}/tools/config.ini) 
+ 
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink
+                                                             ${CMAKE_SOURCE_DIR}/tools/run_benchmark.sh
+                                                             ${CMAKE_CURRENT_BINARY_DIR}/tools/run_benchmark.sh)                                                               
+                                                                                                                        
 
 set(CPACK_PACKAGE_NAME ${PROJECT_NAME})
 set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})

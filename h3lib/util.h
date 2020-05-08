@@ -30,6 +30,6 @@ void _LogActivity(H3_MsgLevel level, const char* function, int lineNumber, const
 int64_t Compare(struct timespec* a, struct timespec* b);
 struct timespec Posterior(struct timespec* a, struct timespec* b);
 struct timespec Anterior(struct timespec* a, struct timespec* b);
-
+void* ReAllocFreeOnFail(void* buffer, size_t size);
 
 #endif

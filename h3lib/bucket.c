@@ -104,7 +104,7 @@ H3_Status H3_CreateBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
             }
             else if(userMetadata->nBuckets % H3_BUCKET_BATCH_SIZE == 0){
                 metaSize = sizeof(H3_UserMetadata) + (userMetadata->nBuckets + H3_BUCKET_BATCH_SIZE) * sizeof(H3_BucketId);
-                userMetadata = realloc(userMetadata, metaSize);
+                userMetadata = ReAllocFreeOnFail(userMetadata, metaSize);
             }
         }
         else if(kvStatus == KV_KEY_NOT_EXIST){

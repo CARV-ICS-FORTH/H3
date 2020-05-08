@@ -570,7 +570,7 @@ H3_Status H3_CreatePart(H3_Handle handle, H3_Token token, H3_MultipartId multipa
                 uint nBatch = (nParts + H3_PART_BATCH_SIZE - 1)/H3_PART_BATCH_SIZE;
                 size_t objMetaSize = sizeof(H3_ObjectMetadata) + nBatch * H3_PART_BATCH_SIZE * sizeof(H3_PartMetadata);
                 if(objMetaSize > mSize)
-                    objMeta = realloc(objMeta, objMetaSize);
+                    objMeta = ReAllocFreeOnFail(objMeta, objMetaSize);
 
                 if(objMeta){
 					// The object has already been modified thus we need to record its state
@@ -673,7 +673,7 @@ H3_Status H3_CreatePartCopy(H3_Handle handle, H3_Token token, H3_Name objectName
                     uint nBatch = (nParts + H3_PART_BATCH_SIZE - 1)/H3_PART_BATCH_SIZE;
                     size_t dstObjMetaSize = sizeof(H3_ObjectMetadata) + nBatch * H3_PART_BATCH_SIZE * sizeof(H3_PartMetadata);
                     if(dstObjMetaSize > mSize)
-                        dstObjMeta = realloc(dstObjMeta, dstObjMetaSize);
+                        dstObjMeta = ReAllocFreeOnFail(dstObjMeta, dstObjMetaSize);
 
                     if(dstObjMeta){
 						// Copy the data in parts

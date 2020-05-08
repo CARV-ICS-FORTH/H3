@@ -24,12 +24,12 @@
 typedef struct {
     char* ip;
     int port;
-    GMutex lock;
+//    GMutex lock;
 }KV_Kreon_Handle;
 
 void KV_Kreon_Free(KV_Handle _handle) {
 	KV_Kreon_Handle* handle = (KV_Kreon_Handle*) _handle;
-	g_mutex_clear(&handle->lock);
+//	g_mutex_clear(&handle->lock);
 	free(handle->ip);
 	free(handle);
     return;
@@ -63,7 +63,7 @@ KV_Handle KV_Kreon_Init(GKeyFile* cfgFile) {
        }
     }
 
-    g_mutex_init(&handle->lock);
+//    g_mutex_init(&handle->lock);
 
     if((status = krc_init(handle->ip, handle->port)) != KRC_SUCCESS){
     	LogActivity(H3_ERROR_MSG, "Kreon - Failed to initialize (ip:%s  port:%d) Error:%d\n",handle->ip, handle->port, status);
@@ -167,11 +167,11 @@ KV_Status KV_Kreon_Create(KV_Handle _handle, KV_Key key, KV_Value value, off_t o
 	KV_Status status;
 	KV_Kreon_Handle* handle = (KV_Kreon_Handle *)_handle;
 
-	g_mutex_lock(&handle->lock);
+//	g_mutex_lock(&handle->lock);
 	if( (status = KV_Kreon_Exists(handle, key)) == KV_KEY_NOT_EXIST){
 		 status = KV_Kreon_Write(handle, key, value, offset, size);
 	}
-	g_mutex_unlock(&handle->lock);
+//	g_mutex_unlock(&handle->lock);
 
 	return status;
 }
@@ -182,11 +182,11 @@ KV_Status KV_Kreon_Copy(KV_Handle _handle, KV_Key src_key, KV_Key dest_key) {
 	KV_Status status;
 	KV_Kreon_Handle* handle = (KV_Kreon_Handle *)_handle;
 
-	g_mutex_lock(&handle->lock);
+//	g_mutex_lock(&handle->lock);
 	if((status = KV_Kreon_Read(handle, src_key, 0, &value, &size)) == KV_SUCCESS){
 		status = KV_Kreon_Write(handle, dest_key, value, 0, size);
 	}
-	g_mutex_unlock(&handle->lock);
+//	g_mutex_unlock(&handle->lock);
 
 	return status;
 }
@@ -197,12 +197,12 @@ KV_Status KV_Kreon_Move(KV_Handle _handle, KV_Key src_key, KV_Key dest_key) {
 	KV_Status status;
 	KV_Kreon_Handle* handle = (KV_Kreon_Handle *)_handle;
 
-	g_mutex_lock(&handle->lock);
+//	g_mutex_lock(&handle->lock);
 	if( (status = KV_Kreon_Read(handle, src_key, 0, &value, &size)) == KV_SUCCESS &&
 		(status = KV_Kreon_Write(handle, dest_key, value, 0, size)) == KV_SUCCESS		){
 		status = KV_Kreon_Delete(handle, src_key);
 	}
-	g_mutex_unlock(&handle->lock);
+//	g_mutex_unlock(&handle->lock);
 
 	return status;
 }
