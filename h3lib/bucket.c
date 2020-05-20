@@ -594,15 +594,16 @@ H3_Status H3_PurgeBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
 
 			KV_Key keyBuffer = calloc(1, KV_LIST_BUFFER_SIZE);
 			H3_ObjectId prefix;
-			uint32_t keyOffset = 0, nKeys = 0;
+			uint32_t nKeys = 0;
 
 			// Apply no trim so we don't need to recreate the object-ID for the entries
 			GetObjectId(bucketName, NULL, prefix);
-			while((kvStatus = op->list(_handle, prefix, 0, keyBuffer, keyOffset, &nKeys)) == KV_CONTINUE || kvStatus == KV_SUCCESS){
+			while((kvStatus = op->list(_handle, prefix, 0, keyBuffer, 0, &nKeys)) == KV_CONTINUE || kvStatus == KV_SUCCESS){
 				uint32_t i = 0;
 				KV_Key objId = keyBuffer;
 
 				while(i < nKeys && DeleteObject(ctx, userId, objId, 0) == H3_SUCCESS){
+//					LogActivity(H3_DEBUG_MSG, "Deleted %s\n", objId);
 					objId += strlen(objId)+1;
 					i++;
 				}
@@ -617,7 +618,6 @@ H3_Status H3_PurgeBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
 				if(!nKeys)
 					break;
 
-				keyOffset += nKeys;
 				nKeys = 0;
 			}
 
