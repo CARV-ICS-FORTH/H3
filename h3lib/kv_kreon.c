@@ -29,6 +29,7 @@ typedef struct {
 
 void KV_Kreon_Free(KV_Handle _handle) {
 	KV_Kreon_Handle* handle = (KV_Kreon_Handle*) _handle;
+	krc_close();
 //	g_mutex_clear(&handle->lock);
 	free(handle->ip);
 	free(handle);
