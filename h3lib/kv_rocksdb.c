@@ -31,7 +31,7 @@ typedef struct {
     rocksdb_options_t* options;
     rocksdb_readoptions_t* readoptions;
     rocksdb_writeoptions_t* writeoptions;
-    GMutex lock;
+//    GMutex lock;
 } KV_RocksDB_Handle;
 
 KV_Handle KV_RocksDb_Init(GKeyFile* cfgFile) {
@@ -70,7 +70,7 @@ KV_Handle KV_RocksDb_Init(GKeyFile* cfgFile) {
     handle->db = db;
     handle->readoptions = readoptions;
     handle->writeoptions = writeoptions;
-    g_mutex_init(&handle->lock);
+//    g_mutex_init(&handle->lock);
     return (KV_Handle)handle;
 }
 
@@ -82,7 +82,7 @@ void KV_RocksDb_Free(KV_Handle handle) {
 //    rocksdb_options_destroy(storeHandle->options);			// TODO <-- sometimes we crash here !!!
     rocksdb_close(storeHandle->db);
 
-    g_mutex_clear(&storeHandle->lock);
+//    g_mutex_clear(&storeHandle->lock);
     free(storeHandle->path);
     free(storeHandle);
 }
@@ -295,11 +295,11 @@ KV_Status KV_RocksDb_Create(KV_Handle handle, KV_Key key, KV_Value value, off_t 
 	KV_Status status;
 	KV_RocksDB_Handle* storeHandle = (KV_RocksDB_Handle *)handle;
 
-	g_mutex_lock(&storeHandle->lock);
+//	g_mutex_lock(&storeHandle->lock);
 	if( (status = KV_RocksDb_Exists(handle, key)) == KV_KEY_NOT_EXIST){
 		 status = KV_RocksDb_Write(handle, key, value, offset, size);
 	}
-	g_mutex_unlock(&storeHandle->lock);
+//	g_mutex_unlock(&storeHandle->lock);
 
 	return status;
 }
@@ -310,11 +310,11 @@ KV_Status KV_RocksDb_Copy(KV_Handle handle, KV_Key src_key, KV_Key dest_key) {
 	KV_Status status;
 	KV_RocksDB_Handle* storeHandle = (KV_RocksDB_Handle *)handle;
 
-	g_mutex_lock(&storeHandle->lock);
+//	g_mutex_lock(&storeHandle->lock);
 	if((status = KV_RocksDb_Read(handle, src_key, 0, &value, &size)) == KV_SUCCESS){
 		status = KV_RocksDb_Write(handle, dest_key, value, 0, size);
 	}
-	g_mutex_unlock(&storeHandle->lock);
+//	g_mutex_unlock(&storeHandle->lock);
 
 	return status;
 }
@@ -325,12 +325,12 @@ KV_Status KV_RocksDb_Move(KV_Handle handle, KV_Key src_key, KV_Key dest_key) {
 	KV_Status status;
 	KV_RocksDB_Handle* storeHandle = (KV_RocksDB_Handle *)handle;
 
-	g_mutex_lock(&storeHandle->lock);
+//	g_mutex_lock(&storeHandle->lock);
 	if( (status = KV_RocksDb_Read(handle, src_key, 0, &value, &size)) == KV_SUCCESS &&
 		(status = KV_RocksDb_Write(handle, dest_key, value, 0, size)) == KV_SUCCESS		){
 		status = KV_RocksDb_Delete(handle, src_key);
 	}
-	g_mutex_unlock(&storeHandle->lock);
+//	g_mutex_unlock(&storeHandle->lock);
 
 	return status;
 }
