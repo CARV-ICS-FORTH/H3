@@ -50,7 +50,9 @@ KV_Handle KV_RocksDb_Init(GKeyFile* cfgFile) {
     // Prepare options.
     rocksdb_options_t *options = rocksdb_options_create();
     long cpus = sysconf(_SC_NPROCESSORS_ONLN); // Get # of online cores
-    rocksdb_options_increase_parallelism(options, (int)(cpus));
+    long files = sysconf(_SC_OPEN_MAX); // Get the maximum number of files that a process can have open at any time.
+    rocksdb_options_increase_parallelism(options, (int)(cpus * 0.7));
+    rocksdb_options_set_max_open_files(options, (int) (files * 0.7));
     rocksdb_options_optimize_level_style_compaction(options, 0);
     rocksdb_options_set_create_if_missing(options, 1);
     rocksdb_readoptions_t *readoptions = rocksdb_readoptions_create();
@@ -100,6 +102,9 @@ KV_Status KV_RocksDb_List(KV_Handle handle, KV_Key prefix, uint8_t nTrim, KV_Key
     	return KV_FAILURE;
     }
 
+    if(buffer)
+    	memset(buffer, 0, KV_LIST_BUFFER_SIZE);
+
     rocksdb_iter_seek(iter, prefix, strlen(prefix));
 
     while(rocksdb_iter_valid(iter) && status != KV_CONTINUE){
@@ -112,10 +117,10 @@ KV_Status KV_RocksDb_List(KV_Handle handle, KV_Key prefix, uint8_t nTrim, KV_Key
 
         	// Copy the keys if a buffer is provided...
         	if(buffer){
-            	size_t entrySize = keySize - nTrim + 1;
+            	size_t entrySize = keySize - nTrim;
             	if(remaining >= entrySize){
     				memcpy(&buffer[KV_LIST_BUFFER_SIZE - remaining], &key[nTrim], entrySize);
-    				remaining -= entrySize;
+    				remaining -= (entrySize + 1); // Convert blob to string
     				nMatchingKeys++;
             	}
             	else

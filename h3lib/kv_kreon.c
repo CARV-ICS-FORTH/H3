@@ -83,6 +83,9 @@ KV_Status KV_Kreon_List(KV_Handle handle, KV_Key prefix, uint8_t nTrim, KV_Key b
     uint32_t nMatchingKeys = 0;
     krc_scannerp scanner;
 
+    if(buffer)
+    	memset(buffer, 0, KV_LIST_BUFFER_SIZE);
+
     if((scanner = krc_scan_init(16, KV_LIST_BUFFER_SIZE))){
 
     	krc_scan_set_prefix_filter(scanner, strlen(prefix), prefix);
@@ -103,7 +106,7 @@ KV_Status KV_Kreon_List(KV_Handle handle, KV_Key prefix, uint8_t nTrim, KV_Key b
                 	size_t entrySize = keySize - nTrim;
                 	if(remaining >= entrySize){
         				memcpy(&buffer[KV_LIST_BUFFER_SIZE - remaining], &key[nTrim], entrySize);
-        				remaining -= (entrySize + 1);
+        				remaining -= (entrySize + 1); // Convert blob to string
         				nMatchingKeys++;
                 	}
                 	else
