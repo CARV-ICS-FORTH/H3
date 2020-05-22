@@ -49,17 +49,49 @@ KV_Handle KV_RocksDb_Init(GKeyFile* cfgFile) {
 
     // Prepare options.
     rocksdb_options_t *options = rocksdb_options_create();
-    long cpus = sysconf(_SC_NPROCESSORS_ONLN); // Get # of online cores
+    rocksdb_options_set_use_fsync(options, 0);
+
+
+    // Parallelism options
+    int cpus = (int)sysconf(_SC_NPROCESSORS_ONLN); // Get # of online cores
+    rocksdb_options_increase_parallelism(options, cpus);
+    rocksdb_options_set_max_background_flushes(options, 1);
+    rocksdb_options_set_max_background_compactions(options, cpus - 1);
+    rocksdb_options_set_max_subcompactions(options, 1); // Default is 1
+
+    // General options
     long files = sysconf(_SC_OPEN_MAX); // Get the maximum number of files that a process can have open at any time.
-    rocksdb_options_increase_parallelism(options, (int)(cpus * 0.7));
-    rocksdb_options_set_max_open_files(options, (int) (files * 0.7));
-    rocksdb_options_optimize_level_style_compaction(options, 0);
-    rocksdb_options_set_create_if_missing(options, 1);
-    rocksdb_readoptions_t *readoptions = rocksdb_readoptions_create();
-    rocksdb_writeoptions_t *writeoptions = rocksdb_writeoptions_create();
+    rocksdb_block_based_table_options_t* tableOptions = rocksdb_block_based_options_create();
+    rocksdb_filterpolicy_t* filterPolicy = rocksdb_filterpolicy_create_bloom(10);
+    rocksdb_block_based_options_set_filter_policy(tableOptions, filterPolicy);
+    rocksdb_block_based_options_set_block_size(tableOptions, 1024 * 1024); // 1MB
+    rocksdb_options_set_max_open_files(options, (int) (files * 0.9));
+
+
+    // Flushing options
+    rocksdb_options_set_write_buffer_size(options, 512 * __1MByte );
+    rocksdb_options_set_max_write_buffer_number(options, 5);
+    rocksdb_options_set_min_write_buffer_number_to_merge(options, 2);
+    //rocksdb_options_optimize_level_style_compaction(options, 2 * __1GByte); // Overrides options write_buffer_size & max_write_buffer_number
+
+
+    // Delete logs ASAP rather than archiving them
+    rocksdb_options_set_WAL_ttl_seconds(options, 0);
+	rocksdb_options_set_WAL_size_limit_MB(options, 0);
+
+    rocksdb_readoptions_t* readoptions = rocksdb_readoptions_create();
+    rocksdb_readoptions_set_verify_checksums(readoptions, 0); // Default is 0x00
+
+
+    rocksdb_writeoptions_t* writeoptions = rocksdb_writeoptions_create();
+    rocksdb_writeoptions_set_sync(writeoptions, 0);	   // Default is 0x00
+    rocksdb_writeoptions_disable_WAL(writeoptions, 1); // Bypass Write-Ahead-Log
 
     // Open database.
     char* err = NULL;
+    rocksdb_options_set_compression(options, rocksdb_no_compression);
+    rocksdb_options_set_compaction_style(options, rocksdb_level_compaction); //Default is 'level'
+    rocksdb_options_set_create_if_missing(options, 1); // create the DB if it's not already present
     rocksdb_t *db = rocksdb_open(options, path, &err);
     if (err){
     	LogActivity(H3_ERROR_MSG, "RocksDB - %s\n",err);
@@ -118,7 +150,7 @@ KV_Status KV_RocksDb_List(KV_Handle handle, KV_Key prefix, uint8_t nTrim, KV_Key
         	// Copy the keys if a buffer is provided...
         	if(buffer){
             	size_t entrySize = keySize - nTrim;
-            	if(remaining >= entrySize){
+            	if(remaining >= (entrySize + 1)){
     				memcpy(&buffer[KV_LIST_BUFFER_SIZE - remaining], &key[nTrim], entrySize);
     				remaining -= (entrySize + 1); // Convert blob to string
     				nMatchingKeys++;
@@ -298,7 +330,7 @@ KV_Status KV_RocksDb_Exists(KV_Handle handle, KV_Key key) {
 
 KV_Status KV_RocksDb_Create(KV_Handle handle, KV_Key key, KV_Value value, off_t offset, size_t size) {
 	KV_Status status;
-	KV_RocksDB_Handle* storeHandle = (KV_RocksDB_Handle *)handle;
+//	KV_RocksDB_Handle* storeHandle = (KV_RocksDB_Handle *)handle;
 
 //	g_mutex_lock(&storeHandle->lock);
 	if( (status = KV_RocksDb_Exists(handle, key)) == KV_KEY_NOT_EXIST){
@@ -313,7 +345,7 @@ KV_Status KV_RocksDb_Copy(KV_Handle handle, KV_Key src_key, KV_Key dest_key) {
     size_t size = 0x00;
     KV_Value value = NULL;
 	KV_Status status;
-	KV_RocksDB_Handle* storeHandle = (KV_RocksDB_Handle *)handle;
+//	KV_RocksDB_Handle* storeHandle = (KV_RocksDB_Handle *)handle;
 
 //	g_mutex_lock(&storeHandle->lock);
 	if((status = KV_RocksDb_Read(handle, src_key, 0, &value, &size)) == KV_SUCCESS){
@@ -328,7 +360,7 @@ KV_Status KV_RocksDb_Move(KV_Handle handle, KV_Key src_key, KV_Key dest_key) {
     size_t size = 0x00;
     KV_Value value = NULL;
 	KV_Status status;
-	KV_RocksDB_Handle* storeHandle = (KV_RocksDB_Handle *)handle;
+//	KV_RocksDB_Handle* storeHandle = (KV_RocksDB_Handle *)handle;
 
 //	g_mutex_lock(&storeHandle->lock);
 	if( (status = KV_RocksDb_Read(handle, src_key, 0, &value, &size)) == KV_SUCCESS &&

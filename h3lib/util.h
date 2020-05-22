@@ -18,6 +18,10 @@
 #define LogActivity(level, ...)
 #endif
 
+#define __1KByte	1024
+#define __1MByte	(1024 * __1KByte)
+#define __1GByte	(1024 * __1MByte)
+
 typedef enum{
     H3_INFO_MSG = 0,
     H3_DEBUG_MSG,

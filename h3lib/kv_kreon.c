@@ -104,7 +104,7 @@ KV_Status KV_Kreon_List(KV_Handle handle, KV_Key prefix, uint8_t nTrim, KV_Key b
             	// Copy the keys if a buffer is provided...
             	if(buffer){
                 	size_t entrySize = keySize - nTrim;
-                	if(remaining >= entrySize){
+                	if(remaining >= (entrySize + 1)){
         				memcpy(&buffer[KV_LIST_BUFFER_SIZE - remaining], &key[nTrim], entrySize);
         				remaining -= (entrySize + 1); // Convert blob to string
         				nMatchingKeys++;
