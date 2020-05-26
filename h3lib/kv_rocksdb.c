@@ -31,7 +31,6 @@ typedef struct {
     rocksdb_options_t* options;
     rocksdb_readoptions_t* readoptions;
     rocksdb_writeoptions_t* writeoptions;
-//    GMutex lock;
 } KV_RocksDB_Handle;
 
 KV_Handle KV_RocksDb_Init(GKeyFile* cfgFile) {
@@ -116,7 +115,6 @@ void KV_RocksDb_Free(KV_Handle handle) {
 //    rocksdb_options_destroy(storeHandle->options);			// TODO <-- sometimes we crash here !!!
     rocksdb_close(storeHandle->db);
 
-//    g_mutex_clear(&storeHandle->lock);
     free(storeHandle->path);
     free(storeHandle);
 }
@@ -134,9 +132,6 @@ KV_Status KV_RocksDb_List(KV_Handle handle, KV_Key prefix, uint8_t nTrim, KV_Key
     	return KV_FAILURE;
     }
 
-    if(buffer)
-    	memset(buffer, 0, KV_LIST_BUFFER_SIZE);
-
     rocksdb_iter_seek(iter, prefix, strlen(prefix));
 
     while(rocksdb_iter_valid(iter) && status != KV_CONTINUE){
@@ -150,9 +145,9 @@ KV_Status KV_RocksDb_List(KV_Handle handle, KV_Key prefix, uint8_t nTrim, KV_Key
         	// Copy the keys if a buffer is provided...
         	if(buffer){
             	size_t entrySize = keySize - nTrim;
-            	if(remaining >= (entrySize + 1)){
+            	if(remaining >= entrySize ){
     				memcpy(&buffer[KV_LIST_BUFFER_SIZE - remaining], &key[nTrim], entrySize);
-    				remaining -= (entrySize + 1); // Convert blob to string
+    				remaining -= entrySize; // Convert blob to string
     				nMatchingKeys++;
             	}
             	else
@@ -190,7 +185,7 @@ KV_Status KV_RocksDb_Read(KV_Handle handle, KV_Key key, off_t offset, KV_Value* 
 	KV_RocksDB_Handle* storeHandle = (KV_RocksDB_Handle*) handle;
 
 	size_t bufferSize, segmentSize;
-	char* buffer = rocksdb_get(storeHandle->db, storeHandle->readoptions, key, strlen(key), &bufferSize, &error);
+	char* buffer = rocksdb_get(storeHandle->db, storeHandle->readoptions, key, strlen(key)+1, &bufferSize, &error);
 
 	if(error){
 		LogActivity(H3_ERROR_MSG, "RocksDB - %s\n",error);
@@ -250,7 +245,7 @@ KV_Status KV_RocksDb_Write(KV_Handle handle, KV_Key key, KV_Value value, off_t o
 
     // Retrieve previous data if any
     size_t bufferSize;
-    char* buffer = rocksdb_get(storeHandle->db, storeHandle->readoptions, key, strlen(key), &bufferSize, &error);
+    char* buffer = rocksdb_get(storeHandle->db, storeHandle->readoptions, key, strlen(key)+1, &bufferSize, &error);
 	if(error){
 		LogActivity(H3_ERROR_MSG, "RocksDB - %s\n",error);
 		free(error);
@@ -268,7 +263,7 @@ KV_Status KV_RocksDb_Write(KV_Handle handle, KV_Key key, KV_Value value, off_t o
 				return KV_FAILURE;
 		}
 
-		rocksdb_put(storeHandle->db, storeHandle->writeoptions, key, strlen(key), (char*)value, offset + size, &error);
+		rocksdb_put(storeHandle->db, storeHandle->writeoptions, key, strlen(key)+1, (char*)value, offset + size, &error);
         if (error){
         	LogActivity(H3_ERROR_MSG, "RocksDB - %s\n",error);
         	free(error);
@@ -289,7 +284,7 @@ KV_Status KV_RocksDb_Write(KV_Handle handle, KV_Key key, KV_Value value, off_t o
 
 		memcpy(patchedBuffer+offset, value, size);
 
-		rocksdb_put(storeHandle->db, storeHandle->writeoptions, key, strlen(key), patchedBuffer, max((offset + size),bufferSize), &error);
+		rocksdb_put(storeHandle->db, storeHandle->writeoptions, key, strlen(key)+1, patchedBuffer, max((offset + size),bufferSize), &error);
 		free(patchedBuffer);
 		if (error){
 			LogActivity(H3_ERROR_MSG, "RocksDB - %s\n",error);
@@ -305,7 +300,7 @@ KV_Status KV_RocksDb_Delete(KV_Handle handle, KV_Key key) {
     KV_RocksDB_Handle* storeHandle = (KV_RocksDB_Handle *)handle;
 
     char* error = NULL;
-    rocksdb_delete(storeHandle->db, storeHandle->writeoptions, key, strlen(key), &error);
+    rocksdb_delete(storeHandle->db, storeHandle->writeoptions, key, strlen(key)+1, &error);
     if (error){
     	LogActivity(H3_ERROR_MSG, "RocksDB - %s\n",error);
     	free(error);
@@ -330,13 +325,10 @@ KV_Status KV_RocksDb_Exists(KV_Handle handle, KV_Key key) {
 
 KV_Status KV_RocksDb_Create(KV_Handle handle, KV_Key key, KV_Value value, off_t offset, size_t size) {
 	KV_Status status;
-//	KV_RocksDB_Handle* storeHandle = (KV_RocksDB_Handle *)handle;
 
-//	g_mutex_lock(&storeHandle->lock);
 	if( (status = KV_RocksDb_Exists(handle, key)) == KV_KEY_NOT_EXIST){
 		 status = KV_RocksDb_Write(handle, key, value, offset, size);
 	}
-//	g_mutex_unlock(&storeHandle->lock);
 
 	return status;
 }
@@ -345,13 +337,10 @@ KV_Status KV_RocksDb_Copy(KV_Handle handle, KV_Key src_key, KV_Key dest_key) {
     size_t size = 0x00;
     KV_Value value = NULL;
 	KV_Status status;
-//	KV_RocksDB_Handle* storeHandle = (KV_RocksDB_Handle *)handle;
 
-//	g_mutex_lock(&storeHandle->lock);
 	if((status = KV_RocksDb_Read(handle, src_key, 0, &value, &size)) == KV_SUCCESS){
 		status = KV_RocksDb_Write(handle, dest_key, value, 0, size);
 	}
-//	g_mutex_unlock(&storeHandle->lock);
 
 	return status;
 }
@@ -360,14 +349,11 @@ KV_Status KV_RocksDb_Move(KV_Handle handle, KV_Key src_key, KV_Key dest_key) {
     size_t size = 0x00;
     KV_Value value = NULL;
 	KV_Status status;
-//	KV_RocksDB_Handle* storeHandle = (KV_RocksDB_Handle *)handle;
 
-//	g_mutex_lock(&storeHandle->lock);
 	if( (status = KV_RocksDb_Read(handle, src_key, 0, &value, &size)) == KV_SUCCESS &&
 		(status = KV_RocksDb_Write(handle, dest_key, value, 0, size)) == KV_SUCCESS		){
 		status = KV_RocksDb_Delete(handle, src_key);
 	}
-//	g_mutex_unlock(&storeHandle->lock);
 
 	return status;
 }
