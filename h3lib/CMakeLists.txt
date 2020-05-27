@@ -113,7 +113,11 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E
  
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink
                                                              ${CMAKE_SOURCE_DIR}/tools/run_benchmark.sh
-                                                             ${CMAKE_CURRENT_BINARY_DIR}/tools/run_benchmark.sh)                                                               
+                                                             ${CMAKE_CURRENT_BINARY_DIR}/tools/run_benchmark.sh) 
+                                                             
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink
+                                                             ${CMAKE_SOURCE_DIR}/tools/generate_flamegraph.sh
+                                                             ${CMAKE_CURRENT_BINARY_DIR}/tools/generate_flamegraph.sh)                                                                                                                             
                                                                                                                         
 
 set(CPACK_PACKAGE_NAME ${PROJECT_NAME})
