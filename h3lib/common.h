@@ -16,7 +16,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <regex.h>
+//#include <regex.h>
 #include <sys/stat.h>
 
 #include <uuid/uuid.h>
@@ -114,9 +114,9 @@ typedef struct{
 }H3_MultipartMetadata;
 
 
-H3_Status ValidBucketName(char* name);
-H3_Status ValidObjectName(char* name);
-H3_Status ValidPrefix(char* name);
+H3_Status ValidBucketName(KV_Operations* op,char* name);
+H3_Status ValidObjectName(KV_Operations* op,char* name);
+H3_Status ValidPrefix(KV_Operations* op,char* name);
 int GetUserId(H3_Token token, H3_UserId id);
 int GetBucketId(H3_Name bucketName, H3_BucketId id);
 int GetBucketIndex(H3_UserMetadata* userMetadata, H3_Name bucketName);

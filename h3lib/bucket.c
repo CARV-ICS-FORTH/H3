@@ -15,29 +15,20 @@
 #include "common.h"
 #include "util.h"
 
-H3_Status ValidBucketName(char* name){
+H3_Status ValidBucketName(KV_Operations* op, char* name){
     H3_Status status = H3_SUCCESS;
-    regex_t regex;
-
-    // https://regex101.com/
-    // Anything but / and # --> [/#]
-    // Only from accepted characters --> [^_0-9a-zA-Z.-]
 
     // Too small/big
     size_t nameSize = strnlen(name, H3_BUCKET_NAME_SIZE+1);
     if(nameSize > H3_BUCKET_NAME_SIZE){
         status = H3_NAME_TOO_LONG;
     }
-    if( nameSize == 0 || regcomp(&regex, "[^_0-9a-zA-Z.-]", REG_EXTENDED) != REG_NOERROR    ){
-        return H3_INVALID_ARGS;
+
+    // Check for invalid characters
+    else if( nameSize == 0 || strpbrk(name, "/#") ||(op->validate_key && op->validate_key(name) != KV_SUCCESS)   ){
+    	status = H3_INVALID_ARGS;
     }
 
-    // Contains invalid characters
-    if(regexec(&regex, name, 0, NULL, 0) != REG_NOMATCH){
-        status = H3_INVALID_ARGS;
-    }
-
-    regfree(&regex);
     return status;
 }
 
@@ -81,7 +72,7 @@ H3_Status H3_CreateBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
 
 
     // Validate bucketName & extract userId from token
-    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS){
+    if( (status = ValidBucketName(op, bucketName)) != H3_SUCCESS){
         return status;
     }
 
@@ -132,7 +123,7 @@ H3_Status H3_CreateBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
     else if(kvStatus == KV_KEY_EXIST)
         return H3_EXISTS;
 
-    else if(kvStatus == KV_NAME_TOO_LONG)
+    else if(kvStatus == KV_KEY_TOO_LONG)
         return H3_NAME_TOO_LONG;
 
     return H3_STORE_ERROR;
@@ -176,7 +167,7 @@ H3_Status H3_DeleteBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
     size_t size = 0;
 
     // Validate bucketName & extract userId from token
-    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS){
+    if( (status = ValidBucketName(op, bucketName)) != H3_SUCCESS){
         return status;
     }
 
@@ -218,7 +209,7 @@ H3_Status H3_DeleteBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
 
             free(userMetadata);
         }
-        else if(kvStatus == KV_NAME_TOO_LONG){
+        else if(kvStatus == KV_KEY_TOO_LONG){
             return H3_NAME_TOO_LONG;
         }
         else if(nKeys){
@@ -230,7 +221,7 @@ H3_Status H3_DeleteBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
     else if(kvStatus == KV_KEY_NOT_EXIST){
         return H3_NOT_EXISTS;
     }
-    else if(kvStatus == KV_NAME_TOO_LONG)
+    else if(kvStatus == KV_KEY_TOO_LONG)
         return H3_NAME_TOO_LONG;
 
 
@@ -346,7 +337,7 @@ H3_Status H3_InfoBucket(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
     KV_Operations* op = ctx->operation;
 
     // Validate bucketName & extract userId from token
-    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS){
+    if( (status = ValidBucketName(op, bucketName)) != H3_SUCCESS){
         return status;
     }
 
@@ -407,7 +398,7 @@ H3_Status H3_InfoBucket(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
                     bucketInfo->stats.size = bucketSize;
                     status = H3_SUCCESS;
                 }
-                else if(kvStatus == KV_NAME_TOO_LONG)
+                else if(kvStatus == KV_KEY_TOO_LONG)
                     status = H3_NAME_TOO_LONG;
             }
             else{
@@ -420,7 +411,7 @@ H3_Status H3_InfoBucket(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
     else if(kvStatus == KV_KEY_NOT_EXIST){
         return H3_NOT_EXISTS;
     }
-    else if(kvStatus == KV_NAME_TOO_LONG)
+    else if(kvStatus == KV_KEY_TOO_LONG)
         return H3_NAME_TOO_LONG;
 
 
@@ -509,7 +500,7 @@ H3_Status H3_SetBucketAttributes(H3_Handle handle, H3_Token token, H3_Name bucke
     KV_Status kvStatus;
 
     // Validate bucketName & extract userId from token
-    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS){
+    if( (status = ValidBucketName(op, bucketName)) != H3_SUCCESS){
         return status;
     }
 
@@ -538,7 +529,7 @@ H3_Status H3_SetBucketAttributes(H3_Handle handle, H3_Token token, H3_Name bucke
     else if(kvStatus == KV_KEY_NOT_EXIST){
         return H3_NOT_EXISTS;
     }
-    else if(kvStatus == KV_NAME_TOO_LONG){
+    else if(kvStatus == KV_KEY_TOO_LONG){
         return H3_NAME_TOO_LONG;
     }
 
@@ -577,7 +568,7 @@ H3_Status H3_PurgeBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
 	KV_Operations* op = ctx->operation;
 
 	// Validate bucketName & extract userId from token
-	if( (status = ValidBucketName(bucketName)) != H3_SUCCESS){
+	if( (status = ValidBucketName(op, bucketName)) != H3_SUCCESS){
 		return status;
 	}
 
@@ -625,7 +616,7 @@ H3_Status H3_PurgeBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
 			if(kvStatus == KV_SUCCESS){
 				status = H3_SUCCESS;
 			}
-			else if(kvStatus == KV_NAME_TOO_LONG)
+			else if(kvStatus == KV_KEY_TOO_LONG)
 				status = H3_NAME_TOO_LONG;
 		}
 		free(bucketMetadata);
@@ -633,7 +624,7 @@ H3_Status H3_PurgeBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
 	else if(kvStatus == KV_KEY_NOT_EXIST){
 		return H3_NOT_EXISTS;
 	}
-	else if(kvStatus == KV_NAME_TOO_LONG)
+	else if(kvStatus == KV_KEY_TOO_LONG)
 		return H3_NAME_TOO_LONG;
 
 	return status;

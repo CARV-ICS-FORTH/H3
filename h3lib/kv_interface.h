@@ -27,7 +27,7 @@ typedef unsigned char* KV_Value;
 
 // Error codes
 typedef enum {
-    KV_FAILURE, KV_KEY_EXIST, KV_KEY_NOT_EXIST, KV_SUCCESS, KV_CONTINUE, KV_NAME_TOO_LONG
+    KV_FAILURE, KV_KEY_EXIST, KV_KEY_NOT_EXIST, KV_SUCCESS, KV_CONTINUE, KV_KEY_TOO_LONG, KV_INVALID_KEY
 }KV_Status;
 
 
@@ -35,6 +35,7 @@ typedef enum {
 typedef struct KV_Operations {
 	KV_Handle (*init)(GKeyFile* cfgFile);
 	void (*free)(KV_Handle handle);
+	KV_Status (*validate_key)(KV_Key key);
 
 	/*
 	 * --- Read Operations --
@@ -76,8 +77,6 @@ typedef struct KV_Operations {
      * --- Sync Operation ---
      * This may be useful for the DDN IME store.
 	 */
-
-
 
 	KV_Status (*metadata_read)(KV_Handle handle, KV_Key key, off_t offset, KV_Value* value, size_t* size);
 	KV_Status (*metadata_write)(KV_Handle handle, KV_Key key, KV_Value value, off_t offset, size_t size);

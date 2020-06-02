@@ -17,38 +17,33 @@
 #include "common.h"
 #include "util.h"
 
-H3_Status ValidObjectName(char* name){
+H3_Status ValidObjectName(KV_Operations* op, char* name){
     H3_Status status = H3_SUCCESS;
 
     if(name){
 
         // Too small/big
-        regex_t regex;
         size_t nameSize = strnlen(name, H3_OBJECT_NAME_SIZE+1);
         if(nameSize > H3_OBJECT_NAME_SIZE){
             status = H3_NAME_TOO_LONG;
         }
-        else if(nameSize == 0 || regcomp(&regex, "(^/)|([^/_+@%0-9a-zA-Z.-])|(/{2,})|(/$)|(%.)", REG_EXTENDED) != REG_NOERROR){
-            status = H3_INVALID_ARGS;
+
+        // Check for invalid characters
+        else if( nameSize == 0 || name[0] == '/' || (op->validate_key && op->validate_key(name) != KV_SUCCESS)   ){
+        	status = H3_INVALID_ARGS;
         }
-        else if(regexec(&regex, name, 0, NULL, 0) != REG_NOMATCH){
-            regfree(&regex);
-            status = H3_INVALID_ARGS;
-        }
-        else
-            regfree(&regex);
     }
 
     return status;
 }
 
-H3_Status ValidPrefix(char* name){
+H3_Status ValidPrefix(KV_Operations* op, char* name){
     if(name){
         size_t nameSize = strnlen(name, H3_OBJECT_NAME_SIZE+1);
         if (nameSize == 0)
             return H3_SUCCESS;
     }
-    return ValidObjectName(name);
+    return ValidObjectName(op, name);
 }
 
 uint EstimateNumOfParts(H3_ObjectMetadata* objMeta, size_t size, off_t offset){
@@ -283,7 +278,7 @@ KV_Status CopyData(H3_Context* ctx, H3_UserId userId, H3_ObjectId srcObjId, H3_O
             }
 
             // Do not mask Name-Too-Long error
-            else if(status != KV_NAME_TOO_LONG)
+            else if(status != KV_KEY_TOO_LONG)
                 status = KV_FAILURE;
         }
         free(srcObjMeta);
@@ -336,7 +331,7 @@ H3_Status H3_CreateObject(H3_Handle handle, H3_Token token, H3_Name bucketName, 
     size_t mSize = 0;
 
     // Validate bucketName & extract userId from token
-    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS || (status = ValidObjectName(objectName)) != H3_SUCCESS){
+    if( (status = ValidBucketName(op, bucketName)) != H3_SUCCESS || (status = ValidObjectName(op, objectName)) != H3_SUCCESS){
         return status;
     }
 
@@ -380,7 +375,7 @@ H3_Status H3_CreateObject(H3_Handle handle, H3_Token token, H3_Name bucketName, 
         else if(storeStatus == KV_KEY_EXIST)
             status = H3_EXISTS;
 
-        else if(storeStatus == KV_NAME_TOO_LONG)
+        else if(storeStatus == KV_KEY_TOO_LONG)
             status = H3_NAME_TOO_LONG;
 
         free(objMeta);
@@ -433,7 +428,7 @@ H3_Status H3_CreateObjectFromFile(H3_Handle handle, H3_Token token, H3_Name buck
     size_t mSize = 0;
 
     // Validate bucketName & extract userId from token
-    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS || (status = ValidObjectName(objectName)) != H3_SUCCESS){
+    if( (status = ValidBucketName(op, bucketName)) != H3_SUCCESS || (status = ValidObjectName(op, objectName)) != H3_SUCCESS){
         return status;
     }
 
@@ -491,7 +486,7 @@ H3_Status H3_CreateObjectFromFile(H3_Handle handle, H3_Token token, H3_Name buck
         else if(storeStatus == KV_KEY_EXIST)
             status = H3_EXISTS;
 
-        else if(storeStatus == KV_NAME_TOO_LONG)
+        else if(storeStatus == KV_KEY_TOO_LONG)
             status = H3_NAME_TOO_LONG;
 
         free(objMeta);
@@ -540,7 +535,7 @@ H3_Status H3_CreateDummyObject(H3_Handle handle, H3_Token token, H3_Name bucketN
     size_t mSize = 0;
 
     // Validate bucketName & extract userId from token
-    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS || (status = ValidObjectName(objectName)) != H3_SUCCESS){
+    if( (status = ValidBucketName(op, bucketName)) != H3_SUCCESS || (status = ValidObjectName(op, objectName)) != H3_SUCCESS){
         return status;
     }
 
@@ -593,7 +588,7 @@ H3_Status H3_CreateDummyObject(H3_Handle handle, H3_Token token, H3_Name bucketN
         else if(storeStatus == KV_KEY_EXIST)
             status = H3_EXISTS;
 
-        else if(storeStatus == KV_NAME_TOO_LONG)
+        else if(storeStatus == KV_KEY_TOO_LONG)
             status = H3_NAME_TOO_LONG;
 
         free(objMeta);
@@ -647,7 +642,7 @@ H3_Status H3_ReadObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
     size_t mSize = 0;
 
     // Validate bucketName & extract userId from token
-    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS || (status = ValidObjectName(objectName)) != H3_SUCCESS){
+    if( (status = ValidBucketName(op, bucketName)) != H3_SUCCESS || (status = ValidObjectName(op, objectName)) != H3_SUCCESS){
         return status;
     }
 
@@ -697,7 +692,7 @@ H3_Status H3_ReadObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
     else if(storeStatus == KV_KEY_NOT_EXIST)
         return H3_NOT_EXISTS;
 
-    else if(storeStatus == KV_NAME_TOO_LONG)
+    else if(storeStatus == KV_KEY_TOO_LONG)
         return H3_NAME_TOO_LONG;
 
     return status;
@@ -742,7 +737,7 @@ H3_Status H3_ReadDumyObject(H3_Handle handle, H3_Token token, H3_Name bucketName
     size_t mSize = 0;
 
     // Validate bucketName & extract userId from token
-    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS || (status = ValidObjectName(objectName)) != H3_SUCCESS){
+    if( (status = ValidBucketName(op, bucketName)) != H3_SUCCESS || (status = ValidObjectName(op, objectName)) != H3_SUCCESS){
         return status;
     }
 
@@ -790,7 +785,7 @@ H3_Status H3_ReadDumyObject(H3_Handle handle, H3_Token token, H3_Name bucketName
     else if(storeStatus == KV_KEY_NOT_EXIST)
         return H3_NOT_EXISTS;
 
-    else if(storeStatus == KV_NAME_TOO_LONG)
+    else if(storeStatus == KV_KEY_TOO_LONG)
         return H3_NAME_TOO_LONG;
 
     return status;
@@ -838,7 +833,7 @@ H3_Status H3_ReadObjectToFile(H3_Handle handle, H3_Token token, H3_Name bucketNa
     size_t mSize = 0;
 
     // Validate bucketName & extract userId from token
-    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS || (status = ValidObjectName(objectName)) != H3_SUCCESS){
+    if( (status = ValidBucketName(op, bucketName)) != H3_SUCCESS || (status = ValidObjectName(op, objectName)) != H3_SUCCESS){
         return status;
     }
 
@@ -896,7 +891,7 @@ H3_Status H3_ReadObjectToFile(H3_Handle handle, H3_Token token, H3_Name bucketNa
     else if(storeStatus == KV_KEY_NOT_EXIST)
         return H3_NOT_EXISTS;
 
-    else if(storeStatus == KV_NAME_TOO_LONG)
+    else if(storeStatus == KV_KEY_TOO_LONG)
         return H3_NAME_TOO_LONG;
 
     return status;
@@ -942,7 +937,7 @@ H3_Status H3_InfoObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
     size_t mSize = 0;
 
     // Validate bucketName & extract userId from token
-    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS || (status = ValidObjectName(objectName)) != H3_SUCCESS){
+    if( (status = ValidBucketName(op, bucketName)) != H3_SUCCESS || (status = ValidObjectName(op, objectName)) != H3_SUCCESS){
         return status;
     }
 
@@ -978,7 +973,7 @@ H3_Status H3_InfoObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
     else if(storeStatus == KV_KEY_NOT_EXIST)
         return H3_NOT_EXISTS;
 
-    else if(storeStatus == KV_NAME_TOO_LONG)
+    else if(storeStatus == KV_KEY_TOO_LONG)
         return H3_NAME_TOO_LONG;
 
     return status;
@@ -1022,7 +1017,7 @@ H3_Status H3_SetObjectAttributes(H3_Handle handle, H3_Token token, H3_Name bucke
     size_t mSize = 0;
 
     // Validate bucketName & extract userId from token
-    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS || (status = ValidObjectName(objectName)) != H3_SUCCESS){
+    if( (status = ValidBucketName(op, bucketName)) != H3_SUCCESS || (status = ValidObjectName(op, objectName)) != H3_SUCCESS){
         return status;
     }
 
@@ -1055,7 +1050,7 @@ H3_Status H3_SetObjectAttributes(H3_Handle handle, H3_Token token, H3_Name bucke
     else if(storeStatus == KV_KEY_NOT_EXIST)
         return H3_NOT_EXISTS;
 
-    else if(storeStatus == KV_NAME_TOO_LONG)
+    else if(storeStatus == KV_KEY_TOO_LONG)
         return H3_NAME_TOO_LONG;
 
     return status;
@@ -1096,7 +1091,7 @@ H3_Status DeleteObject(H3_Context* ctx, H3_UserId userId, H3_ObjectId objId, cha
     else if(storeStatus == KV_KEY_NOT_EXIST)
         return H3_NOT_EXISTS;
 
-    else if(storeStatus == KV_NAME_TOO_LONG)
+    else if(storeStatus == KV_KEY_TOO_LONG)
         return H3_NAME_TOO_LONG;
 
     return status;
@@ -1134,7 +1129,7 @@ H3_Status H3_DeleteObject(H3_Handle handle, H3_Token token, H3_Name bucketName, 
     H3_Status status;
 
     // Validate bucketName & extract userId from token
-    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS || (status = ValidObjectName(objectName)) != H3_SUCCESS){
+    if( (status = ValidBucketName(ctx->operation, bucketName)) != H3_SUCCESS || (status = ValidObjectName(ctx->operation, objectName)) != H3_SUCCESS){
         return status;
     }
 
@@ -1183,7 +1178,7 @@ H3_Status H3_TruncateObject(H3_Handle handle, H3_Token token, H3_Name bucketName
     size_t mSize = 0;
 
     // Validate bucketName & extract userId from token
-    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS || (status = ValidObjectName(objectName)) != H3_SUCCESS){
+    if( (status = ValidBucketName(op, bucketName)) != H3_SUCCESS || (status = ValidObjectName(op, objectName)) != H3_SUCCESS){
         return status;
     }
 
@@ -1284,7 +1279,7 @@ H3_Status H3_TruncateObject(H3_Handle handle, H3_Token token, H3_Name bucketName
     else if(storeStatus == KV_KEY_NOT_EXIST)
         return H3_NOT_EXISTS;
 
-    else if(storeStatus == KV_NAME_TOO_LONG)
+    else if(storeStatus == KV_KEY_TOO_LONG)
         return H3_NAME_TOO_LONG;
 
     return status;
@@ -1313,7 +1308,9 @@ H3_Status MoveObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Na
     size_t dstMetaSize = 0;
 
     // Validate bucketName & extract userId from token
-    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS || (status = ValidObjectName(srcObjectName)) != H3_SUCCESS || (status = ValidObjectName(dstObjectName)) != H3_SUCCESS){
+    if( (status = ValidBucketName(op, bucketName)) != H3_SUCCESS 	||
+    	(status = ValidObjectName(op, srcObjectName)) != H3_SUCCESS ||
+		(status = ValidObjectName(op, dstObjectName)) != H3_SUCCESS		){
         return status;
     }
 
@@ -1375,7 +1372,7 @@ H3_Status MoveObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Na
     else if(storeStatus == KV_KEY_NOT_EXIST)
         status = H3_NOT_EXISTS;
 
-    else if(storeStatus == KV_NAME_TOO_LONG)
+    else if(storeStatus == KV_KEY_TOO_LONG)
         status = H3_NAME_TOO_LONG;
 
     LogActivity(H3_DEBUG_MSG, "Exit - %d\n", status );
@@ -1472,7 +1469,9 @@ H3_Status H3_CopyObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
     size_t mSize = 0;
 
     // Validate bucketName & extract userId from token
-    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS || (status = ValidObjectName(srcObjectName)) != H3_SUCCESS || (status = ValidObjectName(dstObjectName)) != H3_SUCCESS){
+    if( (status = ValidBucketName(op, bucketName)) != H3_SUCCESS 	||
+    	(status = ValidObjectName(op, srcObjectName)) != H3_SUCCESS ||
+		(status = ValidObjectName(op, dstObjectName)) != H3_SUCCESS		){
         return status;
     }
 
@@ -1539,7 +1538,7 @@ H3_Status H3_CopyObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
     else if(storeStatus == KV_KEY_NOT_EXIST)
         return H3_NOT_EXISTS;
 
-    else if(storeStatus == KV_NAME_TOO_LONG)
+    else if(storeStatus == KV_KEY_TOO_LONG)
         return H3_NAME_TOO_LONG;
 
     return status;
@@ -1593,7 +1592,7 @@ H3_Status H3_ListObjects(H3_Handle handle, H3_Token token, H3_Name bucketName, H
     size_t mSize = 0;
 
     // Validate bucketName & extract userId from token
-    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS || (status = ValidPrefix(prefix)) != H3_SUCCESS){
+    if( (status = ValidBucketName(op, bucketName)) != H3_SUCCESS || (status = ValidPrefix(op, prefix)) != H3_SUCCESS){
         return H3_INVALID_ARGS;
     }
 
@@ -1627,7 +1626,7 @@ H3_Status H3_ListObjects(H3_Handle handle, H3_Token token, H3_Name bucketName, H
     else if(storeStatus == KV_KEY_NOT_EXIST)
         return H3_NOT_EXISTS;
 
-    else if(storeStatus == KV_NAME_TOO_LONG)
+    else if(storeStatus == KV_KEY_TOO_LONG)
         return H3_NAME_TOO_LONG;
 
     return status;
@@ -1674,7 +1673,7 @@ H3_Status H3_ForeachObject(H3_Handle handle, H3_Token token, H3_Name bucketName,
 
     // Validate bucketName & extract userId from token
     // Validate bucketName & extract userId from token
-    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS || (status = ValidPrefix(prefix)) != H3_SUCCESS){
+    if( (status = ValidBucketName(op, bucketName)) != H3_SUCCESS || (status = ValidPrefix(op, prefix)) != H3_SUCCESS){
         return H3_INVALID_ARGS;
     }
 
@@ -1715,7 +1714,7 @@ H3_Status H3_ForeachObject(H3_Handle handle, H3_Token token, H3_Name bucketName,
     else if(storeStatus == KV_KEY_NOT_EXIST)
         return H3_NOT_EXISTS;
 
-    else if(storeStatus == KV_NAME_TOO_LONG)
+    else if(storeStatus == KV_KEY_TOO_LONG)
         return H3_NAME_TOO_LONG;
 
     return status;
@@ -1767,7 +1766,7 @@ H3_Status H3_WriteObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H
     size_t mSize = 0;
 
     // Validate bucketName & extract userId from token
-    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS || (status = ValidObjectName(objectName)) != H3_SUCCESS){
+    if( (status = ValidBucketName(op, bucketName)) != H3_SUCCESS || (status = ValidObjectName(op, objectName)) != H3_SUCCESS){
         return status;
     }
 
@@ -1781,11 +1780,11 @@ H3_Status H3_WriteObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H
     if((storeStatus = op->metadata_exists(_handle, objId)) == KV_KEY_NOT_EXIST){
        return H3_CreateObject(handle, token, bucketName, objectName, data, size);
     }
-    else if(storeStatus == KV_NAME_TOO_LONG)
+    else if(storeStatus == KV_KEY_TOO_LONG)
         return H3_NAME_TOO_LONG;
 
     // Get object metadata and make sure we have access
-    if((storeStatus = op->metadata_read(_handle, objId, 0, &value, &mSize)) == KV_NAME_TOO_LONG){
+    if((storeStatus = op->metadata_read(_handle, objId, 0, &value, &mSize)) == KV_KEY_TOO_LONG){
         return H3_NAME_TOO_LONG;
     }
     else if(storeStatus != KV_SUCCESS)
@@ -1809,7 +1808,7 @@ H3_Status H3_WriteObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H
 				(storeStatus = op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, objMetaSize)) == KV_SUCCESS     ){
 				status = H3_SUCCESS;
 			}
-			else if(storeStatus == KV_NAME_TOO_LONG)
+			else if(storeStatus == KV_KEY_TOO_LONG)
 				status = H3_NAME_TOO_LONG;
 #else
 			if( (storeStatus = WriteData(ctx, objMeta, data, size, offset)) != KV_SUCCESS ){
@@ -1822,7 +1821,7 @@ H3_Status H3_WriteObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H
 			if(storeStatus == KV_SUCCESS)
 				status = H3_SUCCESS;
 
-			else if(storeStatus == KV_NAME_TOO_LONG)
+			else if(storeStatus == KV_KEY_TOO_LONG)
 				status = H3_NAME_TOO_LONG;
 #endif
         }
@@ -1881,7 +1880,7 @@ H3_Status H3_WriteObjectFromFile(H3_Handle handle, H3_Token token, H3_Name bucke
     size_t mSize = 0;
 
     // Validate bucketName & extract userId from token
-    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS || (status = ValidObjectName(objectName)) != H3_SUCCESS){
+    if( (status = ValidBucketName(op, bucketName)) != H3_SUCCESS || (status = ValidObjectName(op, objectName)) != H3_SUCCESS){
         return status;
     }
 
@@ -1895,11 +1894,11 @@ H3_Status H3_WriteObjectFromFile(H3_Handle handle, H3_Token token, H3_Name bucke
     if((storeStatus = op->metadata_exists(_handle, objId)) == KV_KEY_NOT_EXIST){
        return H3_CreateObjectFromFile(handle, token, bucketName, objectName, fd, size);
     }
-    else if(storeStatus == KV_NAME_TOO_LONG)
+    else if(storeStatus == KV_KEY_TOO_LONG)
         return H3_NAME_TOO_LONG;
 
     // Get object metadata and make sure we have access
-    if((storeStatus = op->metadata_read(_handle, objId, 0, &value, &mSize)) == KV_NAME_TOO_LONG){
+    if((storeStatus = op->metadata_read(_handle, objId, 0, &value, &mSize)) == KV_KEY_TOO_LONG){
         return H3_NAME_TOO_LONG;
     }
     else if(storeStatus != KV_SUCCESS)
@@ -1970,11 +1969,14 @@ H3_Status H3_CreateObjectCopy(H3_Handle handle, H3_Token token, H3_Name bucketNa
 
     H3_Status status;
     H3_Context* ctx = (H3_Context*)handle;
+    KV_Operations* op = ctx->operation;
     H3_UserId userId;
     H3_ObjectId srcObjId, dstObjId;
 
     // Validate bucketName & extract userId from token
-    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS || (status = ValidObjectName(srcObjectName)) != H3_SUCCESS || (status = ValidObjectName(dstObjectName)) != H3_SUCCESS){
+    if( (status = ValidBucketName(op, bucketName)) != H3_SUCCESS 	||
+    	(status = ValidObjectName(op, srcObjectName)) != H3_SUCCESS ||
+		(status = ValidObjectName(op, dstObjectName)) != H3_SUCCESS		){
         return status;
     }
 
@@ -1994,7 +1996,7 @@ H3_Status H3_CreateObjectCopy(H3_Handle handle, H3_Token token, H3_Name bucketNa
             status = H3_NOT_EXISTS;
             break;
 
-        case KV_NAME_TOO_LONG:
+        case KV_KEY_TOO_LONG:
             status = H3_NAME_TOO_LONG;
             break;
 
@@ -2038,11 +2040,14 @@ H3_Status H3_WriteObjectCopy(H3_Handle handle, H3_Token token, H3_Name bucketNam
 
     H3_Status status;
     H3_Context* ctx = (H3_Context*)handle;
+    KV_Operations* op = ctx->operation;
     H3_UserId userId;
     H3_ObjectId srcObjId, dstObjId;
 
     // Validate bucketName & extract userId from token
-    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS || (status = ValidObjectName(srcObjectName)) != H3_SUCCESS || (status = ValidObjectName(dstObjectName)) != H3_SUCCESS){
+    if( (status = ValidBucketName(op, bucketName)) != H3_SUCCESS 	||
+    	(status = ValidObjectName(op, srcObjectName)) != H3_SUCCESS ||
+		(status = ValidObjectName(op, dstObjectName)) != H3_SUCCESS		){
         return status;
     }
 
@@ -2062,7 +2067,7 @@ H3_Status H3_WriteObjectCopy(H3_Handle handle, H3_Token token, H3_Name bucketNam
             status = H3_NOT_EXISTS;
             break;
 
-        case KV_NAME_TOO_LONG:
+        case KV_KEY_TOO_LONG:
             status = H3_NAME_TOO_LONG;
             break;
 
