@@ -496,6 +496,7 @@ static int H3FS_Read(const char* path, char* buffer, size_t size, off_t offset ,
     if(length){
         switch(H3_ReadObject(data.handle, &data.token, data.bucket, object, offset, &voidBuffer, &size)){
             case H3_SUCCESS:
+            case H3_CONTINUE:
                 res = size;
                 break;
 
