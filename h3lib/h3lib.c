@@ -16,6 +16,10 @@
 
 extern KV_Operations operationsFilesystem;
 
+#ifdef H3LIB_USE_REDIS
+extern KV_Operations operationsRedis;
+#endif
+
 #ifdef H3LIB_USE_KREON
 extern KV_Operations operationsKreon;
 #endif
@@ -229,6 +233,12 @@ H3_Handle H3_Init(H3_StoreType storageType, char* cfgFileName) {
     if(ctx){
 		switch(storageType){
 			case H3_STORE_REDIS:
+#ifdef H3LIB_USE_REDIS
+				LogActivity(H3_INFO_MSG, "Using kv_redis driver...\n");
+				ctx->operation = &operationsRedis;
+				break;
+#endif
+
 			case H3_STORE_IME:
 				LogActivity(H3_INFO_MSG, "WARNING: Driver not available...\n");
 				ctx->operation = NULL;

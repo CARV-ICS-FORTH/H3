@@ -208,6 +208,7 @@ KV_Status KV_Kreon_Sync(KV_Handle handle) {
 KV_Operations operationsKreon = {
     .init = KV_Kreon_Init,
     .free = KV_Kreon_Free,
+	.validate_key = NULL,
 
     .metadata_read = KV_Kreon_Read,
     .metadata_write = KV_Kreon_Write,
