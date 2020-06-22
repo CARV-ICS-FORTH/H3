@@ -12,6 +12,11 @@ import org.apache.hadoop.fs.FSExceptionMessages;
 import org.apache.hadoop.fs.FSInputStream;
 import org.apache.log4j.Logger;
 
+/**
+ * The input stream for an H3 object.
+ * @author Giorgos Kalaentzis
+ * @version 0.1-beta
+ */
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
 public class JH3InputStream extends FSInputStream implements CanSetReadahead {
@@ -31,18 +36,18 @@ public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 	private final String key;
 	private final String uri;
 
-	/**
-	 * 
+	/*
+	 * The content length of the object.
 	 */
 	private final long contentLength;
 
-	/**
+	/*
 	 * The start of the content range of the last request. This is an absolute value
 	 * of the range, not a length field.
 	 */
 	private long contentRangeStart;
 
-	/**
+	/*
 	 * How many bytes were read ahead of the stream.
 	 */
 	private long readahead;
@@ -58,11 +63,20 @@ public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 	 */
 	// private long nextReadPos;
 
-	/**
+	/*
 	 * Current chunk of data that has been read
 	 */
 	private JH3Object dataChunk;
 
+	/**
+	 * Create the stream.
+	 * @param client The JH3 client to use
+	 * @param bucket The bucket name that hosts the object
+	 * @param key	The name of the object
+	 * @param contentLength The length of object's content
+	 * @param readahead The readahead butes
+	 * @throws IOException in the event of IO related errors
+	 */
 	public JH3InputStream(JH3 client, String bucket, String key, long contentLength, long readahead)
 			throws IOException {
 		log.trace("JH3InputSteam - " + "client: " + client + ", bucket: " + bucket + ", key: " + key
@@ -94,6 +108,13 @@ public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 		}
 	}
 
+	/**
+	 * Seek into an H3 object.
+	 * Sets the absolute position inside the object. The seek position must be positive and less than the length of the
+	 * stream.
+	 * @param targetPos The new position inside the object
+	 * @throws EOFException on the event of negative seeks, or when position is greater than the object's length
+	 */
 	@Override
 	public synchronized void seek(long targetPos) throws IOException {
 		log.trace("JH3InputStream:seek - targetPos = " + targetPos);
@@ -114,6 +135,10 @@ public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 		pos = targetPos;
 	}
 
+	/**
+	 * Get the current position in the object.
+	 * @return the current position
+	 */
 	@Override
 	public synchronized long getPos() throws IOException {
 		log.trace("JH3InputStream:getPos");
@@ -121,12 +146,20 @@ public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 		// return (nextReadPos < 0) ? 0 : nextReadPos;
 	}
 
+	/**
+	 * Seek to a new source (this operation is not supported by H3).
+	 */
 	@Override
 	public boolean seekToNewSource(long targetPos) throws IOException {
 		log.trace("JH3InputStream:seekToNewSource - " + "targetPos: " + targetPos);
 		return false;
 	}
 
+	/**
+	 * Reads a byte from the H3 object.
+	 * @return the byte that was read
+	 * @throws IOException in the event of IO related errors
+	 */
 	@Override
 	public synchronized int read() throws IOException {
 		log.trace("JH3InputStream:read");
@@ -182,6 +215,14 @@ public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 		}
 	}
 
+	/**
+	 * Reads length bytes from the H3 object into the destination buffer, starting at given offset.
+	 * @param buffer the buffer in which the bytes will be stored
+	 * @param offset the offset in the buffer
+	 * @param length the number of bytes to read
+	 * @return the number of bytes that were read
+	 * @throws IOException in the event of IO related errors
+	 */
 	@Override
 	public synchronized int read(byte[] buffer, int offset, int length) throws IOException {
 		log.trace("JH3InputStream:read - buffer = " + buffer + ", offset = " + offset + ", length = " + length);
@@ -271,8 +312,13 @@ public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 	}
 
 	/**
-	 * Operation which only seeks at the start of the series of operations; seeking
-	 * back at the end
+	 * Operation which only seeks at the start of the series of operations; seeking back at the end
+ 	 * @param position the starting position to read from H3 object
+	 * @param buffer the buffer in which the bytes will be stored
+	 * @param offset the offset in the buffer
+	 * @param length the number of bytes to read
+	 * @throws EOFException when length exceeds the object's content length
+	 * @throws IOException in the event of IO related errors
 	 */
 	@Override
 	public void readFully(long position, byte[] buffer, int offset, int length) throws IOException {
@@ -299,6 +345,11 @@ public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 		}
 	}
 
+	/**
+	 * The number of remaining available bytes in the H3 object.
+	 * Reports up to {@code Integer.MAX_VALUE}
+	 * @return the number of available bytes
+	 */
 	@Override
 	public synchronized int available() throws IOException {
 		log.trace("JH3InputStream:available");
@@ -311,6 +362,9 @@ public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 		return (int) remaining;
 	}
 
+	/**
+	 * Close the stream. Does nothing if stream is already closed.
+	 */
 	@Override
 	public synchronized void close() throws IOException {
 		log.trace("JH3InputStream:close");
@@ -325,6 +379,10 @@ public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 		}
 	}
 
+	/**
+	 * Set the readahead field to specify how many bytes to read ahead.
+	 * @param readahead the number of bytes to readahead
+	 */
 	@Override
 	public synchronized void setReadahead(Long readahead) {
 		log.trace("JH3InputStream:setReadahead - " + "readahead: " + readahead);
@@ -338,12 +396,19 @@ public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 		}
 	}
 
-	/* How many bytes are left to read */
+	/**
+	 * Get the number of bytes that are remaining in the H3 object.
+	 * @return the number of the remaining bytes
+	 * */
 	public synchronized long remainingInFile() {
 		log.trace("JH3InputStream:remainingInFile: " + (this.contentLength - this.pos));
 		return this.contentLength - this.pos;
 	}
 
+	/**
+	 * Get the current readahead value
+	 * @return a non-negative readahead value
+	 */
 	public synchronized long getReadahead() {
 		log.trace("JH3InputStream:getReadahead");
 		return readahead;
@@ -360,6 +425,10 @@ public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 
 	// private void lazySeek(long targetPos, long len) throws IOException {}
 
+	/**
+	 * Verify that the input stream is open. Non blocking; this gives the last state of the volatile {@link #closed} field.
+	 * @throws IOException if the stream is closed.
+	 */
 	private void checkNotClosed() throws IOException {
 		log.trace("JH3InputStream:checkNotClosed");
 
@@ -368,7 +437,10 @@ public class JH3InputStream extends FSInputStream implements CanSetReadahead {
 		}
 	}
 
-	/* Seek without raising any exception. Used in finally clauses */
+	/**
+	 *  Seek without raising any exception. Used in finally clauses.
+	 * @param positiveTargetPos the position to seek to
+	 *  */
 	private void seekQuietly(long positiveTargetPos) {
 		try {
 			seek(positiveTargetPos);

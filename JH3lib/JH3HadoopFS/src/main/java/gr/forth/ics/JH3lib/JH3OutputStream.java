@@ -13,6 +13,11 @@ import org.apache.log4j.Logger;
 
 import com.google.common.base.Preconditions;
 
+/**
+ * The output stream for a H3 object.
+ * @author Giorgos Kalaentzis
+ * @version 0.1-beta
+ */
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
 class JH3OutputStream extends OutputStream
@@ -22,39 +27,47 @@ class JH3OutputStream extends OutputStream
 
   private final JH3 client;
 
-  /** Bucket to which object is uploaded */
+  /* Bucket to which object is uploaded */
   private final String bucket;
 
-  /** Object being uploaded */
+  /* Object being uploaded */
   private final String key;
 
-  /** Overwrite if exists */
+  /* Overwrite if exists */
   private boolean overwrite;
 
-  /** Size of all blocks */
+  /* Size of all blocks */
   private final int blockSize;
 
-  /** Total bytes for uploads submitted so far */
+  /* Total bytes for uploads submitted so far */
   private long bytesSubmitted;
 
-  /** Preallocate byte buffer for writing single characters */
+  /* Preallocate byte buffer for writing single characters */
   private final byte[] singleCharWrite = new byte[1];
 
-  /** Closed flag */
+  /* Closed flag */
   private final AtomicBoolean closed = new AtomicBoolean(false);
 
-  /** Count of blocks uploaded */
+  /* Count of blocks uploaded */
   private int blockCount = 0;
 
-  /** Id of multipart upload */
+  /* Id of multipart upload */
   private JH3MultipartId multipartUploadId;
 
-  /** ByteArray that keeps current block content */
+  /* ByteArray that keeps current block content */
   private ByteArrayOutputStream dataBlock;
 
-  /** Index up to where data is written */
+  /* Index up to where data is written */
   private int position;
 
+  /**
+   * Create an output stream which uploads a file in partitions.
+   * @param client the JH3 client
+   * @param bucket the bucket which hosts the object
+   * @param key the key of the object
+   * @param overwrite the overwrite flag (currently not used by H3)
+   * @param blockSize the size which determines the partitions
+   */
   JH3OutputStream(JH3 client, String bucket, String key, boolean overwrite, long blockSize) throws IOException {
     log.trace("JH3OutputStream - client: " + client + ", bucket: " + bucket + ", key: " 
       + key + ", blockSize: " + blockSize);
@@ -70,12 +83,22 @@ class JH3OutputStream extends OutputStream
     createBlockIfNeeded();
   }
 
+  /**
+   * Flush is a no-op for this implementation of output stream.
+   * @throws IOException
+   */
   @Override
   public synchronized void flush() throws IOException {
     log.trace("JH3OutputStream:flush");
     // no-op
   }
 
+  /**
+   * Write a byte to the destination.
+   * If this causes the internal buffer to reach its limit, the buffer is written as a partition of a multipart
+   * @param b the byte to be written
+   * @throws IOException on any problem
+   */
   @Override
   public synchronized void write(int b) throws IOException {
     log.trace("JH3OutputStream:write - b: " + b);
@@ -84,6 +107,14 @@ class JH3OutputStream extends OutputStream
     write(singleCharWrite, 0, 1);
   }
 
+  /**
+   * Write a range of bytes from the memory buffer. If this causes the internal buffer to reach its limit, the buffer is
+   * written as a partition of a multipart
+   * @param source  the byte array which contains the bytes to be written
+   * @param offset  the offset in the byte array which indicates where to start
+   * @param length  the number of bytes to be written
+   * @throws IOException on any problem
+   */
   @Override
   public synchronized void write(byte[] source, int offset, int length) throws IOException {
     log.trace("JH3OutputStream:write - " + "source: " + Arrays.toString(source) + ", offset: " + offset
@@ -116,6 +147,11 @@ class JH3OutputStream extends OutputStream
     }
   }
 
+  /**
+   * Close the stream.
+   * This operation will not return until the pending upload is complete.
+   * @throws IOException on any problem
+   */
   @Override
   public void close() throws IOException {
     log.trace("JH3OutputStream:close");
@@ -145,12 +181,22 @@ class JH3OutputStream extends OutputStream
     }
   }
 
+  /**
+   * Return the stream capabilities.
+   * As this output stream is a lightweight implementation, no flush/sync options are supported.
+   * @param capability the string to query the stream support for
+   * @return false
+   */
   @Override
   public boolean hasCapability(String capability) {
     log.trace("JH3OutputStream:hasCapability - capability: " + capability);
     return false;
   }
 
+  /**
+   * Check for the file system being open.
+   * @throws IOException if the file system is closed
+   */
   void checkOpen() throws IOException {
     log.trace("JH3OutputStream:checkOpen");
 
@@ -159,6 +205,12 @@ class JH3OutputStream extends OutputStream
     }
   }
 
+  /**
+   * Validate that the write arguments are correct.
+   * @param b the byte array to be written
+   * @param offset  the offset in the byte array which indicates where to start
+   * @param length the number of bytes to be written
+   */
   private void validateWriteArgs(byte[] b, int offset, int length) {
     log.trace("JH3OutputStream:validateWriteArgs - b: " + Arrays.toString(b) + ", offset: " + offset
       + ", length: " + length);
@@ -171,6 +223,12 @@ class JH3OutputStream extends OutputStream
     }
   }
 
+  /**
+   * Upload the current block as a single Put request; if the buffer is empty a 0-byte PUT will be invoked, which is
+   * needed to create an entry in H3.
+   * @return the number of bytes uploaded
+   * @throws IOException on any problem
+   */
   private int putObject() throws IOException {
     log.trace("JH3OutputStream:putObject");
 
@@ -192,6 +250,7 @@ class JH3OutputStream extends OutputStream
   /**
    * Init multipart upload. Assumption: this is called from a synchronized block.
    * no-op if multipart has already started
+   * @throws IOException on any problem
    */
   private void initMultipartUpload() throws IOException {
     log.trace("JH3OutputStream:initMultipartUpload");
@@ -213,6 +272,12 @@ class JH3OutputStream extends OutputStream
     }
   }
 
+  /**
+   * Complete a multipart upload.
+   * Once completed, no more partitions can be written in the multipart. In case of failure, the multipart
+   * upload is aborted.
+   * @throws IOException on any problem
+   */
   private void completeMultipartUpload() throws IOException {
     log.trace("JH3OutputStream:completeMultipartUpload");
 
@@ -225,6 +290,11 @@ class JH3OutputStream extends OutputStream
     }
   }
 
+  /**
+   * Abort a multipart upload.
+   * Anything written in the multipart object will be discarded.
+   * @throws IOException on any problem
+   */
   private void abortMultipartUpload() throws IOException {
     log.trace("JH3OutputStream:abortMultipartUpload");
 
@@ -238,6 +308,9 @@ class JH3OutputStream extends OutputStream
 
   /*** Block operations ***/
 
+  /**
+   * Create a destination block which holds current data written, until its uploaded.
+   */
   private synchronized void createBlockIfNeeded() {
     log.trace("JH3OutputStream:createBlockIfNeeded");
 
@@ -247,6 +320,10 @@ class JH3OutputStream extends OutputStream
     }
   }
 
+  /**
+   * Upload the current data block to H3.
+   * @throws IOException on any problem
+   */
   private synchronized void uploadCurrentBlock() throws IOException {
     log.trace("JH3OutputStream:uploadCurrentBlock");
 
@@ -266,6 +343,13 @@ class JH3OutputStream extends OutputStream
     }
   }
 
+  /**
+   * Write the data from the source byte array into a data block to be later uploaded to H3.
+   * @param source the byte array to be written
+   * @param offset the offset in the byte array which indicates where to start
+   * @param length the number of bytes to be written
+   * @return the number of bytes that were written
+   */
   private synchronized int writeToBlock(byte[] source, int offset, int length) {
     // Write only as much that can fit in block
     int written = Math.min(remainingBlockCapacity(), length);
@@ -273,18 +357,33 @@ class JH3OutputStream extends OutputStream
     return written;
   }
 
+  /**
+   * Utility method to check if there is an active block
+   * @return true if an active block is available, false otherwise
+   */
   private synchronized boolean hasActiveBlock() {
     return dataBlock != null;
   }
 
+  /**
+   * Retrieve the data size of current active block.
+   * @return the size of the data block
+   */
   private synchronized int dataSize() {
     return dataBlock.size();
   }
 
+  /**
+   * Retrieve the number of remaining available bytes from the current data block.
+   * @return the remaining available bytes
+   */
   private int remainingBlockCapacity() {
     return this.blockSize - dataBlock.size();
   }
 
+  /**
+   * Invalidate the current data block.
+   */
   private void clearBlock() {
     log.trace("JH3OutputStream:clearBlock");
 

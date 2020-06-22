@@ -23,6 +23,14 @@ import org.apache.hadoop.fs.FileAlreadyExistsException;
 import org.apache.hadoop.fs.PathIOException;
 import org.apache.hadoop.fs.PathIsNotEmptyDirectoryException;
 
+/**
+ * The core H3 Filesystem implementation.
+ * This implementation is based on Hadoop's FileSystem API specification, unless stated otherwise
+ * in a method's documentation.
+ * see <a href="https://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-common/filesystem/index.html">Hadoop API Specification</a>
+ * @author Giorgos Kalaentzis
+ * @version 0.1-beta
+ */
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
 public class JH3HadoopFS extends FileSystem {
@@ -39,6 +47,13 @@ public class JH3HadoopFS extends FileSystem {
   private JH3 client;
   //private static final boolean H3_DEBUG = true;
 
+  /**
+   * Called after a new FileSystem instance is constructed.
+   * Initializes a JH3 client. H3-specific configuration should be passed by HADOOP_H3_CONFIG environment variable.
+   * @param name A URI whose authority section names the host, port, etc for this FileSystem
+   * @param originalConf the configuration to use for the FS.
+   * @throws IOException
+   */
   @Override
   public void initialize(URI name, Configuration originalConf) throws IOException {
     log.trace("JH3FS: initialize - URI: " + name + ", Configuration: " + originalConf);
@@ -59,12 +74,20 @@ public class JH3HadoopFS extends FileSystem {
     }
   }
 
+  /**
+   * Return the protocol scheme for the FileSystem.
+   * @return "h3"
+   */
   @Override
   public String getScheme() {
     log.trace("JH3FS: getScheme");
     return "h3";
   }
 
+  /**
+   * Returns a URI whose scheme and authority identify the FileSystem.
+   * @return
+   */
   @Override
   public URI getUri() {
     log.trace("JH3FS: getUri - URI= " + uri);
@@ -72,7 +95,13 @@ public class JH3HadoopFS extends FileSystem {
 
   }
 
-  // TODO update timestamps of returned FileStatus
+  /**
+   * Return a file status object that represents the path.
+   * @param f The path we want information from
+   * @return a FileStatus object
+   * @throws IOException on other problems
+   * @throws FileNotFoundException when the path does not exist
+   */
   public FileStatus getFileStatus(final Path f) throws IOException {
     log.trace("JH3FS: getFileStatus - Path: " + f.toString());
     
@@ -128,6 +157,15 @@ public class JH3HadoopFS extends FileSystem {
     }
   }
 
+  /**
+   * Make the given path and all non-existent parents into directories.
+   * Has the semantics of Unix {@code 'mkdir -p'}. Existence of the directory hierarchy is not an error.
+   * @param path The path to create
+   * @param permission the permissions to apply to the path
+   * @return true if a directory was created or already existed
+   * @throws FileAlreadyExistsException there is a file at the path specified
+   * @throws IOException other IO problems
+   */
   public boolean mkdirs(Path path, FsPermission permission) throws IOException {
     log.trace("JH3FS: mkdirs - Path: " + path + ", FsPermission: " + permission);
 
@@ -202,16 +240,30 @@ public class JH3HadoopFS extends FileSystem {
     }
   }
 
+  /**
+   * Get the current working directory for the given file system.
+   * @return the directory pathname
+   */
   public Path getWorkingDirectory() {
     log.trace("JH3FS: getWorkingDirectory");
     return workingDir;
   }
 
+  /**
+   * Set the current working directory for the given file system.
+   * @param newDir The new working directory
+   */
   public void setWorkingDirectory(Path newDir) {
     log.trace("JH3FS: setWorkingDirectory - Path: " + newDir);
     workingDir = newDir;
   }
 
+  /**
+   * List the statuses of the files/directories in the given path, if the path is a directory.
+   * @param f The path to be listed
+   * @return the statuses of the files/directories in the given path
+   * @throws FileNotFoundException when the path does not exist
+   */
   public FileStatus[] listStatus(Path f) throws IOException {
     log.trace("JH3FS: listStatus - Path: " + f);
 
@@ -276,6 +328,17 @@ public class JH3HadoopFS extends FileSystem {
     }
   }
 
+  /**
+   * Delete a path. This operation is at least {@code O(files)}, with added
+   * overheads to emulate the path. This operation is not atomic.
+   * @param f The path to delete
+   * @param recursive if path is a directory and set to true,
+   *                  the directory is deleted, otherwise throws an exception.
+   *                  In case of a file the recursive can be set to either true or false.
+   * @return  true if the path existed and then was deleted; false if there wss not path in the first place, or the
+   *          corner cases of root path deletion have surfaced.
+   * @throws IOException when a directory or file could not be deleted
+   */
   public boolean delete(Path f, boolean recursive) throws IOException {
     log.trace("JH3FS: delete - Path: " + f + ", recursive: " + recursive);
 
@@ -521,11 +584,32 @@ public class JH3HadoopFS extends FileSystem {
     }
   }
 
+  /**
+   * Append to an existing file (this operation is not currently supported).
+   * @param f the existing file to be appended
+   * @param bufferSize the size of the buffer to be used
+   * @param progress for reporting progress if it is not null
+   * @throws IOException indicating that append is not supported
+   */
   public FSDataOutputStream append(Path f, int bufferSize, Progressable progress) {
     log.trace("JH3FS: append");
     throw new UnsupportedOperationException("Append is not supported by H3FileSystem");
   }
 
+  /**
+   * Create an FSDataOutputStream at the indicated Path.
+   * @param f the file name to open
+   * @param permission the permission to set (not used by H3)
+   * @param overwrite if a file with this name already exists, then if true, the file will be overwritten, and if
+   *                  false an error will be thrown (not currently supported by H3)
+   * @param bufferSize the size of the buffer to be used (not used by H3)
+   * @param replication required block replication for the file (not used by H3)
+   * @param blockSize the requested block size; is used to read the file by blockSize chunks
+   * @param progress the progess reported (not used by H3)
+   * @return a FSDataOutputStream object
+   * @throws FileAlreadyExistsException if file already exists and overwrite is set to false
+   * @throws IOException in the event of IO related errors
+   */
   public FSDataOutputStream create(Path f, FsPermission permission, boolean overwrite, int bufferSize,
       short replication, long blockSize, Progressable progress) throws IOException {
     log.trace("JH3FS: create - Path: " + f + ", permission: " + permission + ", overwrite: " 
@@ -581,6 +665,14 @@ public class JH3HadoopFS extends FileSystem {
     }
   }
 
+  /**
+   * Opens a FSDataInputStream at the indicated path.
+   * @param f The file name to open
+   * @param bufferSize the size of the buffer to be used (not used by H3)
+   * @return a FSDataInputStream object
+   * @throws FileNotFoundException if file does not exist, or is a directory
+   * @throws IOException in the event of IO related errors
+   */
   public FSDataInputStream open(Path f, int bufferSize) throws IOException {
       log.trace("JH3FS: open - Path: " + f + ", bufferSize: " + bufferSize);
 
@@ -598,13 +690,17 @@ public class JH3HadoopFS extends FileSystem {
     return new FSDataInputStream(s);
   }
 
+  /**
+   * Set the URI of the file system.
+   * @param uri the file system URI
+   */
   public void setUri(URI uri) {
     this.uri = uri;
   }
 
   /**
-   * Turns a path into a H3 key.
-   *
+   * Turns a path into an H3 key.
+   * @return the H3 Key
    */
   public String pathToKey(Path path) {
     if (!path.isAbsolute()) {
@@ -621,7 +717,7 @@ public class JH3HadoopFS extends FileSystem {
 
   /**
    * Turns a path into a H3 bucket.
-   *
+   * @return the H3 bucket
    */
   public String pathToBucket(Path path) {
     if (!path.isAbsolute()) {
@@ -633,7 +729,7 @@ public class JH3HadoopFS extends FileSystem {
 
   /**
    * Create a qualified path from bucket and key.
-   *
+   * @return  the qualified path
    */
   private Path createPath(String bucket, String key) {
     return new Path(this.getScheme() + "://" + bucket + "/" + key);

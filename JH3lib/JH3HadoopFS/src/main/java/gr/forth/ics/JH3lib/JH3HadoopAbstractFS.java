@@ -11,7 +11,9 @@ import java.net.URISyntaxException;
 
 /**
  * H3 implementation of AbstractFileSystem.
- * This impl delegates to the H3FileSystem
+ * This implementation delegates to the H3FileSystem
+ * @author Giorgos Kalaentzis
+ * @version 0.1-beta
  */
 
 @InterfaceAudience.Public
