@@ -207,46 +207,57 @@ KV_Status KV_FS_List(KV_Handle handle, KV_Key prefix, uint8_t nTrim, KV_Key buff
     size_t remaining = KV_LIST_BUFFER_SIZE;
 
     int CopyDirEntry(const char* fpath, const struct stat* sb, int typeflag, struct FTW* ftwbuf) {
-        if(S_ISREG(sb->st_mode) && strncmp(fpath, fullPrefix, prefixLen) == 0){
-            LogActivity(H3_DEBUG_MSG, "'%s'\n", fpath);
-            if(offset)
-                offset--;
-            else if( nMatchingKeys < nRequiredKeys ){
 
-            	size_t rawSize = strlen(fpath);
-                size_t entrySize = rawSize - rootLen;
+    	if(S_ISREG(sb->st_mode)){
+    		size_t rawSize = strlen(fpath);
+    		int isFakeDir = iscntrl(fpath[rawSize-1]);
 
-                if(remaining >= (entrySize + 1)) {
-                    memcpy(&buffer[KV_LIST_BUFFER_SIZE - remaining], &fpath[rootLen], entrySize);
+    		if(strncmp(fpath, fullPrefix, prefixLen) == 0 || (isFakeDir && fullPrefix[prefixLen-1] == '/' && strncmp(fpath, fullPrefix, prefixLen -1) == 0 )){
+    			LogActivity(H3_DEBUG_MSG, "'%s'\n", fpath);
+                if(offset)
+                    offset--;
 
-                    // Replace the directory marker with '/'
-                    if(iscntrl(fpath[rawSize-1])){
-                    	buffer[KV_LIST_BUFFER_SIZE - remaining + entrySize - 1] = '/';
+                else if( nMatchingKeys < nRequiredKeys ){
+                	size_t entrySize = rawSize - rootLen;
+
+                    if(remaining >= (entrySize + 1)) {
+                        memcpy(&buffer[KV_LIST_BUFFER_SIZE - remaining], &fpath[rootLen], entrySize);
+
+                        // Replace the directory marker with '/'
+                        if(isFakeDir){
+                        	buffer[KV_LIST_BUFFER_SIZE - remaining + entrySize - 1] = '/';
+                        }
+
+                        remaining -= (entrySize+1);
+                        nMatchingKeys++;
                     }
-
-                    remaining -= (entrySize+1);
-                    nMatchingKeys++;
+                    else
+                        return KV_CONTINUE;
                 }
                 else
                     return KV_CONTINUE;
-            }
-            else
-                return KV_CONTINUE;
-        }
+    		}
+    	}
 
         return 0;
     }
 
 
     int CountDirEntry(const char* fpath, const struct stat* sb, int typeflag, struct FTW* ftwbuf) {
-        if(S_ISREG(sb->st_mode) && strncmp(fpath, fullPrefix, prefixLen) == 0){
-            if(offset)
-                offset--;
-            else if (nMatchingKeys < nRequiredKeys)
-                nMatchingKeys++;
-            else
-                return KV_CONTINUE;
-        }
+    	if(S_ISREG(sb->st_mode)){
+    		size_t rawSize = strlen(fpath);
+    		int isFakeDir = iscntrl(fpath[rawSize-1]);
+
+    		if(strncmp(fpath, fullPrefix, prefixLen) == 0 || (isFakeDir && fullPrefix[prefixLen-1] == '/')){
+                if(offset)
+                    offset--;
+                else if (nMatchingKeys < nRequiredKeys)
+                    nMatchingKeys++;
+                else
+                    return KV_CONTINUE;
+
+    		}
+    	}
 
         return 0;
     }

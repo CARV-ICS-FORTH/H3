@@ -132,34 +132,40 @@ KV_Status KV_RocksDb_List(KV_Handle handle, KV_Key prefix, uint8_t nTrim, KV_Key
     	return KV_FAILURE;
     }
 
-    rocksdb_iter_seek(iter, prefix, strlen(prefix));
+    size_t prefixLen = strlen(prefix);
+    rocksdb_iter_seek(iter, prefix, prefixLen);
 
     while(rocksdb_iter_valid(iter) && status != KV_CONTINUE){
     	size_t keySize;
     	const char* key = rocksdb_iter_key(iter, &keySize);
 
-        if(offset)
-            offset--;
-        else if( nMatchingKeys < nRequiredKeys ){
+    	// It seems the prefix doesn't work the way we expect it, that is it returns
+    	// all the entries rather than those matching the prefix.
+    	if(strncmp(key, prefix, prefixLen) == 0){
 
-        	// Copy the keys if a buffer is provided...
-        	if(buffer){
-            	size_t entrySize = keySize - nTrim;
-            	if(remaining >= entrySize ){
-    				memcpy(&buffer[KV_LIST_BUFFER_SIZE - remaining], &key[nTrim], entrySize);
-    				remaining -= entrySize; // Convert blob to string
-    				nMatchingKeys++;
-            	}
-            	else
-            		status = KV_CONTINUE;
-        	}
+			if(offset)
+				offset--;
+			else if( nMatchingKeys < nRequiredKeys ){
 
-        	// ... otherwise just count them.
-        	else
-        		nMatchingKeys++;
-        }
-        else
-        	status = KV_CONTINUE;
+				// Copy the keys if a buffer is provided...
+				if(buffer){
+					size_t entrySize = keySize - nTrim;
+					if(remaining >= entrySize ){
+						memcpy(&buffer[KV_LIST_BUFFER_SIZE - remaining], &key[nTrim], entrySize);
+						remaining -= entrySize; // Convert blob to string
+						nMatchingKeys++;
+					}
+					else
+						status = KV_CONTINUE;
+				}
+
+				// ... otherwise just count them.
+				else
+					nMatchingKeys++;
+			}
+			else
+				status = KV_CONTINUE;
+    	}
 
     	rocksdb_iter_next(iter);
     }

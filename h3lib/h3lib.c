@@ -216,7 +216,7 @@ int GrantMultipartAccess(H3_UserId id, H3_MultipartMetadata* meta){
  * @result  The handle if connected to provider, NULL otherwise.
  */
 // https://developer.gnome.org/glib/stable/glib-Key-value-file-parser.html
-H3_Handle H3_Init(H3_StoreType storageType, char* cfgFileName) {
+H3_Handle H3_Init(H3_StoreType storageType, const char* cfgFileName) {
     g_autoptr(GError) error = NULL;
     GKeyFile* cfgFile = g_key_file_new();
     // printf("Filename %s\n",cfgFileName);

@@ -87,7 +87,7 @@ typedef struct{
 } H3_Auth;
 
 /*! \brief Pointer to user authentication data */
-typedef H3_Auth* H3_Token;
+typedef const H3_Auth* H3_Token;
 
 
 /*! \brief Bucket statistics */
@@ -154,7 +154,7 @@ const char* H3_Type2String(H3_StoreType type);
 /** \defgroup handle Handle management
  *  @{
  */
-H3_Handle H3_Init(H3_StoreType storageType, char* cfgFileName);
+H3_Handle H3_Init(H3_StoreType storageType, const char* cfgFileName);
 void H3_Free(H3_Handle handle);
 /** @}*/
 
