@@ -15,6 +15,7 @@
 import pytest
 import pyh3lib
 import random
+import os
 
 MEGABYTE = 1048576
 
@@ -245,3 +246,63 @@ def test_simple(h3):
     assert h3.delete_bucket('b1') == True
 
     assert h3.list_buckets() == []
+
+def test_purge(h3):
+    """Create many objects. Purge."""
+
+    assert h3.list_buckets() == []
+
+    assert h3.create_bucket('b1') == True
+
+    assert h3.list_objects('b1') == []
+
+    with open('/dev/urandom', 'rb') as f:
+        data = f.read(3 * MEGABYTE)
+
+    h3.create_object('b1', 'o1', data)
+    h3.create_object('b1', 'o2', data)
+    h3.create_object('b1', 'o3', data)
+
+    assert set(h3.list_objects('b1')) == set(['o1', 'o2', 'o3'])
+
+    assert h3.purge_bucket('b1') == True
+
+    assert h3.list_objects('b1') == []
+
+    assert h3.delete_bucket('b1') == True
+
+def test_file(h3):
+    """Read and write using files."""
+
+    assert h3.list_buckets() == []
+
+    assert h3.create_bucket('b1') == True
+
+    with open('/dev/urandom', 'rb') as f:
+        data = f.read(3 * MEGABYTE)
+
+    with open('testfile', 'wb') as f:
+        f.write(data)
+
+    h3.create_object_from_file('b1', 'o1', 'testfile')
+    h3.create_object_from_file('b1', 'o2', 'testfile')
+    h3.write_object_from_file('b1', 'o2', 'testfile', offset=(3 * MEGABYTE))
+
+    os.unlink('testfile')
+
+    h3.read_object_to_file('b1', 'o1', 'testfile')
+    with open('testfile', 'rb') as f:
+        assert data == f.read()
+
+    h3.read_object_to_file('b1', 'o2', 'testfile', offset=0, size=(3 * MEGABYTE))
+    with open('testfile', 'rb') as f:
+        assert data == f.read()
+    h3.read_object_to_file('b1', 'o2', 'testfile', offset=(3 * MEGABYTE))
+    with open('testfile', 'rb') as f:
+        assert data == f.read()
+
+    assert h3.purge_bucket('b1') == True
+
+    assert h3.list_objects('b1') == []
+
+    assert h3.delete_bucket('b1') == True

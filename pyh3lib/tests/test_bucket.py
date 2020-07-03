@@ -65,8 +65,8 @@ def test_arguments(h3):
     with pytest.raises(pyh3lib.H3InvalidArgsError):
         h3.create_bucket('/bucketId')
 
-    with pytest.raises(pyh3lib.H3InvalidArgsError):
-        h3.create_bucket('\bucketId')
+    h3.create_bucket('\bucketId')
+    h3.delete_bucket('\bucketId')
 
 def test_many(h3):
     """Manage many buckets."""
