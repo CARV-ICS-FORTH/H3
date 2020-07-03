@@ -186,7 +186,7 @@ H3_Status H3_WriteObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H
 H3_Status H3_WriteObjectCopy(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, off_t srcOffset, size_t* size, H3_Name dstObjectName, off_t dstOffset);
 H3_Status H3_WriteObjectFromFile(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, int fd, size_t size, off_t offset);
 H3_Status H3_ReadObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, off_t offset, void** data, size_t* size);
-H3_Status H3_ReadDumyObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, size_t* size);
+H3_Status H3_ReadDummyObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, size_t* size);
 H3_Status H3_ReadObjectToFile(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, off_t offset, int fd, size_t* size);
 H3_Status H3_CopyObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, H3_Name dstObjectName, uint8_t noOverwrite);
 H3_Status H3_MoveObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, H3_Name dstObjectName, uint8_t noOverwrite);

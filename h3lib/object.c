@@ -718,7 +718,7 @@ H3_Status H3_ReadObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
  * @result \b H3_NAME_TOO_LONG      Bucket or Object name is longer than H3_BUCKET_NAME_SIZE or H3_OBJECT_NAME_SIZE respectively
  *
  */
-H3_Status H3_ReadDumyObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, size_t* size){
+H3_Status H3_ReadDummyObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, size_t* size){
 
     // Argument check
     if(!handle || !token  || !bucketName || !objectName || !size ){
