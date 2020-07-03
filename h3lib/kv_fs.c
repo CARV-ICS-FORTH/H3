@@ -29,6 +29,7 @@
 #include <regex.h>
 #include <ctype.h>
 
+#include "common.h"
 #include "kv_interface.h"
 
 #include "util.h"
