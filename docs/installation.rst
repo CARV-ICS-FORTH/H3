@@ -50,4 +50,25 @@ If you have installed ``h3lib`` in some non-standard path and ``setup.py install
 
 To package (creates ``tar.gz`` in ``dist``)::
 
-    python3 setup.py bdist
+	python3 setup.py bdist
+
+JH3lib
+------
+To compile ``JH3lib``, at least Java version 9 is required. The project was developed and built using ``Apache Maven 3.6.0``, so installing the same version is advised. To install ``JH3lib`` enter the respective directory and run::
+
+  mvn install
+
+To package without dependencies (creates a ``.jar`` in ``target``)::
+
+  mvn package
+
+To package with dependencies (creates a ``-with-dependencies.jar`` in ``target``)::
+
+  mvn package assembly:single
+
+To run tests::
+
+  mvn test
+
+**Note:** When packaging/installing ``JH3lib`` the ``-DskipTests`` flag can be used to skip the test phase.
+

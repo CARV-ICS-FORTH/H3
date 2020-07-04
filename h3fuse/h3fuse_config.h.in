@@ -1,0 +1,3 @@
+// the configured options and settings for h3fuse
+#define H3FS_VERSION_MAJOR @h3fuse_VERSION_MAJOR@
+#define H3FS_VERSION_MINOR @h3fuse_VERSION_MINOR@

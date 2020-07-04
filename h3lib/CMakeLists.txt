@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
 project(h3lib VERSION 1.0 LANGUAGES C)
 
@@ -35,26 +36,58 @@ set(CMAKE_C_STANDARD 11)
 #https://gitlab.kitware.com/cmake/community/wikis/doc/cmake/Useful-Variables
 #https://cmake.org/cmake/help/v3.10/command/add_compile_options.html?highlight=add_compile_options
 #add_compile_options(-Wall -Wno-uninitialized -Wno-unused-result -Werror)
+#add_compile_options(-Wall -Wno-uninitialized -Wno-unused-result -Wl,--no-as-needed) <-- libs are considered irrespective of the order they are presented to the compiler/linker
 add_compile_options(-Wall -Wno-uninitialized -Wno-unused-result)
 
 SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -DDEBUG")
 SET(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3")
 
 
+find_package(PkgConfig REQUIRED)
+pkg_search_module(GLIB REQUIRED glib-2.0)
+
+find_package(rocksdb)
+find_package(kreon)
+find_package(hiredis_vip)
+
+
 #https://cmake.org/cmake/help/v3.10/command/add_library.html
 set(SOURCE_FILES h3lib.c bucket.c object.c multipart.c kv_fs.c util.c )
+if(ROCKSDB_FOUND)
+	set(SOURCE_FILES ${SOURCE_FILES} kv_rocksdb.c) 
+	add_definitions(-DH3LIB_USE_ROCKSDB)
+endif()
+
+if(KREON_FOUND)
+	set(SOURCE_FILES ${SOURCE_FILES} kv_kreon.c) 
+	add_definitions(-DH3LIB_USE_KREON)
+endif()
+
+if(HIREDIS_VIP_FOUND)
+	set(SOURCE_FILES ${SOURCE_FILES} kv_redis.c) 
+	add_definitions(-DH3LIB_USE_REDIS)
+endif()
 add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES})
 
 #https://cmake.org/cmake/help/v3.10/command/target_include_directories.html
-target_include_directories( ${PROJECT_NAME} PUBLIC
-                            "${PROJECT_BINARY_DIR}"
-                            "${GLIB_HEADERS}")
-
-
-find_package(PkgConfig REQUIRED)
-pkg_search_module(GLIB REQUIRED glib-2.0)
-target_include_directories(${PROJECT_NAME} PRIVATE ${GLIB_INCLUDE_DIRS})
+target_include_directories( ${PROJECT_NAME} PUBLIC "${PROJECT_BINARY_DIR}" "${GLIB_HEADERS}")
+target_include_directories(${PROJECT_NAME}  PRIVATE ${GLIB_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} PRIVATE ${GLIB_LDFLAGS} uuid)
+
+if(ROCKSDB_FOUND)
+	target_include_directories(${PROJECT_NAME} PRIVATE ${ROCKSDB_INCLUDE_DIR})
+	target_link_libraries(${PROJECT_NAME} PRIVATE ${ROCKSDB_LIBRARIES} dl )
+endif()
+
+if(KREON_FOUND)
+	target_include_directories(${PROJECT_NAME} PRIVATE ${KREON_INCLUDE_DIR})
+	target_link_libraries(${PROJECT_NAME} PRIVATE ${KREON_LIBRARIES} zookeeper_mt rdmacm ibverbs log)
+endif()
+
+if(HIREDIS_VIP_FOUND)
+	target_include_directories(${PROJECT_NAME} PRIVATE ${HIREDIS_VIP_INCLUDE_DIR})
+	target_link_libraries(${PROJECT_NAME} PRIVATE ${HIREDIS_VIP_LIBRARIES})
+endif()
 
 
 #target_include_directories( ${PROJECT_NAME} PUBLIC
@@ -78,10 +111,25 @@ install(FILES h3lib.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME} )
 enable_testing()
 add_subdirectory(tests)
 
+
 #https://cmake.org/cmake/help/v3.16/command/add_custom_command.html?highlight=add_custom_command
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
                                                              ${CMAKE_SOURCE_DIR}/tests/config.ini
                                                              ${CMAKE_CURRENT_BINARY_DIR}/tests/config.ini)
+                                                             
+add_subdirectory(tools)                                                             
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
+                                                             ${CMAKE_SOURCE_DIR}/tests/config.ini
+                                                             ${CMAKE_CURRENT_BINARY_DIR}/tools/config.ini) 
+ 
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink
+                                                             ${CMAKE_SOURCE_DIR}/tools/run_benchmark.sh
+                                                             ${CMAKE_CURRENT_BINARY_DIR}/tools/run_benchmark.sh) 
+                                                             
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink
+                                                             ${CMAKE_SOURCE_DIR}/tools/generate_flamegraph.sh
+                                                             ${CMAKE_CURRENT_BINARY_DIR}/tools/generate_flamegraph.sh)                                                                                                                             
+                                                                                                                        
 
 set(CPACK_PACKAGE_NAME ${PROJECT_NAME})
 set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})

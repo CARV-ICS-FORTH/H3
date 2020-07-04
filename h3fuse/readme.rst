@@ -32,3 +32,30 @@ In case of link errors (Ubuntu 18.04) you need to adjust the lib instalation pat
     ldconfig OR ldconfig -n <path>
 
 
+Mount Umnount paasthrough example
+====================================================
+./passthrough -d -s -f /tmp/example
+./h3fuse -d -s -f /tmp/example -o bucket=b1
+fusermount -u /tmp/example
+
+
+
+fstest
+===================================================
+cd to mountpoint
+create a bucket i.e. mkdir lala
+cd to bucket
+prove -rvf path-to-test-suite
+prove -rvf path-to-test-suite/tests/chown
+prove -rvf /mnt/HDD/git/pjdfstest/tests/chmod/00.t
+./pjdfstest mkdir foo 0750
+
+
+vdbench
+===================================================
+cd ~/vdbench50407/
+./vdbench -vr -f examples/filesys/create_files  <-- run modified test with data-validation enabled
+
+
+
+

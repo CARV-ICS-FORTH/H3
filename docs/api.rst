@@ -26,4 +26,14 @@ Python
 
 .. exception:: pyh3lib.H3NotExistsError
 
+.. exception:: pyh3lib.H3NameTooLongError
+
 .. exception:: pyh3lib.H3NotEmptyError
+
+Java
+----
+
+.. toctree::
+   :maxdepth: 2
+
+   packages   

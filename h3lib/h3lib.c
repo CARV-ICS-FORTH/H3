@@ -11,10 +11,46 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "common.h"
+#include "util.h"
 
 extern KV_Operations operationsFilesystem;
+
+#ifdef H3LIB_USE_REDIS
+extern KV_Operations operationsRedis;
+#endif
+
+#ifdef H3LIB_USE_KREON
+extern KV_Operations operationsKreon;
+#endif
+
+#ifdef H3LIB_USE_ROCKSDB
+extern KV_Operations operationsRocksDB;
+#endif
+
+/*
+    http://man7.org/linux/man-pages/man2/umask.2.html
+    http://man7.org/linux/man-pages/man2/chmod.2.html
+    https://en.wikipedia.org/wiki/Umask
+
+	0 - no access to the file
+	1 - execute only
+	2 - write only
+	3 - write and execute
+	4 - read only
+	5 - read and execute
+	6 - read and write
+	7 - read, write and execute (full permissions)
+
+	Assign typical values assuming a umask of 022
+*/
+void InitMode(H3_ObjectMetadata* objMeta){
+	size_t length = strlen(objMeta->userId);
+	if(objMeta->userId[length - 1] == '/')
+		objMeta->mode = S_IFDIR | 0755;
+	else
+		objMeta->mode = S_IFREG | 0644;
+}
 
 int GetUserId(H3_Token token, H3_UserId id){
     snprintf(id, H3_USERID_SIZE, "@%d", token->userId);
@@ -89,6 +125,33 @@ char* H3_Version(){
     return buffer;
 }
 
+H3_StoreType H3_String2Type(const char* type){
+	H3_StoreType store = H3_STORE_CONFIG;
+
+    if(type){
+        if(     strcmp(type, "filesystem") == 0)     store = H3_STORE_FILESYSTEM;
+        else if(strcmp(type, "kreon") == 0)          store = H3_STORE_KREON;
+        else if(strcmp(type, "rocksdb") == 0)        store = H3_STORE_ROCKSDB;
+        else if(strcmp(type, "redis") == 0)          store = H3_STORE_REDIS;
+        else if(strcmp(type, "ime") == 0)            store = H3_STORE_IME;
+    }
+
+    return store;
+}
+
+
+const char* const StoreType[] = {"config", "filesystem", "kreon", "rocksdb", "redis", "ime", "unknown"};
+const char* H3_Type2String(H3_StoreType type){
+	const char* string;
+
+	if (type < 0 || type >= H3_NumOfStores)
+		string = StoreType[H3_NumOfStores];
+	else
+		string = StoreType[type];
+
+	return string;
+}
+
 void CreatePartId(H3_PartId partId, uuid_t uuid, int partNumber, int subPartNumber){
     H3_UUID uuidString;
     uuid_unparse_lower(uuid, uuidString);
@@ -147,29 +210,13 @@ int GrantMultipartAccess(H3_UserId id, H3_MultipartMetadata* meta){
     return !strncmp(id, meta->userId, sizeof(H3_UserId));
 }
 
-H3_StoreType GetStoreType(GKeyFile* cfgFile){
-    H3_StoreType store = H3_STORE_CONFIG;
-    char* strStore = g_key_file_get_string (cfgFile, "H3", "store", NULL);
-    if(strStore){
-        if(     strcmp(strStore, "filesystem") == 0)     store = H3_STORE_FILESYSTEM;
-        else if(strcmp(strStore, "kreon") == 0)          store = H3_STORE_KREON;
-        else if(strcmp(strStore, "rocksdb") == 0)        store = H3_STORE_ROCKSDB;
-        else if(strcmp(strStore, "redis") == 0)          store = H3_STORE_REDIS;
-        else if(strcmp(strStore, "ime") == 0)            store = H3_STORE_IME;
-    }
-
-    return store;
-}
-
-
-
 /*! Initialize library
  * @param[in] storageType   The storage provider to be used with this instance
  * @param[in] cfgFileName   The configuration file containing provider specific information
  * @result  The handle if connected to provider, NULL otherwise.
  */
 // https://developer.gnome.org/glib/stable/glib-Key-value-file-parser.html
-H3_Handle H3_Init(H3_StoreType storageType, char* cfgFileName) {
+H3_Handle H3_Init(H3_StoreType storageType, const char* cfgFileName) {
     g_autoptr(GError) error = NULL;
     GKeyFile* cfgFile = g_key_file_new();
     // printf("Filename %s\n",cfgFileName);
@@ -178,44 +225,65 @@ H3_Handle H3_Init(H3_StoreType storageType, char* cfgFileName) {
     }
 
     if(storageType == H3_STORE_CONFIG){
-        storageType = GetStoreType(cfgFile);
+        storageType = H3_String2Type(g_key_file_get_string (cfgFile, "H3", "store", NULL));
     }
 
     H3_Context* ctx = malloc(sizeof(H3_Context));
-    switch(storageType){
-        case H3_STORE_REDIS:
-            printf("Using REDIS driver...\n");
-            ctx->operation = NULL;
-            break;
 
-        case H3_STORE_ROCKSDB:
-            printf("Using ROCKSDB driver...\n");
-            ctx->operation = NULL;
-            break;
+    if(ctx){
+		switch(storageType){
+			case H3_STORE_REDIS:
+#ifdef H3LIB_USE_REDIS
+				LogActivity(H3_INFO_MSG, "Using kv_redis driver...\n");
+				ctx->operation = &operationsRedis;
+				break;
+#endif
 
-        case H3_STORE_KREON:
-            printf("Using KREON driver...\n");
-            ctx->operation = NULL;
-            break;
+			case H3_STORE_IME:
+				LogActivity(H3_INFO_MSG, "WARNING: Driver not available...\n");
+				ctx->operation = NULL;
+				break;
 
-        case H3_STORE_IME:
-            printf("Using IME driver...\n");
-            ctx->operation = NULL;
-            break;
+			case H3_STORE_FILESYSTEM:
+				LogActivity(H3_INFO_MSG, "Using kv_fs driver...\n");
+				ctx->operation = &operationsFilesystem;
+				break;
 
-        case H3_STORE_FILESYSTEM:
-            printf("Using kv_fs driver...\n");
-            ctx->operation = &operationsFilesystem;
-            break;
+			case H3_STORE_ROCKSDB:
+#ifdef H3LIB_USE_ROCKSDB
+				LogActivity(H3_INFO_MSG, "Using kv_rocksdb driver...\n");
+				ctx->operation = &operationsRocksDB;
+#else
+				LogActivity(H3_INFO_MSG, "WARNING: Driver not available...\n");
+				ctx->operation = NULL;
+#endif
+				break;
 
-        default:
-            printf("WARNING wrong driver name\n");
-            free(ctx);
-            return NULL;
+			case H3_STORE_KREON:
+#ifdef H3LIB_USE_KREON
+				LogActivity(H3_INFO_MSG, "Using kv_kreon driver...\n");
+				ctx->operation = &operationsKreon;
+#else
+				LogActivity(H3_INFO_MSG, "WARNING: Driver not available...\n");
+				ctx->operation = NULL;
+#endif
+				break;
+
+			default:
+				LogActivity(H3_ERROR_MSG, "ERROR: Driver not recognized\n");
+				ctx->operation = NULL;
+				return NULL;
+		}
+
+
+		if(!ctx->operation || !(ctx->handle = ctx->operation->init(cfgFile))){
+			free(ctx);
+			ctx = NULL;
+			LogActivity(H3_ERROR_MSG, "ERROR: Failed to initialize storage\n");
+		}
+		else
+			ctx->type = storageType;
     }
-
-    ctx->type = storageType;
-    ctx->handle = ctx->operation->init(cfgFile);
 
     return (H3_Handle)ctx;
 }

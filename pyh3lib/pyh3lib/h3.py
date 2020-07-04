@@ -89,8 +89,8 @@ class H3(object, metaclass=H3Version):
     STORE_ROCKSDB = h3lib.H3_STORE_ROCKSDB
     """Storage type to use `RocksDB <https://rocksdb.org>`_ as the backend."""
 
-    # STORE_REDIS = h3lib.H3_STORE_REDIS
-    # """Storage type to use Redis as the backend."""
+    STORE_REDIS = h3lib.H3_STORE_REDIS
+    """Storage type to use `Redis <https://redis.io>`_ as the backend."""
 
     # STORE_IME = h3lib.H3_STORE_IME
     # """Storage type to use IME as the backend."""
@@ -104,7 +104,7 @@ class H3(object, metaclass=H3Version):
     def list_buckets(self):
         """List all buckets.
 
-        :returns: A list of bucket names if the call was successfull
+        :returns: A list of bucket names if the call was successful
         """
 
         return h3lib.list_buckets(self._handle, self._user_id)
@@ -162,6 +162,15 @@ class H3(object, metaclass=H3Version):
         """
         return h3lib.delete_bucket(self._handle, bucket_name, self._user_id)
 
+    def purge_bucket(self, bucket_name):
+        """Purge a bucket.
+
+        :param bucket_name: the bucket name
+        :type bucket_name: string
+        :returns: ``True`` if the call was successful
+        """
+        return h3lib.purge_bucket(self._handle, bucket_name, self._user_id)
+
     def list_objects(self, bucket_name, prefix='', offset=0, count=10000):
         """List objects in a bucket.
 
@@ -173,7 +182,7 @@ class H3(object, metaclass=H3Version):
         :type prefix: string
         :type offset: int
         :type count: int
-        :returns: An H3List of object names if the call was successfull
+        :returns: An H3List of object names if the call was successful
         """
 
         objects, done = h3lib.list_objects(self._handle, bucket_name, prefix, offset, count, self._user_id)
@@ -196,10 +205,41 @@ class H3(object, metaclass=H3Version):
         ``creation``           <timestamp>
         ``last_access``        <timestamp>
         ``last_modification``  <timestamp>
+        ``last_change``        <timestamp>
         =====================  ===========
         """
 
         return h3lib.info_object(self._handle, bucket_name, object_name, self._user_id)
+
+    def set_object_permissions(self, bucket_name, object_name, mode):
+        """Set object permissions attribute (used by h3fuse).
+
+        :param bucket_name: the bucket name
+        :param object_name: the object name
+        :param mode: permissions mode
+        :type bucket_name: string
+        :type object_name: string
+        :type mode: int
+        :returns: ``True`` if the call was successful
+        """
+
+        return h3lib.set_object_permissions(self._handle, bucket_name, object_name, mode, self._user_id)
+
+    def set_object_owner(self, bucket_name, object_name, uid, gid):
+        """Set object owner attribute (used by h3fuse).
+
+        :param bucket_name: the bucket name
+        :param object_name: the object name
+        :param uid: user id
+        :param gid: group id
+        :type bucket_name: string
+        :type object_name: string
+        :type uid: int
+        :type gid: int
+        :returns: ``True`` if the call was successful
+        """
+
+        return h3lib.set_object_owner(self._handle, bucket_name, object_name, uid, gid, self._user_id)
 
     def create_object(self, bucket_name, object_name, data):
         """Create an object.
@@ -232,6 +272,20 @@ class H3(object, metaclass=H3Version):
         """
 
         return h3lib.create_object_copy(self._handle, bucket_name, src_object_name, offset, size, dst_object_name, self._user_id)
+
+    def create_object_from_file(self, bucket_name, object_name, filename):
+        """Create an object with data from a file.
+
+        :param bucket_name: the bucket name
+        :param object_name: the object name
+        :param filename: the filename
+        :type bucket_name: string
+        :type object_name: string
+        :type filename: string
+        :returns: ``True`` if the call was successful
+        """
+
+        return h3lib.create_object_from_file(self._handle, bucket_name, object_name, filename, self._user_id)
 
     def write_object(self, bucket_name, object_name, data, offset=0):
         """Write to an object.
@@ -269,6 +323,22 @@ class H3(object, metaclass=H3Version):
 
         return h3lib.write_object_copy(self._handle, bucket_name, src_object_name, src_offset, size, dst_object_name, dst_offset, self._user_id)
 
+    def write_object_from_file(self, bucket_name, object_name, filename, offset=0):
+        """Write to an object with data from a file.
+
+        :param bucket_name: the bucket name
+        :param object_name: the object name
+        :param filename: the filename
+        :param offset: the offset in the object where writing should start
+        :type bucket_name: string
+        :type object_name: string
+        :type filename: string
+        :type offset: int
+        :returns: ``True`` if the call was successful
+        """
+
+        return h3lib.write_object_from_file(self._handle, bucket_name, object_name, filename, offset, self._user_id)
+
     def read_object(self, bucket_name, object_name, offset=0, size=0):
         """Read from an object.
 
@@ -280,11 +350,30 @@ class H3(object, metaclass=H3Version):
         :type object_name: string
         :type offset: int
         :type size: int
-        :returns: The bytes read if the call was successful
+        :returns: An H3Bytes object if the call was successful
         """
 
         data, done = h3lib.read_object(self._handle, bucket_name, object_name, offset, size, self._user_id)
         return H3Bytes(data, done=done)
+
+    def read_object_to_file(self, bucket_name, object_name, filename, offset=0, size=0):
+        """Read from an object into a file.
+
+        :param bucket_name: the bucket name
+        :param object_name: the object name
+        :param filename: the filename
+        :param offset: the offset in the object where reading should start
+        :param size: the size of the data to read (default is all)
+        :type bucket_name: string
+        :type object_name: string
+        :type filename: string
+        :type offset: int
+        :type size: int
+        :returns: An H3Bytes object if the call was successful (empty data)
+        """
+
+        _, done = h3lib.read_object_to_file(self._handle, bucket_name, object_name, filename, offset, size, self._user_id)
+        return H3Bytes(done=done)
 
     def copy_object(self, bucket_name, src_object_name, dst_object_name, no_overwrite=False):
         """Copy an object to another object.
@@ -367,7 +456,7 @@ class H3(object, metaclass=H3Version):
         :type bucket_name: string
         :type offset: int
         :type count: int
-        :returns: An H3List of multipart ids if the call was successfull
+        :returns: An H3List of multipart ids if the call was successful
         """
 
         multiparts, done = h3lib.list_multiparts(self._handle, bucket_name, offset, count, self._user_id)
