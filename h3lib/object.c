@@ -858,15 +858,16 @@ H3_Status H3_ReadObjectToFile(H3_Handle handle, H3_Token token, H3_Name bucketNa
         	KV_Value buffer = malloc(bufferSize);
 
         	if(buffer){
-        		ssize_t chunkSize = bufferSize;
+        		off_t offsetCopy = offset;
         		size_t requiredSize = *size;
         		if(!requiredSize)
         			requiredSize = availableSize;
 
+        		ssize_t chunkSize = min(bufferSize, requiredSize);
         		while(requiredSize && (storeStatus = ReadData(ctx, objMeta, buffer, (size_t*)&chunkSize, offset)) == KV_SUCCESS && chunkSize && (chunkSize = write(fd, buffer, (size_t)chunkSize)) != -1){
         			offset += chunkSize;
         			requiredSize -= chunkSize;
-        			chunkSize = bufferSize;
+        			chunkSize = min(bufferSize, requiredSize);
         		}
 
         		free(buffer);
@@ -879,7 +880,7 @@ H3_Status H3_ReadObjectToFile(H3_Handle handle, H3_Token token, H3_Name bucketNa
         			else
         				*size = availableSize - requiredSize;
 
-                    if(availableSize > *size)
+                    if(availableSize > (*size + offsetCopy))
                         status = H3_CONTINUE;
                     else
                         status = H3_SUCCESS;
