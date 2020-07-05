@@ -20,6 +20,7 @@ import pyh3lib
 
 from shutil import copyfile, copytree, ignore_patterns, move, rmtree
 from math import log
+from datetime import datetime
 
 # Utility functions
 
@@ -52,7 +53,7 @@ def get_config_path():
     except KeyError:
         config = os.path.join(os.getcwd(), 'config.ini')
         if not os.access(config, os.F_OK):
-            config = os.path.join(os.environ['HOME'], '.h3','config.ini')
+            config = os.path.join(os.environ['HOME'], '.h3', 'config.ini')
 
         return config
 
@@ -73,10 +74,10 @@ def local_2_local(args, is_move):
     # Argument validation
     if args.recursive:
         if not os.path.isdir(args.src):
-            return print_error(f"Invalid source folder'{args.src}'")
+            return print_error(f"Invalid source folder '{args.src}'")
     else:
         if not os.path.isfile(args.src):
-            return print_error(f"Invalid source file'{args.src}'")
+            return print_error(f"Invalid source file '{args.src}'")
 
     # Check bellow for INCLUDE pattern
     # https://stackoverflow.com/questions/52071642/python-copying-the-files-with-include-pattern
@@ -103,13 +104,13 @@ def accept_file(file_name, args):
     else:
         return True
 
-def local_2_h3(client, args, is_move):
+def local_2_h3(h3, args, is_move):
     trg_bucket, trg_object = parse_h3_path(args.trg)
 
     # Copy/Move directories
     if args.recursive:
         if not os.path.isdir(args.src):
-            return print_error(f"Invalid source folder'{args.src}'")
+            return print_error(f"Invalid source folder '{args.src}'")
 
         for dirpath, dirnames, files in os.walk(args.src):
             trimed_dirpath = dirpath[len(args.src):].strip('./')
@@ -127,13 +128,17 @@ def local_2_h3(client, args, is_move):
                     else:
                         path = str(path).replace(' ', '_')
 
-                    if h3.put_object(trg_bucket, path, file_path=full_file_name, intent=H3ClientIntent.UPLOAD):
-                        if args.debug or not args.only_show_errors:
-                            print(f'{file_name}')
-                        if is_move:
-                            os.remove(file_name)
-                    else:
-                        print_error(f"Failed to {('copy','move')[is_move]} file'{file_name}'")
+                    try:
+                        if h3.write_object_from_file(trg_bucket, path, filename=full_file_name):
+                            if args.debug or not args.only_show_errors:
+                                print(f'{path}')
+                            if is_move:
+                                os.remove(file_name)
+                        else:
+                            print_error(f"Failed to {('copy', 'move')[is_move]} file '{file_name}'")
+                    except Exception as e:
+                        # raise
+                        print_error(f"Failed to {('copy', 'move')[is_move]} file '{file_name}'")
                 else:
                     print_debug(args, f'Skipping {file_name}')
 
@@ -143,7 +148,7 @@ def local_2_h3(client, args, is_move):
     # Copy/Move single file
     else:
         if not os.path.isfile(args.src):
-            return print_error(f"Invalid source file'{args.src}'")
+            return print_error(f"Invalid source file '{args.src}'")
 
         if args.include or args.exclude:
             return print_error(f"Include/Exclude options not supported for individual files")
@@ -151,15 +156,19 @@ def local_2_h3(client, args, is_move):
         if not trg_object:
             trg_object = args.src
 
-        if h3.put_object(trg_bucket, trg_object, file_path=args.src, intent=H3ClientIntent.UPLOAD):
-            if args.debug or not args.only_show_errors:
-                print_info(f'Uploaded file {args.src}')
-            if is_move:
-                os.remove(args.src)
-        else:
-            print_error(f"Failed to {('copy','move')[is_move]} file'{args.src}'")
+        try:
+            if h3.write_object_from_file(trg_bucket, trg_object, filename=args.src):
+                if args.debug or not args.only_show_errors:
+                    print_info(f'Uploaded file {args.src}')
+                if is_move:
+                    os.remove(args.src)
+            else:
+                print_error(f"Failed to {('copy', 'move')[is_move]} file '{args.src}'")
+        except Exception as e:
+            # raise
+            print_error(f"Failed to {('copy', 'move')[is_move]} file '{args.src}'")
 
-def h3_2_local(client, args, is_move):
+def h3_2_local(h3, args, is_move):
     src_bucket, src_object = parse_h3_path(args.src)
 
     # Copy/Move directories
@@ -167,23 +176,26 @@ def h3_2_local(client, args, is_move):
         if not os.path.isdir(args.trg):
             return print_error(f"Not a folder '{args.trg}'")
 
-        for object in [x for x in h3.list_objects(src_bucket, src_object) if accept_file(x.name, args)]:
-            name = object.name
+        for name in [x for x in h3.list_objects(src_bucket, src_object) if accept_file(x, args)]:
 
             # We drop the part that looks like a folder
-            full_path = os.path.join(args.trg, name[name.find('/', len(src_object))+1:])
+            # full_path = os.path.join(args.trg, name[name.find('/', len(src_object))+1:])
+            full_path = os.path.join(args.trg, name)
             dir_name = os.path.dirname(full_path)
+            print(name, full_path, dir_name)
             try:
                 os.makedirs(dir_name)
             except FileExistsError:
                 pass
 
-            if h3.get_object(src_bucket, name, file_path=full_path):
+            try:
+                h3.read_object_to_file(src_bucket, name, filename=full_path)
                 if args.debug or not args.only_show_errors:
                     print_info(f'Fetched file {name}')
                 if is_move:
                     h3.delete_object(src_bucket, name)
-            else:
+            except Exception as e:
+                raise
                 print_error(f'Failed to fetch file {name}')
 
     # Copy/Move single file
@@ -196,50 +208,63 @@ def h3_2_local(client, args, is_move):
         else:
             file_path = args.trg
 
-        if h3.get_object(src_bucket, src_object, file_path=file_path):
+        try:
+            h3.read_object_to_file(src_bucket, src_object, filename=file_path)
             if args.debug or not args.only_show_errors:
                 print_info(f'Fetched file {file_path}')
             if is_move:
                 h3.delete_object(src_bucket, src_object)
-        else:
+        except Exception as e:
+            # raise
             print_error(f'Failed to fetch file {file_path}')
 
-def h3_2_h3(client, args, is_move):
+def h3_2_h3(h3, args, is_move):
     src_bucket, src_prefix = parse_h3_path(args.src)
     trg_bucket, trg_prefix = parse_h3_path(args.trg)
 
+    if src_bucket != trg_bucket:
+        print_error(f"Can not {('copy', 'move')[is_move]} across buckets")
+        return
+
     # Copy/Rename multiple files
     if args.recursive:
-        for object in [x for x in h3.list_objects(src_bucket, src_prefix) if accept_file(x.name, args)]:
-            src_object = object.name
+        for src_object in [x for x in h3.list_objects(src_bucket, src_prefix) if accept_file(x, args)]:
 
-            if trg_prefix:
-                trg_object = src_object.replace(src_prefix, trg_prefix, 1)
-            else:
-                trg_object = src_object
+            trg_object = src_object.replace(src_prefix, trg_prefix, 1)
 
-            if is_move:
-                success = h3.rename_object(src_bucket, src_object, trg_bucket, trg_object)
-            else:
-                success = h3.copy_object(src_bucket, src_object, trg_bucket, trg_object)
+            try:
+                print(src_bucket, src_object, trg_object)
+                if is_move:
+                    success = h3.move_object(src_bucket, src_object, trg_object)
+                else:
+                    success = h3.copy_object(src_bucket, src_object, trg_object)
 
-            if success and (args.debug or not args.only_show_errors):
-                print(f'{src_object}')
+                if not success:
+                    print_error(f"Failed to {('copy', 'move')[is_move]} '{args.src}'")
+                elif args.debug or not args.only_show_errors:
+                    print_info(f"{('Copied', 'Moved')[is_move]} file '{src_object}'")
+            except Exception as e:
+                # raise
+                print_error(f"Failed to {('copy', 'move')[is_move]} '{args.src}'")
 
     # Copy/Rename single file
     else:
         if args.include or args.exclude:
             return print_error(f"Include/Exclude options not supported for individual files")
 
-        if is_move:
-            success = h3.rename_object(src_bucket, src_prefix, trg_bucket, trg_prefix)
-        else:
-            success = h3.copy_object(src_bucket, src_prefix, trg_bucket, trg_prefix)
+        try:
+            if is_move:
+                success = h3.move_object(src_bucket, src_prefix, trg_prefix)
+            else:
+                success = h3.copy_object(src_bucket, src_prefix, trg_prefix)
 
-        if not success:
-            print_error(f"Failed to {('copy','move')[is_move]} file'{args.src}'")
-        elif args.debug or not args.only_show_errors:
-                print_info(f'Fetched file {args.trg}')
+            if not success:
+                print_error(f"Failed to {('copy', 'move')[is_move]} file '{args.src}'")
+            elif args.debug or not args.only_show_errors:
+                print_info(f"{('Copied', 'Moved')[is_move]} file '{args.src}'")
+        except Exception as e:
+            # raise
+            print_error(f"Failed to {('copy', 'move')[is_move]} file '{args.src}'")
 
 def cp_or_mv(config_path, args, is_move):
     src_bucket, src_object = parse_h3_path(args.src) #[parse_h3_path(path) for path in args.src]
@@ -254,11 +279,11 @@ def cp_or_mv(config_path, args, is_move):
         if not src_bucket and not trg_bucket:
             local_2_local(args, is_move)
         elif not src_bucket and trg_bucket:
-            local_2_h3(client, args, is_move)
+            local_2_h3(h3, args, is_move)
         elif src_bucket and not trg_bucket:
-            h3_2_local(client, args, is_move)
+            h3_2_local(h3, args, is_move)
         else:
-            h3_2_h3(client, args, is_move)
+            h3_2_h3(h3, args, is_move)
 
     except Exception as e:
         raise
@@ -292,9 +317,13 @@ def cmd_remove_bucket(config_path, args):
     try:
         if bucket and not object:
             h3 = pyh3lib.H3(config_path)
-            if not args.force and h3.list_objects(bucket):
-                print_error(f'Bucket {args.id} is not empty. Cannot delete.')
-            elif h3.delete_bucket(bucket):
+            if h3.list_objects(bucket):
+                if not args.force:
+                    print_error(f'Bucket {args.id} is not empty. Cannot delete.')
+                    return
+                else:
+                    h3.purge_bucket(bucket)
+            if h3.delete_bucket(bucket):
                 print_info(f'Deleted bucket h3://{bucket}')
             else:
                 print_error(f'Failed to delete bucket h3://{bucket}')
@@ -316,15 +345,21 @@ def cmd_move(config_path, args):
     print_debug(args, f'command -> mv [src:{args.src}, trg:{args.trg}, recursive:{args.recursive}, only_errors:{args.only_show_errors}, include:{args.include},  exclude:{args.exclude}]')
     cp_or_mv(config_path, args, True)
 
-def cmd_head_object(config_path, args):
-    print_debug(args, f'command -> head_object [bucket:{args.bucket}, key:{args.key}')
+def cmd_info(config_path, args):
+    bucket, object = parse_h3_path(args.prefix)
+    print_debug(args, f'command -> info [bucket:{bucket}, object:{object}')
     try:
         h3 = pyh3lib.H3(config_path)
-        stat = h3.head_object(args.bucket, args.key)
-        print_info(f'Size:{stat.size}')
-        print_info(f'Last Modification Time: {datetime.fromtimestamp(stat.mtime).strftime("%Y-%m-%d %H:%M:%S")}')
+        if not object:
+            stat = h3.info_bucket(bucket, get_stats=True)
+            print_info(f'Size: {stat.stats.size}')
+            print_info(f'Last Modification Time: {datetime.fromtimestamp(stat.stats.last_modification).strftime("%Y-%m-%d %H:%M:%S")}')
+        else:
+            stat = h3.info_object(bucket, object)
+            print_info(f'Size: {stat.size}')
+            print_info(f'Last Modification Time: {datetime.fromtimestamp(stat.last_modification).strftime("%Y-%m-%d %H:%M:%S")}')
     except pyh3lib.H3NotExistsError:
-        print_error(f'File h3://{args.bucket}/{args.key} does not exist')
+        print_error(f'Object does not exist')
     except Exception as e:
         raise
         print_error(f'Cannot get object info: {e}')
@@ -342,12 +377,8 @@ def cmd_list(config_path, args):
 
         h3 = pyh3lib.H3(config_path)
         if not list_buckets:
-            objects = h3.list_objects(bucket, prefix)
-            if objects is None:
-                return print_error(f'Cannot access {args.prefix}')
-
-            for object in objects:
-                print(f"{object.name}  {sizeof(object.size)}")
+            for object in h3.list_objects(bucket, prefix):
+                print(object)
         else:
             for bucket in h3.list_buckets():
                 print(bucket)
@@ -367,16 +398,19 @@ def cmd_remove_object(config_path, args):
 
         if args.recursive:
             for item in h3.list_objects(bucket, object):
-                if not h3.delete_object(bucket, item.name):
-                    print_error(f"Failed to delete object {item.name}")
+                if not h3.delete_object(bucket, item):
+                    print_error(f"Failed to delete object {item}")
                 elif args.debug or not args.only_show_errors:
-                    print_info(f"Deleted object {item.name}")
+                    print_info(f"Deleted object {item}")
 
-        elif h3.delete_object(bucket, object):
-            if args.debug or not args.only_show_errors:
-                print_info(f'Deleted object {args.prefix}')
         else:
-            print_error(f'Failed to delete object {args.prefix}')
+            if h3.delete_object(bucket, object):
+                if args.debug or not args.only_show_errors:
+                    print_info(f'Deleted object {args.prefix}')
+    except pyh3lib.H3InvalidArgsError:
+        print_error(f'Invalid name')
+    except pyh3lib.H3NotExistsError:
+        print_error(f'Object does not exist')
     except Exception as e:
         raise
         print_error(f'Cannot delete object: {e}')
@@ -521,7 +555,7 @@ def main(cmd=None):
     copy.add_argument('-r', '--recursive', action='store_true', help='Command is performed on all files or objects under the specified directory or prefix')
     copy.add_argument('-e', '--only-show-errors', action='store_true', help='Only errors and warnings are displayed. All other output is suppressed')
     copy.add_argument('--include', action='append', help= "Include files or objects in the command that match the specified pattern")
-    copy.add_argument('--exclude', action='append', help= "Exclude all files or objects from the command that matches the specified pattern")
+    copy.add_argument('--exclude', action='append', help= "Exclude all files or objects from the command that match the specified pattern")
     copy.set_defaults(func=cmd_copy)
 
     move = subprasers.add_parser('mv', help='Moves a local file or H3 object to another location locally or in H3')
@@ -530,13 +564,12 @@ def main(cmd=None):
     move.add_argument('-r', '--recursive', action='store_true', help='Command is performed on all files or objects under the specified directory or prefix')
     move.add_argument('-e', '--only-show-errors', action='store_true', help='Only errors and warnings are displayed. All other output is suppressed')
     move.add_argument('--include', action='append', help= "Include files or objects in the command that match the specified pattern")
-    move.add_argument('--exclude', action='append', help= "Exclude all files or objects from the command that matches the specified pattern")
+    move.add_argument('--exclude', action='append', help= "Exclude all files or objects from the command that match the specified pattern")
     move.set_defaults(func=cmd_move)
 
-    head_object = subprasers.add_parser('head_object', help='Retrieve metadata from an object without returning the object itself')
-    head_object.add_argument('-b','--bucket', help="object's bucket", required=True)
-    head_object.add_argument('-k', '--key', help='object', required=True)
-    head_object.set_defaults(func=cmd_head_object)
+    info = subprasers.add_parser('info', help='Retrieve metadata from an object without returning the object itself')
+    info.add_argument('prefix', nargs='?', default=None)
+    info.set_defaults(func=cmd_info)
 
     list = subprasers.add_parser('ls', help='List H3 objects and common prefixes under a prefix or all H3 buckets')
     list.add_argument('prefix', nargs='?', default=None)
@@ -549,19 +582,19 @@ def main(cmd=None):
     remove_object.set_defaults(func=cmd_remove_object)
 
     # create_multipart_upload = subprasers.add_parser('create_multipart_upload', help='Initiates a multipart upload and returns an upload ID')
-    # create_multipart_upload.add_argument('-b','--bucket', help="object's bucket", required=True)
+    # create_multipart_upload.add_argument('-b', '--bucket', help="object's bucket", required=True)
     # create_multipart_upload.add_argument('-k', '--key', help='object', required=True)
     # create_multipart_upload.set_defaults(func=cmd_create_multipart_upload)
 
     # upload_part = subprasers.add_parser('upload_part', help='Uploads a part in a multipart upload')
-    # upload_part.add_argument('-f','--file', help="File holding the object's data", required=True)
-    # upload_part.add_argument('-p','--part-number', type=int, help="Part number of part being uploaded. This is a positive integer between 1 and 10,000", choices=range(1, 10000), required=True)
+    # upload_part.add_argument('-f', '--file', help="File holding the object's data", required=True)
+    # upload_part.add_argument('-p', '--part-number', type=int, help="Part number of part being uploaded. This is a positive integer between 1 and 10,000", choices=range(1, 10000), required=True)
     # upload_part.add_argument('-u', '--upload-id', help='Upload ID identifying the multipart upload whose part is being uploaded', required=True)
     # upload_part.set_defaults(func=cmd_upload_part)
 
     # upload_part_copy = subprasers.add_parser('upload_part_copy', help='Uploads a part by copying data from an existing object as data source')
-    # upload_part_copy.add_argument('-s','--copy-source', help="The name of the source bucket and key name of the source object, separated by a slash (/)", required=True)
-    # upload_part_copy.add_argument('-p','--part-number', type=int, help="Part number of part being uploaded. This is a positive integer between 1 and 10,000", choices=range(1, 10000), required=True)
+    # upload_part_copy.add_argument('-s', '--copy-source', help="The name of the source bucket and key name of the source object, separated by a slash (/)", required=True)
+    # upload_part_copy.add_argument('-p', '--part-number', type=int, help="Part number of part being uploaded. This is a positive integer between 1 and 10,000", choices=range(1, 10000), required=True)
     # upload_part_copy.add_argument('-u', '--upload-id', help='Upload ID identifying the multipart upload whose part is being uploaded', required=True)
     # upload_part_copy.set_defaults(func=cmd_upload_part_copy)
 
@@ -570,7 +603,7 @@ def main(cmd=None):
     # list_parts.set_defaults(func=cmd_list_parts)
 
     # list_multipart_uploads = subprasers.add_parser('list_multipart_uploads', help='Lists in-progress multipart uploads')
-    # list_multipart_uploads.add_argument('-b','--bucket', required=True)
+    # list_multipart_uploads.add_argument('-b', '--bucket', required=True)
     # list_multipart_uploads.add_argument('-p', '--prefix', help='Lists in-progress uploads only for those keys that begin with the specified prefix')
     # list_multipart_uploads.set_defaults(func=cmd_list_mutlipart_uploads)
 
