@@ -43,10 +43,8 @@ public interface JH3Interface extends Library {
         int H3_STORE_REDIS_CLUSTER = 4;
         /** Redis. */
         int H3_STORE_REDIS = 5;
-        /** IME Cluster (not available). */
-        int H3_STORE_IME = 6;
         /** Not an option, used for iteration purposes. */
-        int H3_STORE_NumOfStores = 7;
+        int H3_STORE_NumOfStores = 6;
     }
     /** Status/error codes supported by H3; Represents values of H3_Status enum */
     interface Status {

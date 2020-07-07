@@ -68,7 +68,6 @@ typedef enum {
     H3_STORE_ROCKSDB,       //!< RocksDB server
     H3_STORE_REDIS_CLUSTER, //!< Redis cluster
     H3_STORE_REDIS,         //!< Redis
-    H3_STORE_IME,           //!< IME (not available)
     H3_NumOfStores          //!< Not an option, used for iteration purposes
 } H3_StoreType;
 
