@@ -89,6 +89,9 @@ class H3(object, metaclass=H3Version):
     STORE_ROCKSDB = h3lib.H3_STORE_ROCKSDB
     """Storage type to use `RocksDB <https://rocksdb.org>`_ as the backend."""
 
+    STORE_REDIS_CLUSTER = h3lib.H3_STORE_REDIS_CLUSTER
+    """Storage type to use `Redis <https://redis.io>`_ as the backend (cluster mode)."""
+
     STORE_REDIS = h3lib.H3_STORE_REDIS
     """Storage type to use `Redis <https://redis.io>`_ as the backend."""
 

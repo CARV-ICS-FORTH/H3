@@ -64,10 +64,11 @@ typedef enum {
 typedef enum {
     H3_STORE_CONFIG = 0,    //!< Provider is set in the configuration file
     H3_STORE_FILESYSTEM,    //!< Mounted filesystem
-    H3_STORE_KREON,         //!< Kreon cluster  (not available)
-    H3_STORE_ROCKSDB,       //!< RocksDB server (not available)
-    H3_STORE_REDIS,         //!< Redis cluster  (not available)
-    H3_STORE_IME,           //!< IME cluster    (not available)
+    H3_STORE_KREON,         //!< Kreon cluster
+    H3_STORE_ROCKSDB,       //!< RocksDB server
+    H3_STORE_REDIS_CLUSTER, //!< Redis cluster
+    H3_STORE_REDIS,         //!< Redis
+    H3_STORE_IME,           //!< IME (not available)
     H3_NumOfStores          //!< Not an option, used for iteration purposes
 } H3_StoreType;
 

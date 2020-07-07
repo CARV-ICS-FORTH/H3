@@ -49,24 +49,31 @@ pkg_search_module(GLIB REQUIRED glib-2.0)
 find_package(rocksdb)
 find_package(kreon)
 find_package(hiredis_vip)
+find_package(hiredis)
 
 
 #https://cmake.org/cmake/help/v3.10/command/add_library.html
 set(SOURCE_FILES h3lib.c bucket.c object.c multipart.c kv_fs.c util.c )
 if(ROCKSDB_FOUND)
-	set(SOURCE_FILES ${SOURCE_FILES} kv_rocksdb.c) 
+	set(SOURCE_FILES ${SOURCE_FILES} kv_rocksdb.c)
 	add_definitions(-DH3LIB_USE_ROCKSDB)
 endif()
 
 if(KREON_FOUND)
-	set(SOURCE_FILES ${SOURCE_FILES} kv_kreon.c) 
+	set(SOURCE_FILES ${SOURCE_FILES} kv_kreon.c)
 	add_definitions(-DH3LIB_USE_KREON)
 endif()
 
 if(HIREDIS_VIP_FOUND)
-	set(SOURCE_FILES ${SOURCE_FILES} kv_redis.c) 
-	add_definitions(-DH3LIB_USE_REDIS)
+	set(SOURCE_FILES ${SOURCE_FILES} kv_redis_cluster.c)
+	add_definitions(-DH3LIB_USE_REDIS_CLUSTER)
 endif()
+
+if(HIREDIS_FOUND)
+  set(SOURCE_FILES ${SOURCE_FILES} kv_redis.c)
+  add_definitions(-DH3LIB_USE_REDIS)
+endif()
+
 add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES})
 
 #https://cmake.org/cmake/help/v3.10/command/target_include_directories.html
@@ -87,6 +94,11 @@ endif()
 if(HIREDIS_VIP_FOUND)
 	target_include_directories(${PROJECT_NAME} PRIVATE ${HIREDIS_VIP_INCLUDE_DIR})
 	target_link_libraries(${PROJECT_NAME} PRIVATE ${HIREDIS_VIP_LIBRARIES})
+endif()
+
+if(HIREDIS_FOUND)
+  target_include_directories(${PROJECT_NAME} PRIVATE ${HIREDIS_INCLUDE_DIR})
+  target_link_libraries(${PROJECT_NAME} PRIVATE ${HIREDIS_LIBRARIES})
 endif()
 
 
@@ -116,20 +128,20 @@ add_subdirectory(tests)
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
                                                              ${CMAKE_SOURCE_DIR}/tests/config.ini
                                                              ${CMAKE_CURRENT_BINARY_DIR}/tests/config.ini)
-                                                             
-add_subdirectory(tools)                                                             
+
+add_subdirectory(tools)
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
                                                              ${CMAKE_SOURCE_DIR}/tests/config.ini
-                                                             ${CMAKE_CURRENT_BINARY_DIR}/tools/config.ini) 
- 
+                                                             ${CMAKE_CURRENT_BINARY_DIR}/tools/config.ini)
+
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink
                                                              ${CMAKE_SOURCE_DIR}/tools/run_benchmark.sh
-                                                             ${CMAKE_CURRENT_BINARY_DIR}/tools/run_benchmark.sh) 
-                                                             
+                                                             ${CMAKE_CURRENT_BINARY_DIR}/tools/run_benchmark.sh)
+
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink
                                                              ${CMAKE_SOURCE_DIR}/tools/generate_flamegraph.sh
-                                                             ${CMAKE_CURRENT_BINARY_DIR}/tools/generate_flamegraph.sh)                                                                                                                             
-                                                                                                                        
+                                                             ${CMAKE_CURRENT_BINARY_DIR}/tools/generate_flamegraph.sh)
+
 
 set(CPACK_PACKAGE_NAME ${PROJECT_NAME})
 set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})

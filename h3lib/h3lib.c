@@ -20,6 +20,10 @@ extern KV_Operations operationsFilesystem;
 extern KV_Operations operationsRedis;
 #endif
 
+#ifdef H3LIB_USE_REDIS_CLUSTER
+extern KV_Operations operationsRedisCluster;
+#endif
+
 #ifdef H3LIB_USE_KREON
 extern KV_Operations operationsKreon;
 #endif
@@ -132,6 +136,7 @@ H3_StoreType H3_String2Type(const char* type){
         if(     strcmp(type, "filesystem") == 0)     store = H3_STORE_FILESYSTEM;
         else if(strcmp(type, "kreon") == 0)          store = H3_STORE_KREON;
         else if(strcmp(type, "rocksdb") == 0)        store = H3_STORE_ROCKSDB;
+        else if(strcmp(type, "rediscluster") == 0)   store = H3_STORE_REDIS_CLUSTER;
         else if(strcmp(type, "redis") == 0)          store = H3_STORE_REDIS;
         else if(strcmp(type, "ime") == 0)            store = H3_STORE_IME;
     }
@@ -140,7 +145,7 @@ H3_StoreType H3_String2Type(const char* type){
 }
 
 
-const char* const StoreType[] = {"config", "filesystem", "kreon", "rocksdb", "redis", "ime", "unknown"};
+const char* const StoreType[] = {"config", "filesystem", "kreon", "rocksdb", "rediscluster", "redis", "ime", "unknown"};
 const char* H3_Type2String(H3_StoreType type){
 	const char* string;
 
@@ -232,13 +237,6 @@ H3_Handle H3_Init(H3_StoreType storageType, const char* cfgFileName) {
 
     if(ctx){
 		switch(storageType){
-			case H3_STORE_REDIS:
-#ifdef H3LIB_USE_REDIS
-				LogActivity(H3_INFO_MSG, "Using kv_redis driver...\n");
-				ctx->operation = &operationsRedis;
-				break;
-#endif
-
 			case H3_STORE_IME:
 				LogActivity(H3_INFO_MSG, "WARNING: Driver not available...\n");
 				ctx->operation = NULL;
@@ -268,6 +266,26 @@ H3_Handle H3_Init(H3_StoreType storageType, const char* cfgFileName) {
 				ctx->operation = NULL;
 #endif
 				break;
+
+            case H3_STORE_REDIS_CLUSTER:
+#ifdef H3LIB_USE_REDIS_CLUSTER
+                LogActivity(H3_INFO_MSG, "Using kv_redis_cluster driver...\n");
+                ctx->operation = &operationsRedisCluster;
+                break;
+#else
+                LogActivity(H3_INFO_MSG, "WARNING: Driver not available...\n");
+                ctx->operation = NULL;
+#endif
+
+            case H3_STORE_REDIS:
+#ifdef H3LIB_USE_REDIS
+                LogActivity(H3_INFO_MSG, "Using kv_redis driver...\n");
+                ctx->operation = &operationsRedis;
+                break;
+#else
+                LogActivity(H3_INFO_MSG, "WARNING: Driver not available...\n");
+                ctx->operation = NULL;
+#endif
 
 			default:
 				LogActivity(H3_ERROR_MSG, "ERROR: Driver not recognized\n");

@@ -1122,6 +1122,7 @@ PyMODINIT_FUNC PyInit_h3lib(void) {
     PyModule_AddIntConstant(module, "H3_STORE_FILESYSTEM", H3_STORE_FILESYSTEM);
     PyModule_AddIntConstant(module, "H3_STORE_KREON", H3_STORE_KREON);
     PyModule_AddIntConstant(module, "H3_STORE_ROCKSDB", H3_STORE_ROCKSDB);
+    PyModule_AddIntConstant(module, "H3_STORE_REDIS_CLUSTER", H3_STORE_REDIS_CLUSTER);
     PyModule_AddIntConstant(module, "H3_STORE_REDIS", H3_STORE_REDIS);
     PyModule_AddIntConstant(module, "H3_STORE_IME", H3_STORE_IME);
 

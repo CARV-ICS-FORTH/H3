@@ -15,7 +15,6 @@ Run tests::
 
 For more options, consult the `documentation <../docs/>`_.
 
-
 RocksDB
 =======
 Install all dependencies as per https://github.com/facebook/rocksdb/blob/master/INSTALL.md
@@ -23,19 +22,20 @@ make shared_lib
 make install-shared
 
 Kreon
-======
+=====
 cmake .. -DCMAKE_BUILD_TYPE=Release -DKREON_BUILD_CPACK=TRUE
 
-
-Redis
-======
+Redis Cluster
+=============
 Clone the hiredis-vip client from https://github.com/vipshop/hiredis-vip/tree/master
 The driver is build using a patched version of the client (master, commit: f12060498004494a3e1de11f653a8624f3d218c3).
 The patch is stored in h3lib root directory, apply it with git, i.e. git apply h3lib.patch
-To run the tests you have to execute script run_rediscluster.sh. Note it will clone/compile the latest redis-server into 
+To run the tests you have to execute script run_rediscluster.sh. Note it will clone/compile the latest redis-server into
 directory "rediscluster" created within the working directory. Read issue #118.
 
-
+Redis
+=====
+Install the hiredis client library
 
 FlameGraph
 ==========

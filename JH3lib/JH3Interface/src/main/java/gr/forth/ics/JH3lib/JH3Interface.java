@@ -35,16 +35,18 @@ public interface JH3Interface extends Library {
         int H3_STORE_CONFIG = 0;
         /** Use mounted filesystem. */
         int H3_STORE_FILESYSTEM = 1;
-        /** Kreon cluster (not available). */
+        /** Kreon cluster. */
         int H3_STORE_KREON = 2;
-        /** RocksDB server (not available). */
+        /** RocksDB server. */
         int H3_STORE_ROCKSDB = 3;
-        /** Redis cluster (not available). */
-        int H3_STORE_REDIS = 4;
+        /** Redis cluster. */
+        int H3_STORE_REDIS_CLUSTER = 4;
+        /** Redis. */
+        int H3_STORE_REDIS = 5;
         /** IME Cluster (not available). */
-        int H3_STORE_IME = 5;
+        int H3_STORE_IME = 6;
         /** Not an option, used for iteration purposes. */
-        int H3_STORE_NumOfStores = 6;
+        int H3_STORE_NumOfStores = 7;
     }
     /** Status/error codes supported by H3; Represents values of H3_Status enum */
     interface Status {
