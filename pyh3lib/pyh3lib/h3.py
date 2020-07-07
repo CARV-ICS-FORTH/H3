@@ -95,9 +95,6 @@ class H3(object, metaclass=H3Version):
     STORE_REDIS = h3lib.H3_STORE_REDIS
     """Storage type to use `Redis <https://redis.io>`_ as the backend."""
 
-    # STORE_IME = h3lib.H3_STORE_IME
-    # """Storage type to use IME as the backend."""
-
     def __init__(self, config_file, storage_type=h3lib.H3_STORE_CONFIG, user_id=0):
         self._handle = h3lib.init(config_file, storage_type)
         if not self._handle:

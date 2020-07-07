@@ -75,7 +75,7 @@ typedef struct KV_Operations {
 	 *
 	 *
      * --- Sync Operation ---
-     * This may be useful for the DDN IME store.
+     * This may be useful for an external storage device.
 	 */
 
 	KV_Status (*metadata_read)(KV_Handle handle, KV_Key key, off_t offset, KV_Value* value, size_t* size);

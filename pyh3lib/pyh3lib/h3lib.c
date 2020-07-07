@@ -1124,7 +1124,6 @@ PyMODINIT_FUNC PyInit_h3lib(void) {
     PyModule_AddIntConstant(module, "H3_STORE_ROCKSDB", H3_STORE_ROCKSDB);
     PyModule_AddIntConstant(module, "H3_STORE_REDIS_CLUSTER", H3_STORE_REDIS_CLUSTER);
     PyModule_AddIntConstant(module, "H3_STORE_REDIS", H3_STORE_REDIS);
-    PyModule_AddIntConstant(module, "H3_STORE_IME", H3_STORE_IME);
 
     PyStructSequence_InitType(&bucket_stats_type, &bucket_stats_desc);
     PyStructSequence_InitType(&bucket_info_type, &bucket_info_desc);
