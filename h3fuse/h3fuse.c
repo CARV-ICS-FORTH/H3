@@ -306,7 +306,7 @@ int ExamineObject(H3_Name object, char* isDir, char* isEmpty){
 
 static int H3FS_Rename(const char* srcPath, const char* dstPath, unsigned int flags){
 	int res = 0;
-	uint8_t noOverwrite, swap;
+	uint8_t noOverwrite = 0, swap;
 	H3_Status status;
 	H3_Name srcObject = (H3_Name)&srcPath[1];
 	H3_Name dstObject = (H3_Name)&dstPath[1];
@@ -337,7 +337,7 @@ static int H3FS_Rename(const char* srcPath, const char* dstPath, unsigned int fl
 	}
 
 	// If one is directory and the other is a file
-	char srcDir, srcEmpty, dstDir, dstEmpty;
+	char srcDir, srcEmpty, dstDir, dstEmpty = 1;
 	if(!ExamineObject(srcObject, &srcDir, &srcEmpty) ||
 	   !ExamineObject(dstObject, &dstDir, &dstEmpty)	){
 		return -EINVAL;
