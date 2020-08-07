@@ -1,0 +1,20 @@
+import org.apache.hadoop.fs.{FileSystem, Path}
+import java.io.BufferedOutputStream
+import org.apache.hadoop.conf.Configuration
+
+
+// Write binary file "mybucket/test" to H3
+val path = new Path("h3://mybucket/test")
+val conf = new Configuration(sc.hadoopConfiguration)
+val fs = path.getFileSystem(conf)
+val output = fs.create(path)
+val os = new BufferedOutputStream(output)
+val txt = "This is a text from Spark"
+os.write(txt.getBytes("UTF-8"))
+os.close()
+
+
+// Read binary file from "mybucket/test" 
+val data = sc.binaryFiles("h3://mybucket/test").map{case (fileName, pds) => {scala.io.Source.fromInputStream(pds.open()).getLines().toArray}}
+data.take(1)(0).foreach(println)
+

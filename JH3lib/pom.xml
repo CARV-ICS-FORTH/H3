@@ -32,6 +32,7 @@
   <modules>
     <module>JH3Interface</module>
     <module>JH3</module>
+    <module>JH3HadoopFS</module>
   </modules>
 
 </project>
