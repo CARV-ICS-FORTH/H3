@@ -15,14 +15,14 @@ public enum JH3StoreType {
     JH3_STORE_CONFIG(JH3Interface.StoreType.H3_STORE_CONFIG),
     /** Use mounted filesystem. */
     JH3_STORE_FILESYSTEM(JH3Interface.StoreType.H3_STORE_FILESYSTEM),
-    /** Kreon cluster (not available). */
+    /** Kreon cluster. */
     JH3_STORE_KREON(JH3Interface.StoreType.H3_STORE_KREON),
-    /** RocksDB server (not available). */
+    /** RocksDB server. */
     JH3_STORE_ROCKSDB(JH3Interface.StoreType.H3_STORE_ROCKSDB),
-    /** Redis cluster (not available). */
+    /** Redis cluster. */
+    JH3_STORE_REDIS_CLUSTER(JH3Interface.StoreType.H3_STORE_REDIS_CLUSTER),
+    /** Redis. */
     JH3_STORE_REDIS(JH3Interface.StoreType.H3_STORE_REDIS),
-    /** IME cluster (not available). */
-    JH3_STORE_IME(JH3Interface.StoreType.H3_STORE_IME),
     /** Not an option, used for iteration purposes. */
     JH3_STORE_NumOfStores(JH3Interface.StoreType.H3_STORE_NumOfStores);
 

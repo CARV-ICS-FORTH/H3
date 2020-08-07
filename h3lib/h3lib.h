@@ -19,15 +19,17 @@
 #ifndef H3LIB_H_
 #define H3LIB_H_
 
+#define _GNU_SOURCE
 #include <stdint.h>
 #include <time.h>
+#include <unistd.h>
+#include <ftw.h>
 
 /** \defgroup Macros
  *  @{
  */
-#define H3_LAST_ONLY_CHAR			"%"	//!< This character can only appear at the end of an object-name
-#define H3_BUCKET_NAME_SIZE 64      	//!< Maximum number of characters allowed for a bucket
-#define H3_OBJECT_NAME_SIZE 512     	//!< Maximum number of characters allowed for an object
+#define H3_BUCKET_NAME_SIZE 64          //!< Maximum number of characters allowed for a bucket
+#define H3_OBJECT_NAME_SIZE 512         //!< Maximum number of characters allowed for an object
 /** @}*/
 
 
@@ -52,8 +54,8 @@ typedef enum {
     H3_STORE_ERROR,     //!< External (store provider) error
     H3_EXISTS,          //!< Bucket or object already exists
     H3_NOT_EXISTS,      //!< Bucket or object does not exist
-	H3_NAME_TO_LONG,    //!< Bucket or object name is too long
-	H3_NOT_EMPTY,       //!< Bucket is not empty
+    H3_NAME_TOO_LONG,   //!< Bucket or object name is too long
+    H3_NOT_EMPTY,       //!< Bucket is not empty
     H3_SUCCESS,         //!< Operation succeeded
     H3_CONTINUE         //!< Operation succeeded though there are more data to retrieve
 } H3_Status;
@@ -62,19 +64,19 @@ typedef enum {
 typedef enum {
     H3_STORE_CONFIG = 0,    //!< Provider is set in the configuration file
     H3_STORE_FILESYSTEM,    //!< Mounted filesystem
-    H3_STORE_KREON,         //!< Kreon cluster  (not available)
-    H3_STORE_ROCKSDB,       //!< RocksDB server (not available)
-    H3_STORE_REDIS,         //!< Redis cluster  (not available)
-    H3_STORE_IME,           //!< IME cluster    (not available)
-    H3_NumOfStores    		//!< Not an option, used for iteration purposes.
+    H3_STORE_KREON,         //!< Kreon cluster
+    H3_STORE_ROCKSDB,       //!< RocksDB server
+    H3_STORE_REDIS_CLUSTER, //!< Redis cluster
+    H3_STORE_REDIS,         //!< Redis
+    H3_NumOfStores          //!< Not an option, used for iteration purposes
 } H3_StoreType;
 
 
 /*! \brief Object/Bucket attributes supported by H3 */
 typedef enum {
-	H3_ATTRIBUTE_OWNER = 0,		//!< Owner attributes.
-	H3_ATTRIBUTE_PERMISSION,	//!< Permission attribute
-	H3_NumOfAttributes			//!< Not an option, used for iteration purposes.
+    H3_ATTRIBUTE_PERMISSIONS = 0,   //!< Permissions attribute
+    H3_ATTRIBUTE_OWNER,             //!< Owner attributes
+    H3_NumOfAttributes              //!< Not an option, used for iteration purposes
 }H3_AttributeType;
 
 /** @}*/
@@ -85,13 +87,13 @@ typedef struct{
 } H3_Auth;
 
 /*! \brief Pointer to user authentication data */
-typedef H3_Auth* H3_Token;
+typedef const H3_Auth* H3_Token;
 
 
 /*! \brief Bucket statistics */
 typedef struct {
-    size_t size;                		 //!< The size of all objects contained in the bucket
-    uint64_t nObjects;          		 //!< Number of objects contained in the bucket
+    size_t size;                         //!< The size of all objects contained in the bucket
+    uint64_t nObjects;                   //!< Number of objects contained in the bucket
     struct timespec lastAccess;          //!< Last time an object was accessed
     struct timespec lastModification;    //!< Last time an object was modified
 } H3_BucketStats;
@@ -99,23 +101,22 @@ typedef struct {
 
 /*! \brief Bucket information */
 typedef struct {
-	struct timespec creation;       //!< Creation timestamp
-	mode_t 			mode;			//!< File type and mode (used by h3fuse)
-    H3_BucketStats 	stats;   		//!< Aggregate object statistics
+    struct timespec creation;       //!< Creation timestamp
+    H3_BucketStats  stats;          //!< Aggregate object statistics
 } H3_BucketInfo;
 
 
 /*! \brief H3 object information */
 typedef struct {
-    char isBad;                 			//!< Data are corrupt
-    size_t size;                			//!< Object size
-    struct timespec creation;            	//!< Creation timestamp
-    struct timespec lastAccess;          	//!< The last time the object was read
-    struct timespec lastModification;    	//!< The last time the object was modified (content has been modified)
-    struct timespec lastChange;    			//!< The last time the object's attributes were changed (e.g. permissions)
-    mode_t mode;							//!< File type and mode (used by h3fuse)
-    uid_t uid;								//!< User ID (used by h3fuse)
-    gid_t gid;								//!< Group ID (used by h3fuse)
+    char isBad;                             //!< Data are corrupt
+    size_t size;                            //!< Object size
+    struct timespec creation;               //!< Creation timestamp
+    struct timespec lastAccess;             //!< The last time the object was read
+    struct timespec lastModification;       //!< The last time the object was modified (content has been modified)
+    struct timespec lastChange;             //!< The last time the object's attributes were changed (e.g. permissions)
+    mode_t mode;                            //!< File type and mode (used by h3fuse)
+    uid_t uid;                              //!< User ID (used by h3fuse)
+    gid_t gid;                              //!< Group ID (used by h3fuse)
 } H3_ObjectInfo;
 
 
@@ -128,14 +129,14 @@ typedef struct {
 
 /*! \brief Object & Bucket attributes */
 typedef struct {
-	H3_AttributeType type;
-	union{
-		mode_t mode;		//!< Permissions in octal mode similar to chmod()
-		struct {
-			uid_t uid;		//!< User ID, adhering to chown() semantics
-			gid_t gid;		//!< Group ID, adhering to chown() semantics
-		};
-	};
+    H3_AttributeType type;
+    union{
+        mode_t mode;        //!< Permissions in octal mode similar to chmod()
+        struct {
+            uid_t uid;      //!< User ID, adhering to chown() semantics
+            gid_t gid;      //!< Group ID, adhering to chown() semantics
+        };
+    };
 }H3_Attribute;
 
 
@@ -147,11 +148,13 @@ typedef struct {
  * \return Null terminated string
  */
 char* H3_Version();
+H3_StoreType H3_String2Type(const char* type);
+const char* H3_Type2String(H3_StoreType type);
 
 /** \defgroup handle Handle management
  *  @{
  */
-H3_Handle H3_Init(H3_StoreType storageType, char* cfgFileName);
+H3_Handle H3_Init(H3_StoreType storageType, const char* cfgFileName);
 void H3_Free(H3_Handle handle);
 /** @}*/
 
@@ -165,6 +168,7 @@ H3_Status H3_InfoBucket(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
 H3_Status H3_SetBucketAttributes(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Attribute attrib);
 H3_Status H3_CreateBucket(H3_Handle handle, H3_Token token, H3_Name bucketName);
 H3_Status H3_DeleteBucket(H3_Handle handle, H3_Token token, H3_Name bucketName);
+H3_Status H3_PurgeBucket(H3_Handle handle, H3_Token token, H3_Name bucketName);
 /** @}*/
 
 /** \defgroup object Object management
@@ -176,9 +180,14 @@ H3_Status H3_InfoObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
 H3_Status H3_SetObjectAttributes(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, H3_Attribute attrib);
 H3_Status H3_CreateObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, void* data, size_t size);
 H3_Status H3_CreateObjectCopy(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, off_t offset, size_t* size, H3_Name dstObjectName);
+H3_Status H3_CreateObjectFromFile(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, int fd, size_t size);
+H3_Status H3_CreateDummyObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, const void* buffer, size_t bufferSize, size_t objectSize);
 H3_Status H3_WriteObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, void* data, size_t size, off_t offset);
 H3_Status H3_WriteObjectCopy(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, off_t srcOffset, size_t* size, H3_Name dstObjectName, off_t dstOffset);
+H3_Status H3_WriteObjectFromFile(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, int fd, size_t size, off_t offset);
 H3_Status H3_ReadObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, off_t offset, void** data, size_t* size);
+H3_Status H3_ReadDummyObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, size_t* size);
+H3_Status H3_ReadObjectToFile(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, off_t offset, int fd, size_t* size);
 H3_Status H3_CopyObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, H3_Name dstObjectName, uint8_t noOverwrite);
 H3_Status H3_MoveObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, H3_Name dstObjectName, uint8_t noOverwrite);
 H3_Status H3_ExchangeObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, H3_Name dstObjectName);

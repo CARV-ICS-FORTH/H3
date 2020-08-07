@@ -48,7 +48,7 @@ int ComparePartMetadataByNumber(const void* a, const void* b) {
  * @result \b H3_SUCCESS            Operation completed successfully
  * @result \b H3_FAILURE            Bucket does not exist or user has no access
  * @result \b H3_INVALID_ARGS       Missing or malformed arguments
- * @result \b H3_NAME_TO_LONG       Bucket or Object name is longer than H3_BUCKET_NAME_SIZE or H3_OBJECT_NAME_SIZE respectively
+ * @result \b H3_NAME_TOO_LONG      Bucket or Object name is longer than H3_BUCKET_NAME_SIZE or H3_OBJECT_NAME_SIZE respectively
  *
  */
 H3_Status H3_CreateMultipart(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, H3_MultipartId* multipartId){
@@ -75,7 +75,7 @@ H3_Status H3_CreateMultipart(H3_Handle handle, H3_Token token, H3_Name bucketNam
     KV_Status storeStatus;
 
     // Validate bucketName & extract userId from token
-    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS || (status = ValidObjectName(objectName)) != H3_SUCCESS){
+    if( (status = ValidBucketName(op, bucketName)) != H3_SUCCESS || (status = ValidObjectName(op, objectName)) != H3_SUCCESS){
         return status;
     }
 
@@ -84,11 +84,11 @@ H3_Status H3_CreateMultipart(H3_Handle handle, H3_Token token, H3_Name bucketNam
     }
 
     // Make sure user has access to the bucket
-    if((storeStatus = op->metadata_read(_handle, bucketId, 0, &value, &mSize)) == KV_NAME_TO_LONG){
-    	return H3_NAME_TO_LONG;
+    if((storeStatus = op->metadata_read(_handle, bucketId, 0, &value, &mSize)) == KV_KEY_TOO_LONG){
+        return H3_NAME_TOO_LONG;
     }
     else if(storeStatus != KV_SUCCESS)
-    	return H3_FAILURE;
+        return H3_FAILURE;
 
     status = H3_FAILURE;
     H3_BucketMetadata* bucketMetadata = (H3_BucketMetadata*)value;
@@ -98,6 +98,7 @@ H3_Status H3_CreateMultipart(H3_Handle handle, H3_Token token, H3_Name bucketNam
         H3_ObjectMetadata objMeta;
         memcpy(objMeta.userId, userId, sizeof(H3_UserId));
         uuid_generate(objMeta.uuid);
+        objMeta.isBad = 0;
 
         // Populate multipart metadata
         H3_MultipartMetadata multiMeta;
@@ -119,8 +120,8 @@ H3_Status H3_CreateMultipart(H3_Handle handle, H3_Token token, H3_Name bucketNam
                 op->metadata_delete(_handle, multiMeta.objectId);
         }
 
-        if(storeStatus == KV_NAME_TO_LONG)
-        	status = H3_NAME_TO_LONG;
+        if(storeStatus == KV_KEY_TOO_LONG)
+            status = H3_NAME_TOO_LONG;
     }
 
     free(bucketMetadata);
@@ -294,7 +295,7 @@ H3_Status H3_AbortMultipart(H3_Handle handle, H3_Token token, H3_MultipartId mul
  * @result \b H3_NOT_EXISTS         Bucket does not exist
  * @result \b H3_FAILURE            User has no access or unable to access bucket
  * @result \b H3_INVALID_ARGS       Missing or malformed arguments
- * @result \b H3_NAME_TO_LONG       Bucket name is longer than H3_BUCKET_NAME_SIZE
+ * @result \b H3_NAME_TOO_LONG      Bucket name is longer than H3_BUCKET_NAME_SIZE
  *
  */
 H3_Status H3_ListMultiparts(H3_Handle handle, H3_Token token, H3_Name bucketName, uint32_t offset, H3_MultipartId* multipartIdArray, uint32_t* nIds){
@@ -316,7 +317,7 @@ H3_Status H3_ListMultiparts(H3_Handle handle, H3_Token token, H3_Name bucketName
     size_t mSize = 0;
 
     // Validate bucketName & extract userId from token
-    if( (status = ValidBucketName(bucketName)) != H3_SUCCESS){
+    if( (status = ValidBucketName(op, bucketName)) != H3_SUCCESS){
         return status;
     }
 
@@ -349,8 +350,8 @@ H3_Status H3_ListMultiparts(H3_Handle handle, H3_Token token, H3_Name bucketName
     }
     else if(kvStatus == KV_KEY_NOT_EXIST)
         return H3_NOT_EXISTS;
-    else if(kvStatus == KV_NAME_TO_LONG)
-    	return H3_NAME_TO_LONG;
+    else if(kvStatus == KV_KEY_TOO_LONG)
+        return H3_NAME_TOO_LONG;
 
     return status;
 }
@@ -471,6 +472,43 @@ KV_Status DeletePart(H3_Context* ctx, H3_ObjectMetadata* objMeta, uint32_t partN
     return status;
 }
 
+// The offset is necessary in case we cannot allocate a large enough buffer for the whole part and we have to do it in segments.
+// Note that in this case we do not overwrite, instead we simply append.
+KV_Status CreatePart(H3_Context* ctx, H3_ObjectMetadata* objMeta, KV_Value value, size_t size, off_t offset, uint32_t partNumber){
+    KV_Status status = KV_SUCCESS;
+    uint32_t partSubNumber = offset/H3_PART_SIZE;
+    off_t inPartOffset = offset%H3_PART_SIZE;
+
+    while(size && status == KV_SUCCESS) {
+    	H3_PartId partId;
+    	size_t partSize = min((H3_PART_SIZE - inPartOffset), size);
+    	int partIndex = objMeta->nParts;
+
+    	CreatePartId(partId, objMeta->uuid, partNumber, partSubNumber);
+        if( (status = ctx->operation->write(ctx->handle, partId, value, 0, partSize)) == KV_SUCCESS){
+
+            // Create/Update metadata entry
+        	objMeta->part[partIndex].number = partNumber;
+        	objMeta->part[partIndex].subNumber = partSubNumber++;
+        	objMeta->part[partIndex].offset = 0;					// Will be adjusted when object is completed
+        	objMeta->part[partIndex].size = inPartOffset + partSize;
+
+            // Advance counters
+        	size -= partSize;
+            value += partSize;
+            objMeta->nParts++;
+
+            // Once we append to the last sub-part of the previous run
+            // we create new sub-parts i.e. written from the beginning.
+            inPartOffset = 0;
+        }
+        else
+        	objMeta->isBad = 1;
+    }
+
+    return status;
+}
+
 
 
 /*! \brief  Create a single part of a multipart object from user data.
@@ -533,11 +571,14 @@ H3_Status H3_CreatePart(H3_Handle handle, H3_Token token, H3_MultipartId multipa
                 uint nBatch = (nParts + H3_PART_BATCH_SIZE - 1)/H3_PART_BATCH_SIZE;
                 size_t objMetaSize = sizeof(H3_ObjectMetadata) + nBatch * H3_PART_BATCH_SIZE * sizeof(H3_PartMetadata);
                 if(objMetaSize > mSize)
-                    objMeta = realloc(objMeta, objMetaSize);
+                    objMeta = ReAllocFreeOnFail(objMeta, objMetaSize);
 
-                if( WriteData(ctx, objMeta, data, size, 0, partNumber, DivideInSubParts) == KV_SUCCESS         &&
-                    op->metadata_write(_handle, multiMeta->objectId, (KV_Value)objMeta, 0, objMetaSize) == KV_SUCCESS     ){
-                    status = H3_SUCCESS;
+                if(objMeta){
+					// The object has already been modified thus we need to record its state
+					kvStatus = CreatePart(ctx, objMeta, data, size, 0, partNumber);
+					if(op->metadata_write(_handle, multiMeta->objectId, (KV_Value)objMeta, 0, objMetaSize) == KV_SUCCESS && kvStatus == KV_SUCCESS){
+						status = H3_SUCCESS;
+					}
                 }
             }
 
@@ -546,7 +587,8 @@ H3_Status H3_CreatePart(H3_Handle handle, H3_Token token, H3_MultipartId multipa
                 op->metadata_write(_handle, multiMeta->objectId, (KV_Value)objMeta, 0, mSize);
             }
 
-            free(objMeta);
+            if(objMeta)
+            	free(objMeta);
         }
     }
 
@@ -573,7 +615,7 @@ H3_Status H3_CreatePart(H3_Handle handle, H3_Token token, H3_MultipartId multipa
  * @result \b H3_NOT_EXISTS         Multipart or ordinary object does not exist
  * @result \b H3_FAILURE            User has no access or unable to access multipart object
  * @result \b H3_INVALID_ARGS       Missing or malformed arguments
- * @result \b H3_NAME_TO_LONG       Object name is longer than H3_OBJECT_NAME_SIZE
+ * @result \b H3_NAME_TOO_LONG      Object name is longer than H3_OBJECT_NAME_SIZE
  *
  */
 H3_Status H3_CreatePartCopy(H3_Handle handle, H3_Token token, H3_Name objectName, off_t offset, size_t size, H3_MultipartId multipartId, uint32_t partNumber){
@@ -592,7 +634,7 @@ H3_Status H3_CreatePartCopy(H3_Handle handle, H3_Token token, H3_Name objectName
     KV_Value value = NULL;
     size_t mSize = 0;
 
-    if( (status = ValidObjectName(objectName)) != H3_SUCCESS){
+    if( (status = ValidObjectName(op, objectName)) != H3_SUCCESS){
         return status;
     }
 
@@ -632,42 +674,45 @@ H3_Status H3_CreatePartCopy(H3_Handle handle, H3_Token token, H3_Name objectName
                     uint nBatch = (nParts + H3_PART_BATCH_SIZE - 1)/H3_PART_BATCH_SIZE;
                     size_t dstObjMetaSize = sizeof(H3_ObjectMetadata) + nBatch * H3_PART_BATCH_SIZE * sizeof(H3_PartMetadata);
                     if(dstObjMetaSize > mSize)
-                        dstObjMeta = realloc(dstObjMeta, dstObjMetaSize);
+                        dstObjMeta = ReAllocFreeOnFail(dstObjMeta, dstObjMetaSize);
 
-                    // Copy the data in parts
-                    KV_Value buffer = malloc(H3_PART_SIZE);
-                    size_t remaining = size;
-                    off_t srcOffset = offset;
-                    off_t dstOffset = 0;
+                    if(dstObjMeta){
+						// Copy the data in parts
+						KV_Value buffer = malloc(H3_PART_SIZE);
+						size_t remaining = size;
+						off_t srcOffset = offset;
+						off_t dstOffset = 0;
 
-                    while(remaining && kvStatus == KV_SUCCESS){
+						while(remaining && kvStatus == KV_SUCCESS){
 
-                        size_t buffSize = min(H3_PART_SIZE, remaining);
-                        if( (kvStatus = ReadData(ctx, srcObjMeta, buffer, &buffSize, srcOffset)) == KV_SUCCESS                    &&
-                            (kvStatus = WriteData(ctx, dstObjMeta, buffer, buffSize, dstOffset, partNumber, DivideInSubParts)) == KV_SUCCESS     ){
+							size_t buffSize = min(H3_PART_SIZE, remaining);
+							if( (kvStatus = ReadData(ctx, srcObjMeta, buffer, &buffSize, srcOffset)) == KV_SUCCESS              &&
+								(kvStatus = CreatePart(ctx, dstObjMeta, buffer, buffSize, dstOffset, partNumber)) == KV_SUCCESS     ){
 
-                            remaining -= buffSize;
-                            srcOffset += buffSize;
-                            dstOffset += buffSize;
-                        }
-                    }// while()
+								remaining -= buffSize;
+								srcOffset += buffSize;
+								dstOffset += buffSize;
+							}
+						}// while()
 
 
-                    // We have to update metadata even if writing failed because we might have already deleted the previous
-                    // version of the part.
-                    if(op->metadata_write(_handle, multiMeta->objectId, (KV_Value)dstObjMeta, 0, dstObjMetaSize) == KV_SUCCESS){
-                        status = H3_SUCCESS;
+						// We have to update metadata even if writing failed because we might have already deleted the previous
+						// version of the part.
+						if(op->metadata_write(_handle, multiMeta->objectId, (KV_Value)dstObjMeta, 0, dstObjMetaSize) == KV_SUCCESS){
+							status = H3_SUCCESS;
+						}
                     }
                 }
-                free(dstObjMeta);
+                if(dstObjMeta)
+                	free(dstObjMeta);
             }
             free(srcObjMeta);
         }
         else if(kvStatus == KV_KEY_NOT_EXIST)
             status = H3_NOT_EXISTS;
 
-        else if(kvStatus == KV_NAME_TO_LONG)
-        	status = H3_NAME_TO_LONG;
+        else if(kvStatus == KV_KEY_TOO_LONG)
+            status = H3_NAME_TOO_LONG;
     }
 
     free(multiMeta);

@@ -17,6 +17,11 @@
 #include <Python.h>
 #include <h3lib/h3lib.h>
 
+#include <sys/stat.h>
+#include <fcntl.h>
+
+#define TIMESPEC_TO_DOUBLE(t) (t.tv_sec + ((double)t.tv_nsec / 1000000000ULL))
+
 // Named tuples returned
 static PyTypeObject bucket_stats_type;
 static PyTypeObject bucket_info_type;
@@ -43,6 +48,10 @@ static PyStructSequence_Field object_info_fields[] = {
     {"creation",          NULL},
     {"last_access",       NULL},
     {"last_modification", NULL},
+    {"last_change",       NULL},
+    {"mode",              NULL},
+    {"uid",               NULL},
+    {"gid",               NULL},
     {NULL}
 };
 
@@ -86,6 +95,7 @@ static PyObject *invalid_args_status;
 static PyObject *store_error_status;
 static PyObject *exists_status;
 static PyObject *not_exists_status;
+static PyObject *name_too_long_status;
 static PyObject *not_empty_status;
 
 static int did_raise_exception(H3_Status status) {
@@ -104,6 +114,9 @@ static int did_raise_exception(H3_Status status) {
             return 1;
         case H3_NOT_EXISTS:
             PyErr_SetNone(not_exists_status);
+            return 1;
+        case H3_NAME_TOO_LONG:
+            PyErr_SetNone(name_too_long_status);
             return 1;
         case H3_NOT_EMPTY:
             PyErr_SetNone(not_empty_status);
@@ -213,8 +226,8 @@ static PyObject *h3lib_info_bucket(PyObject* self, PyObject *args, PyObject *kw)
         }
         PyStructSequence_SET_ITEM(bucket_stats, 0, Py_BuildValue("k", bucketInfo.stats.size));
         PyStructSequence_SET_ITEM(bucket_stats, 1, Py_BuildValue("K", bucketInfo.stats.nObjects));
-        PyStructSequence_SET_ITEM(bucket_stats, 2, Py_BuildValue("l", bucketInfo.stats.lastAccess));
-        PyStructSequence_SET_ITEM(bucket_stats, 3, Py_BuildValue("l", bucketInfo.stats.lastModification));
+        PyStructSequence_SET_ITEM(bucket_stats, 2, Py_BuildValue("d", TIMESPEC_TO_DOUBLE(bucketInfo.stats.lastAccess)));
+        PyStructSequence_SET_ITEM(bucket_stats, 3, Py_BuildValue("d", TIMESPEC_TO_DOUBLE(bucketInfo.stats.lastModification)));
         if (PyErr_Occurred()) {
             Py_DECREF(bucket_stats);
             PyErr_NoMemory();
@@ -229,7 +242,7 @@ static PyObject *h3lib_info_bucket(PyObject* self, PyObject *args, PyObject *kw)
         PyErr_NoMemory();
         return NULL;
     }
-    PyStructSequence_SET_ITEM(bucket_info, 0, Py_BuildValue("l", bucketInfo.creation));
+    PyStructSequence_SET_ITEM(bucket_info, 0, Py_BuildValue("d", TIMESPEC_TO_DOUBLE(bucketInfo.creation)));
     if (getStats) {
         PyStructSequence_SET_ITEM(bucket_info, 1, bucket_stats);
         // XXX Py_DECREF(bucket_stats);...
@@ -284,6 +297,28 @@ static PyObject *h3lib_delete_bucket(PyObject* self, PyObject *args, PyObject *k
 
     auth.userId = userId;
     if (did_raise_exception(H3_DeleteBucket(handle, &auth, bucketName)))
+        return NULL;
+
+    Py_RETURN_TRUE;
+}
+
+static PyObject *h3lib_purge_bucket(PyObject* self, PyObject *args, PyObject *kw) {
+    PyObject *capsule = NULL;
+    H3_Name bucketName;
+    uint32_t userId = 0;
+
+    static char *kwlist[] = {"handle", "bucket_name", "user_id", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "Os|I", kwlist, &capsule, &bucketName, &userId))
+        return NULL;
+
+    H3_Handle handle = (H3_Handle)PyCapsule_GetPointer(capsule, NULL);
+    if (handle == NULL)
+        return NULL;
+
+    H3_Auth auth;
+
+    auth.userId = userId;
+    if (did_raise_exception(H3_PurgeBucket(handle, &auth, bucketName)))
         return NULL;
 
     Py_RETURN_TRUE;
@@ -361,9 +396,13 @@ static PyObject *h3lib_info_object(PyObject* self, PyObject *args, PyObject *kw)
     }
     PyStructSequence_SET_ITEM(object_info, 0, Py_BuildValue("O", (objectInfo.isBad ? Py_True : Py_False)));
     PyStructSequence_SET_ITEM(object_info, 1, Py_BuildValue("k", objectInfo.size));
-    PyStructSequence_SET_ITEM(object_info, 2, Py_BuildValue("l", objectInfo.creation));
-    PyStructSequence_SET_ITEM(object_info, 3, Py_BuildValue("l", objectInfo.lastAccess));
-    PyStructSequence_SET_ITEM(object_info, 4, Py_BuildValue("l", objectInfo.lastModification));
+    PyStructSequence_SET_ITEM(object_info, 2, Py_BuildValue("d", TIMESPEC_TO_DOUBLE(objectInfo.creation)));
+    PyStructSequence_SET_ITEM(object_info, 3, Py_BuildValue("d", TIMESPEC_TO_DOUBLE(objectInfo.lastAccess)));
+    PyStructSequence_SET_ITEM(object_info, 4, Py_BuildValue("d", TIMESPEC_TO_DOUBLE(objectInfo.lastModification)));
+    PyStructSequence_SET_ITEM(object_info, 5, Py_BuildValue("d", TIMESPEC_TO_DOUBLE(objectInfo.lastChange)));
+    PyStructSequence_SET_ITEM(object_info, 6, Py_BuildValue("i", objectInfo.mode));
+    PyStructSequence_SET_ITEM(object_info, 7, Py_BuildValue("i", objectInfo.uid));
+    PyStructSequence_SET_ITEM(object_info, 8, Py_BuildValue("i", objectInfo.gid));
     if (PyErr_Occurred()) {
         Py_DECREF(object_info);
         PyErr_NoMemory();
@@ -371,6 +410,62 @@ static PyObject *h3lib_info_object(PyObject* self, PyObject *args, PyObject *kw)
     }
 
     return object_info;
+}
+
+static PyObject *h3lib_set_object_permissions(PyObject* self, PyObject *args, PyObject *kw) {
+    PyObject *capsule = NULL;
+    H3_Name bucketName;
+    H3_Name objectName;
+    int mode;
+    uint32_t userId = 0;
+
+    static char *kwlist[] = {"handle", "bucket_name", "object_name", "mode", "user_id", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "Ossii|I", kwlist, &capsule, &bucketName, &objectName, &mode, &userId))
+        return NULL;
+
+    H3_Handle handle = (H3_Handle)PyCapsule_GetPointer(capsule, NULL);
+    if (handle == NULL)
+        return NULL;
+
+    H3_Auth auth;
+    H3_Attribute attribute;
+
+    auth.userId = userId;
+    attribute.type = H3_ATTRIBUTE_PERMISSIONS;
+    attribute.mode = mode;
+    if (did_raise_exception(H3_SetObjectAttributes(handle, &auth, bucketName, objectName, attribute)))
+        return NULL;
+
+    Py_RETURN_TRUE;
+}
+
+static PyObject *h3lib_set_object_owner(PyObject* self, PyObject *args, PyObject *kw) {
+    PyObject *capsule = NULL;
+    H3_Name bucketName;
+    H3_Name objectName;
+    int uid;
+    int gid;
+    uint32_t userId = 0;
+
+    static char *kwlist[] = {"handle", "bucket_name", "object_name", "uid", "gid", "user_id", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "Ossii|I", kwlist, &capsule, &bucketName, &objectName, &uid, &gid, &userId))
+        return NULL;
+
+    H3_Handle handle = (H3_Handle)PyCapsule_GetPointer(capsule, NULL);
+    if (handle == NULL)
+        return NULL;
+
+    H3_Auth auth;
+    H3_Attribute attribute;
+
+    auth.userId = userId;
+    attribute.type = H3_ATTRIBUTE_OWNER;
+    attribute.uid = uid;
+    attribute.gid = gid;
+    if (did_raise_exception(H3_SetObjectAttributes(handle, &auth, bucketName, objectName, attribute)))
+        return NULL;
+
+    Py_RETURN_TRUE;
 }
 
 static PyObject *h3lib_create_object(PyObject* self, PyObject *args, PyObject *kw) {
@@ -422,6 +517,46 @@ static PyObject *h3lib_create_object_copy(PyObject* self, PyObject *args, PyObje
         return NULL;
 
     return Py_BuildValue("k", size);
+}
+
+static PyObject *h3lib_create_object_from_file(PyObject* self, PyObject *args, PyObject *kw) {
+    PyObject *capsule = NULL;
+    H3_Name bucketName;
+    H3_Name objectName;
+    const char *filename;
+    uint32_t userId = 0;
+
+    static char *kwlist[] = {"handle", "bucket_name", "object_name", "filename", "user_id", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "Osss|I", kwlist, &capsule, &bucketName, &objectName, &filename, &userId))
+        return NULL;
+
+    H3_Handle handle = (H3_Handle)PyCapsule_GetPointer(capsule, NULL);
+    if (handle == NULL)
+        return NULL;
+
+    H3_Auth auth;
+
+    auth.userId = userId;
+
+    struct stat st;
+    if (stat(filename, &st) == -1) {
+        PyErr_SetNone(failure_status);
+        return NULL;
+    }
+    size_t size = st.st_size;
+    int fd = open(filename, O_RDONLY);
+    if (fd == -1) {
+        PyErr_SetNone(failure_status);
+        return NULL;
+    }
+
+    if (did_raise_exception(H3_CreateObjectFromFile(handle, &auth, bucketName, objectName, fd, size))) {
+        close(fd);
+        return NULL;
+    }
+    close(fd);
+
+    Py_RETURN_TRUE;
 }
 
 static PyObject *h3lib_write_object(PyObject* self, PyObject *args, PyObject *kw) {
@@ -477,6 +612,47 @@ static PyObject *h3lib_write_object_copy(PyObject* self, PyObject *args, PyObjec
     return Py_BuildValue("k", size);
 }
 
+static PyObject *h3lib_write_object_from_file(PyObject* self, PyObject *args, PyObject *kw) {
+    PyObject *capsule = NULL;
+    H3_Name bucketName;
+    H3_Name objectName;
+    const char *filename;
+    off_t offset = 0;
+    uint32_t userId = 0;
+
+    static char *kwlist[] = {"handle", "bucket_name", "object_name", "filename", "offset", "user_id", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "Osss|lI", kwlist, &capsule, &bucketName, &objectName, &filename, &offset, &userId))
+        return NULL;
+
+    H3_Handle handle = (H3_Handle)PyCapsule_GetPointer(capsule, NULL);
+    if (handle == NULL)
+        return NULL;
+
+    H3_Auth auth;
+
+    auth.userId = userId;
+
+    struct stat st;
+    if (stat(filename, &st) == -1) {
+        PyErr_SetNone(failure_status);
+        return NULL;
+    }
+    size_t size = st.st_size;
+    int fd = open(filename, O_RDONLY);
+    if (fd == -1) {
+        PyErr_SetNone(failure_status);
+        return NULL;
+    }
+
+    if (did_raise_exception(H3_WriteObjectFromFile(handle, &auth, bucketName, objectName, fd, size, offset))) {
+        close(fd);
+        return NULL;
+    }
+    close(fd);
+
+    Py_RETURN_TRUE;
+}
+
 static PyObject *h3lib_read_object(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
@@ -514,6 +690,43 @@ static PyObject *h3lib_read_object(PyObject* self, PyObject *args, PyObject *kw)
     free(data);
 
     return Py_BuildValue("(OO)", data_object, (return_value == H3_SUCCESS ? Py_True : Py_False));
+}
+
+static PyObject *h3lib_read_object_to_file(PyObject* self, PyObject *args, PyObject *kw) {
+    PyObject *capsule = NULL;
+    H3_Name bucketName;
+    H3_Name objectName;
+    const char *filename;
+    off_t offset = 0;
+    size_t size = 0;
+    uint32_t userId = 0;
+
+    static char *kwlist[] = {"handle", "bucket_name", "object_name", "filename", "offset", "size", "user_id", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "Osss|lkI", kwlist, &capsule, &bucketName, &objectName, &filename, &offset, &size, &userId))
+        return NULL;
+
+    H3_Handle handle = (H3_Handle)PyCapsule_GetPointer(capsule, NULL);
+    if (handle == NULL)
+        return NULL;
+
+    H3_Auth auth;
+
+    auth.userId = userId;
+
+    int fd = open(filename, O_CREAT|O_WRONLY|O_TRUNC, 0644);
+    if (fd == -1) {
+        PyErr_SetNone(failure_status);
+        return NULL;
+    }
+
+    H3_Status return_value = H3_ReadObjectToFile(handle, &auth, bucketName, objectName, offset, fd, &size);
+    if (did_raise_exception(return_value)) {
+        close(fd);
+        return NULL;
+    }
+    close(fd);
+
+    return Py_BuildValue("(OO)", Py_None, (return_value == H3_SUCCESS ? Py_True : Py_False));
 }
 
 static PyObject *h3lib_copy_object(PyObject* self, PyObject *args, PyObject *kw) {
@@ -851,34 +1064,40 @@ static PyObject *h3lib_create_part_copy(PyObject* self, PyObject *args, PyObject
 }
 
 static PyMethodDef module_functions[] = {
-    {"version",            (PyCFunction)h3lib_version,            METH_NOARGS, NULL},
-    {"init",               (PyCFunction)h3lib_init,               METH_VARARGS|METH_KEYWORDS, NULL},
+    {"version",                 (PyCFunction)h3lib_version,                 METH_NOARGS, NULL},
+    {"init",                    (PyCFunction)h3lib_init,                    METH_VARARGS|METH_KEYWORDS, NULL},
 
-    {"list_buckets",       (PyCFunction)h3lib_list_buckets,       METH_VARARGS|METH_KEYWORDS, NULL},
-    {"info_bucket",        (PyCFunction)h3lib_info_bucket,        METH_VARARGS|METH_KEYWORDS, NULL},
-    {"create_bucket",      (PyCFunction)h3lib_create_bucket,      METH_VARARGS|METH_KEYWORDS, NULL},
-    {"delete_bucket",      (PyCFunction)h3lib_delete_bucket,      METH_VARARGS|METH_KEYWORDS, NULL},
+    {"list_buckets",            (PyCFunction)h3lib_list_buckets,            METH_VARARGS|METH_KEYWORDS, NULL},
+    {"info_bucket",             (PyCFunction)h3lib_info_bucket,             METH_VARARGS|METH_KEYWORDS, NULL},
+    {"create_bucket",           (PyCFunction)h3lib_create_bucket,           METH_VARARGS|METH_KEYWORDS, NULL},
+    {"delete_bucket",           (PyCFunction)h3lib_delete_bucket,           METH_VARARGS|METH_KEYWORDS, NULL},
+    {"purge_bucket",            (PyCFunction)h3lib_purge_bucket,            METH_VARARGS|METH_KEYWORDS, NULL},
 
-    {"list_objects",       (PyCFunction)h3lib_list_objects,       METH_VARARGS|METH_KEYWORDS, NULL},
-    {"info_object",        (PyCFunction)h3lib_info_object,        METH_VARARGS|METH_KEYWORDS, NULL},
-    {"create_object",      (PyCFunction)h3lib_create_object,      METH_VARARGS|METH_KEYWORDS, NULL},
-    {"create_object_copy", (PyCFunction)h3lib_create_object_copy, METH_VARARGS|METH_KEYWORDS, NULL},
-    {"write_object",       (PyCFunction)h3lib_write_object,       METH_VARARGS|METH_KEYWORDS, NULL},
-    {"write_object_copy",  (PyCFunction)h3lib_write_object_copy,  METH_VARARGS|METH_KEYWORDS, NULL},
-    {"read_object",        (PyCFunction)h3lib_read_object,        METH_VARARGS|METH_KEYWORDS, NULL},
-    {"copy_object",        (PyCFunction)h3lib_copy_object,        METH_VARARGS|METH_KEYWORDS, NULL},
-    {"move_object",        (PyCFunction)h3lib_move_object,        METH_VARARGS|METH_KEYWORDS, NULL},
-    {"exchange_object",    (PyCFunction)h3lib_exchange_object,    METH_VARARGS|METH_KEYWORDS, NULL},
-    {"truncate_object",    (PyCFunction)h3lib_truncate_object,    METH_VARARGS|METH_KEYWORDS, NULL},
-    {"delete_object",      (PyCFunction)h3lib_delete_object,      METH_VARARGS|METH_KEYWORDS, NULL},
+    {"list_objects",            (PyCFunction)h3lib_list_objects,            METH_VARARGS|METH_KEYWORDS, NULL},
+    {"info_object",             (PyCFunction)h3lib_info_object,             METH_VARARGS|METH_KEYWORDS, NULL},
+    {"set_object_permissions",  (PyCFunction)h3lib_set_object_permissions,  METH_VARARGS|METH_KEYWORDS, NULL},
+    {"set_object_owner",        (PyCFunction)h3lib_set_object_owner,        METH_VARARGS|METH_KEYWORDS, NULL},
+    {"create_object",           (PyCFunction)h3lib_create_object,           METH_VARARGS|METH_KEYWORDS, NULL},
+    {"create_object_copy",      (PyCFunction)h3lib_create_object_copy,      METH_VARARGS|METH_KEYWORDS, NULL},
+    {"create_object_from_file", (PyCFunction)h3lib_create_object_from_file, METH_VARARGS|METH_KEYWORDS, NULL},
+    {"write_object",            (PyCFunction)h3lib_write_object,            METH_VARARGS|METH_KEYWORDS, NULL},
+    {"write_object_copy",       (PyCFunction)h3lib_write_object_copy,       METH_VARARGS|METH_KEYWORDS, NULL},
+    {"write_object_from_file",  (PyCFunction)h3lib_write_object_from_file,  METH_VARARGS|METH_KEYWORDS, NULL},
+    {"read_object",             (PyCFunction)h3lib_read_object,             METH_VARARGS|METH_KEYWORDS, NULL},
+    {"read_object_to_file",     (PyCFunction)h3lib_read_object_to_file,     METH_VARARGS|METH_KEYWORDS, NULL},
+    {"copy_object",             (PyCFunction)h3lib_copy_object,             METH_VARARGS|METH_KEYWORDS, NULL},
+    {"move_object",             (PyCFunction)h3lib_move_object,             METH_VARARGS|METH_KEYWORDS, NULL},
+    {"exchange_object",         (PyCFunction)h3lib_exchange_object,         METH_VARARGS|METH_KEYWORDS, NULL},
+    {"truncate_object",         (PyCFunction)h3lib_truncate_object,         METH_VARARGS|METH_KEYWORDS, NULL},
+    {"delete_object",           (PyCFunction)h3lib_delete_object,           METH_VARARGS|METH_KEYWORDS, NULL},
 
-    {"list_multiparts",    (PyCFunction)h3lib_list_multiparts,    METH_VARARGS|METH_KEYWORDS, NULL},
-    {"create_multipart",   (PyCFunction)h3lib_create_multipart,   METH_VARARGS|METH_KEYWORDS, NULL},
-    {"complete_multipart", (PyCFunction)h3lib_complete_multipart, METH_VARARGS|METH_KEYWORDS, NULL},
-    {"abort_multipart",    (PyCFunction)h3lib_abort_multipart,    METH_VARARGS|METH_KEYWORDS, NULL},
-    {"list_parts",         (PyCFunction)h3lib_list_parts,         METH_VARARGS|METH_KEYWORDS, NULL},
-    {"create_part",        (PyCFunction)h3lib_create_part,        METH_VARARGS|METH_KEYWORDS, NULL},
-    {"create_part_copy",   (PyCFunction)h3lib_create_part_copy,   METH_VARARGS|METH_KEYWORDS, NULL},
+    {"list_multiparts",         (PyCFunction)h3lib_list_multiparts,         METH_VARARGS|METH_KEYWORDS, NULL},
+    {"create_multipart",        (PyCFunction)h3lib_create_multipart,        METH_VARARGS|METH_KEYWORDS, NULL},
+    {"complete_multipart",      (PyCFunction)h3lib_complete_multipart,      METH_VARARGS|METH_KEYWORDS, NULL},
+    {"abort_multipart",         (PyCFunction)h3lib_abort_multipart,         METH_VARARGS|METH_KEYWORDS, NULL},
+    {"list_parts",              (PyCFunction)h3lib_list_parts,              METH_VARARGS|METH_KEYWORDS, NULL},
+    {"create_part",             (PyCFunction)h3lib_create_part,             METH_VARARGS|METH_KEYWORDS, NULL},
+    {"create_part_copy",        (PyCFunction)h3lib_create_part_copy,        METH_VARARGS|METH_KEYWORDS, NULL},
 
     {NULL}
 };
@@ -903,8 +1122,8 @@ PyMODINIT_FUNC PyInit_h3lib(void) {
     PyModule_AddIntConstant(module, "H3_STORE_FILESYSTEM", H3_STORE_FILESYSTEM);
     PyModule_AddIntConstant(module, "H3_STORE_KREON", H3_STORE_KREON);
     PyModule_AddIntConstant(module, "H3_STORE_ROCKSDB", H3_STORE_ROCKSDB);
+    PyModule_AddIntConstant(module, "H3_STORE_REDIS_CLUSTER", H3_STORE_REDIS_CLUSTER);
     PyModule_AddIntConstant(module, "H3_STORE_REDIS", H3_STORE_REDIS);
-    PyModule_AddIntConstant(module, "H3_STORE_IME", H3_STORE_IME);
 
     PyStructSequence_InitType(&bucket_stats_type, &bucket_stats_desc);
     PyStructSequence_InitType(&bucket_info_type, &bucket_info_desc);
@@ -924,12 +1143,14 @@ PyMODINIT_FUNC PyInit_h3lib(void) {
     store_error_status = PyErr_NewException("pyh3lib.h3lib.StoreError", NULL, NULL);
     exists_status = PyErr_NewException("pyh3lib.h3lib.ExistsError", NULL, NULL);
     not_exists_status = PyErr_NewException("pyh3lib.h3lib.NotExistsError", NULL, NULL);
+    name_too_long_status = PyErr_NewException("pyh3lib.h3lib.NameTooLongError", NULL, NULL);
     not_empty_status = PyErr_NewException("pyh3lib.h3lib.NotEmptyError", NULL, NULL);
     PyModule_AddObject(module, "FailureError", failure_status);
     PyModule_AddObject(module, "InvalidArgsError", invalid_args_status);
     PyModule_AddObject(module, "StoreError", store_error_status);
     PyModule_AddObject(module, "ExistsError", exists_status);
     PyModule_AddObject(module, "NotExistsError", not_exists_status);
+    PyModule_AddObject(module, "NameTooLongError", name_too_long_status);
     PyModule_AddObject(module, "NotEmptyError", not_empty_status);
 
     return module;

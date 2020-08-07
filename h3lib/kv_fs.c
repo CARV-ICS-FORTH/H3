@@ -26,10 +26,15 @@
 #include <fcntl.h>
 #include <assert.h>
 #include <ftw.h>
+#include <regex.h>
+#include <ctype.h>
 
+#include "common.h"
 #include "kv_interface.h"
 
 #include "util.h"
+
+#define KV_FS_DIRECTORY_CHAR	0x7F	// In place of last slash to turn directory object into file object
 
 typedef struct {
     char * metadata_root;
@@ -93,10 +98,22 @@ static int MakePath(const char* fullKey, mode_t mode) {
 }
 
 static char* GetFullKey(KV_Filesystem_Handle* handle, KV_Key key){
-   char* fullKey = NULL;
-   if(handle && key)
-       asprintf(&fullKey, "%s/%s", handle->root, key);
-   return fullKey;
+	int size = 0;
+	char* fullKey = NULL;
+	if(handle && key && (size = asprintf(&fullKey, "%s/%s", handle->root, key)) > 0){
+		if(fullKey[size-1] == '/'){
+			fullKey[size-1] = KV_FS_DIRECTORY_CHAR;
+		}
+	}
+	return fullKey;
+}
+
+static char* GetFullPrefix(KV_Filesystem_Handle* handle, KV_Key key){
+	char* fullKey = NULL;
+	if(handle && key){
+		asprintf(&fullKey, "%s/%s", handle->root, key);
+	}
+	return fullKey;
 }
 
 static KV_Status Write(int fd, KV_Value value, off_t offset, size_t size){
@@ -157,58 +174,101 @@ void KV_FS_Free(KV_Handle handle) {
     return;
 }
 
+KV_Status KV_FS_ValidateKey(KV_Key key){
+	KV_Status status = KV_INVALID_KEY;
+	regex_t regex;
+
+	// https://regex101.com/
+
+	//	regcomp(&regex, "(^/)|([^/_+@%0-9a-zA-Z.-])|(/{2,})|(/$)|(%.)", REG_EXTENDED)
+
+	// Cannot start with '/'
+	// Cannot contain '//'
+	// Cannot end with ASCII x7F i.e. DEL
+	if( regcomp(&regex, "(^/)|(/{2,})|(\x7F$)", REG_EXTENDED) == REG_NOERROR){
+		if(regexec(&regex, key, 0, NULL, 0) == REG_NOMATCH){
+			status = KV_SUCCESS;
+		}
+
+		regfree(&regex);
+	}
+	return status;
+}
+
 
 KV_Status KV_FS_List(KV_Handle handle, KV_Key prefix, uint8_t nTrim, KV_Key buffer, uint32_t offset, uint32_t* nKeys){
-    KV_Filesystem_Handle* fs_handle = (KV_Filesystem_Handle*) handle;
-    char* fullPrefix = GetFullKey(fs_handle, prefix);
+    KV_Filesystem_Handle* storeHandle = (KV_Filesystem_Handle*) handle;
+    char* fullPrefix = GetFullPrefix(storeHandle, prefix);
     int status = KV_FAILURE;
 
     uint32_t nRequiredKeys = *nKeys>0?*nKeys:UINT32_MAX;
     uint32_t nMatchingKeys = 0;
     size_t prefixLen = strlen(fullPrefix);
-    size_t rootLen = strlen(fs_handle->root) + nTrim + 1;
+    size_t rootLen = strlen(storeHandle->root) + nTrim + 1;
     size_t remaining = KV_LIST_BUFFER_SIZE;
 
     int CopyDirEntry(const char* fpath, const struct stat* sb, int typeflag, struct FTW* ftwbuf) {
-        if(S_ISREG(sb->st_mode) && strncmp(fpath, fullPrefix, prefixLen) == 0){
-            LogActivity(H3_DEBUG_MSG, "%s\n", fpath);
-            if(offset)
-                offset--;
-            else if( nMatchingKeys < nRequiredKeys ){
-                size_t entrySize = strlen(fpath) + 1 - rootLen;
-                if(remaining >= entrySize) {
-                    memcpy(&buffer[KV_LIST_BUFFER_SIZE - remaining], &fpath[rootLen], entrySize);
-                    remaining -= entrySize;
-                    nMatchingKeys++;
+
+    	if(S_ISREG(sb->st_mode)){
+    		size_t rawSize = strlen(fpath);
+    		int isFakeDir = iscntrl(fpath[rawSize-1]);
+
+    		if(strncmp(fpath, fullPrefix, prefixLen) == 0 || (isFakeDir && fullPrefix[prefixLen-1] == '/' && strncmp(fpath, fullPrefix, prefixLen -1) == 0 )){
+    			LogActivity(H3_DEBUG_MSG, "'%s'\n", fpath);
+                if(offset)
+                    offset--;
+
+                else if( nMatchingKeys < nRequiredKeys ){
+                	size_t entrySize = rawSize - rootLen;
+
+                    if(remaining >= (entrySize + 1)) {
+                        memcpy(&buffer[KV_LIST_BUFFER_SIZE - remaining], &fpath[rootLen], entrySize);
+
+                        // Replace the directory marker with '/'
+                        if(isFakeDir){
+                        	buffer[KV_LIST_BUFFER_SIZE - remaining + entrySize - 1] = '/';
+                        }
+
+                        remaining -= (entrySize+1);
+                        nMatchingKeys++;
+                    }
+                    else
+                        return KV_CONTINUE;
                 }
                 else
                     return KV_CONTINUE;
-            }
-            else
-                return KV_CONTINUE;
-        }
+    		}
+    	}
 
         return 0;
     }
 
 
     int CountDirEntry(const char* fpath, const struct stat* sb, int typeflag, struct FTW* ftwbuf) {
-        if(S_ISREG(sb->st_mode) && strncmp(fpath, fullPrefix, prefixLen) == 0){
-            if(offset)
-                offset--;
-            else if (nMatchingKeys < nRequiredKeys)
-                nMatchingKeys++;
-            else
-                return KV_CONTINUE;
-        }
+    	if(S_ISREG(sb->st_mode)){
+    		size_t rawSize = strlen(fpath);
+    		int isFakeDir = iscntrl(fpath[rawSize-1]);
+
+    		if(strncmp(fpath, fullPrefix, prefixLen) == 0 || (isFakeDir && fullPrefix[prefixLen-1] == '/')){
+                if(offset)
+                    offset--;
+                else if (nMatchingKeys < nRequiredKeys)
+                    nMatchingKeys++;
+                else
+                    return KV_CONTINUE;
+
+    		}
+    	}
 
         return 0;
     }
 
-    if(buffer)
-        status = nftw(fs_handle->root, CopyDirEntry, 10, FTW_DEPTH|FTW_MOUNT|FTW_PHYS);
+    if(buffer){
+    	memset(buffer, 0, KV_LIST_BUFFER_SIZE);
+        status = nftw(storeHandle->root, CopyDirEntry, 10, FTW_DEPTH|FTW_MOUNT|FTW_PHYS);
+    }
     else
-        status = nftw(fs_handle->root, CountDirEntry, 10, FTW_DEPTH|FTW_MOUNT|FTW_PHYS);
+        status = nftw(storeHandle->root, CountDirEntry, 10, FTW_DEPTH|FTW_MOUNT|FTW_PHYS);
 
     *nKeys = nMatchingKeys;
 
@@ -217,7 +277,7 @@ KV_Status KV_FS_List(KV_Handle handle, KV_Key prefix, uint8_t nTrim, KV_Key buff
 
     else if (status < -0){
     	if (errno == ENAMETOOLONG)
-    		status = KV_NAME_TO_LONG;
+    		status = KV_KEY_TOO_LONG;
     	else{
     		status = KV_FAILURE;
     		LogActivity(H3_ERROR_MSG, "Listing from key %s failed - %s\n",fullPrefix, strerror(errno));
@@ -229,164 +289,161 @@ KV_Status KV_FS_List(KV_Handle handle, KV_Key prefix, uint8_t nTrim, KV_Key buff
 
 
 KV_Status KV_FS_Exists(KV_Handle handle, KV_Key key) {
-    KV_Filesystem_Handle* fs_handle = (KV_Filesystem_Handle*) handle;
-    char* full_key = GetFullKey(fs_handle, key);
+    KV_Filesystem_Handle* storeHandle = (KV_Filesystem_Handle*) handle;
+    char* fullKey = GetFullKey(storeHandle, key);
     KV_Status status = KV_FAILURE;
 
-    if(!full_key){
+    if(!fullKey){
         return KV_FAILURE;
     }
 
-    if(access(full_key, F_OK) == 0)
+    if(access(fullKey, F_OK) == 0)
         status = KV_KEY_EXIST;
     else if(errno == ENOENT)
         status = KV_KEY_NOT_EXIST;
     else if(errno == ENAMETOOLONG)
-        status = KV_NAME_TO_LONG;
+        status = KV_KEY_TOO_LONG;
     else
-    	LogActivity(H3_ERROR_MSG, "Checking key %s failed - %s\n",full_key, strerror(errno));
+    	LogActivity(H3_ERROR_MSG, "Checking key %s failed - %s\n",fullKey, strerror(errno));
 
-    free(full_key);
+    free(fullKey);
     return status;
 }
 
 KV_Status KV_FS_Read(KV_Handle handle, KV_Key key, off_t offset, KV_Value* value, size_t* size) {
-    KV_Filesystem_Handle* fs_handle = (KV_Filesystem_Handle*) handle;
-    char* full_key = GetFullKey(fs_handle, key);
+    KV_Filesystem_Handle* storeHandle = (KV_Filesystem_Handle*) handle;
+    char* fullKey = GetFullKey(storeHandle, key);
     KV_Status status = KV_FAILURE;
+    struct stat st;
     char freeOnError = 0;
-    int fd;
 
-    if(!full_key){
+    if(!fullKey){
         return KV_FAILURE;
     }
 
-    // Check if we need to allocate the buffer
-    if(*value == NULL){
-        // Retrieve size if not set
-        if( *size == 0){
-            struct stat stats;
-            if(stat(full_key, &stats) == 0){
-                *size = stats.st_size;
-            }
-        }
+    if(stat(fullKey, &st)!= -1 && S_ISREG(st.st_mode)){
+    	int fd;
 
-        // Allocate buffer
-        *value = malloc(*size);
-        freeOnError = 1;
+		if( (fd = open(fullKey, O_RDONLY)) != -1){
+
+			// Check if we need to allocate the buffer
+			if(*value == NULL){
+				*size = st.st_size - offset;
+				*value = malloc(*size - offset);
+				freeOnError = 1;
+			}
+
+			// At this point we MUST have a buffer
+			if( *value ){
+				// Read the data
+				if(lseek(fd, offset, SEEK_SET) != offset){
+					LogActivity(H3_ERROR_MSG, "Error read seeking in offset %" PRIu64 "\n",offset);
+				}
+				else if((*size = read(fd, *value, *size)) != -1){
+					status = KV_SUCCESS;
+				}
+			}
+			close(fd);
+		}
     }
 
-    // At this point we MUST have a buffer
-    if( *value ){
+    if(status != KV_SUCCESS ){
 
-        // Read the data
-        if( (fd = open(full_key, O_RDONLY)) != -1){
-            if(lseek(fd, offset, SEEK_SET) != offset){
-                LogActivity(H3_ERROR_MSG, "Error read seeking in offset %" PRIu64 "\n",offset);
-            }
-            else if((*size = read(fd, *value, *size)) != -1){
-                status = KV_SUCCESS;
-            }
-            close(fd);
-        }
-        else {
-        	switch(errno){
-        		case ENAMETOOLONG:
-        			status = KV_NAME_TO_LONG; break;
-
-        		case ENOENT:
-        		case EISDIR:							// h3fuse guards against this error
-        			status = KV_KEY_NOT_EXIST; break;
-
-        		case ENOTDIR:
-        			if(strchr(key, '/')) status = KV_KEY_NOT_EXIST;
-        			break;
-
-        		default:{
-        			status = KV_FAILURE;
-        			LogActivity(H3_ERROR_MSG, "Reading from key %s failed - %s\n",full_key, strerror(errno));
-        		}
-        	}
-        }
-
-        if(status != KV_SUCCESS && freeOnError){
+        if(freeOnError && *value)
         	free(*value);
-        }
+
+    	switch(errno){
+			case ENAMETOOLONG:
+				status = KV_KEY_TOO_LONG; break;
+
+			case ENOENT:
+			case EISDIR:
+				status = KV_KEY_NOT_EXIST; break;
+
+//			case ENOTDIR:
+//				if(strchr(key, '/')) status = KV_KEY_NOT_EXIST;
+//				break;
+
+			default:{
+//				status = KV_FAILURE;
+				LogActivity(H3_ERROR_MSG, "Reading from key %s failed - %s\n",fullKey, strerror(errno));
+			}
+    	}
     }
 
-    free(full_key);
+    free(fullKey);
     return status;
 }
 
 KV_Status KV_FS_Create(KV_Handle handle, KV_Key key, KV_Value value, off_t offset, size_t size){
-    KV_Filesystem_Handle* fs_handle = (KV_Filesystem_Handle*) handle;
-    char* full_key = GetFullKey(fs_handle, key);
+    KV_Filesystem_Handle* storeHandle = (KV_Filesystem_Handle*) handle;
+    char* fullKey = GetFullKey(storeHandle, key);
     KV_Status status = KV_FAILURE;
     int fd;
 
-    if(!full_key){
+    if(!fullKey){
         return KV_FAILURE;
     }
 
-    MakePath(full_key, S_IRWXU | S_IRWXG | S_IRWXO);
+    MakePath(fullKey, S_IRWXU | S_IRWXG | S_IRWXO);
 
-    if( (fd = open(full_key,O_CREAT|O_EXCL|O_WRONLY,0666)) != -1){
+    if( (fd = open(fullKey,O_CREAT|O_EXCL|O_WRONLY,0666)) != -1){
         return Write(fd, value, offset, size);
     }
     else if( errno == EEXIST ){
         status =  KV_KEY_EXIST;
     }
     else if(errno == ENAMETOOLONG){
-    	status = KV_NAME_TO_LONG;
+    	status = KV_KEY_TOO_LONG;
     }
     else {
-        LogActivity(H3_ERROR_MSG, "Creating key %s failed - %s\n",full_key, strerror(errno));
+        LogActivity(H3_ERROR_MSG, "Creating key %s failed - %s\n",fullKey, strerror(errno));
     }
 
-    free(full_key);
+    free(fullKey);
     return status;
 }
 
 KV_Status KV_FS_Write(KV_Handle handle, KV_Key key, KV_Value value, off_t offset, size_t size) {
-    KV_Filesystem_Handle* fs_handle = (KV_Filesystem_Handle*) handle;
-    char* full_key = GetFullKey(fs_handle, key);
+    KV_Filesystem_Handle* storeHandle = (KV_Filesystem_Handle*) handle;
+    char* fullKey = GetFullKey(storeHandle, key);
     KV_Status status = KV_FAILURE;
     int fd;
 
-    if(!full_key){
+    if(!fullKey){
         return KV_FAILURE;
     }
 
-    MakePath(full_key, S_IRWXU | S_IRWXG | S_IRWXO);
+    MakePath(fullKey, S_IRWXU | S_IRWXG | S_IRWXO);
 
-    if( (fd = open(full_key,O_CREAT|O_WRONLY,0666)) != -1){
+    if( (fd = open(fullKey,O_CREAT|O_WRONLY,0666)) != -1){
         return Write(fd, value, offset, size);
     }
     else if( errno == EEXIST ){
         status =  KV_KEY_EXIST;
     }
     else if(errno == ENAMETOOLONG){
-    	status = KV_NAME_TO_LONG;
+    	status = KV_KEY_TOO_LONG;
     }
     else {
         LogActivity(H3_ERROR_MSG, "Writing key %s failed - %s\n",key, strerror(errno));
     }
 
-    free(full_key);
+    free(fullKey);
     return status;
 }
 
 KV_Status KV_FS_Copy(KV_Handle handle, KV_Key src_key, KV_Key dest_key) {
-    KV_Filesystem_Handle* fs_handle = (KV_Filesystem_Handle*) handle;
+    KV_Filesystem_Handle* storeHandle = (KV_Filesystem_Handle*) handle;
     char *srcFullKey, *dstFullKey;
     KV_Status status = KV_FAILURE;
     int srcFd = -1, dstFd = -1;
 
-    if(!(srcFullKey = GetFullKey(fs_handle, src_key))){
+    if(!(srcFullKey = GetFullKey(storeHandle, src_key))){
         return KV_FAILURE;
     }
 
-    if(!(dstFullKey = GetFullKey(fs_handle, dest_key))){
+    if(!(dstFullKey = GetFullKey(storeHandle, dest_key))){
         free(srcFullKey);
         return KV_FAILURE;
     }
@@ -405,7 +462,7 @@ KV_Status KV_FS_Copy(KV_Handle handle, KV_Key src_key, KV_Key dest_key) {
             close(dstFd);
         }
         else if(errno == ENAMETOOLONG){
-        	status = KV_NAME_TO_LONG;
+        	status = KV_KEY_TOO_LONG;
         }
         close(srcFd);
     }
@@ -413,7 +470,7 @@ KV_Status KV_FS_Copy(KV_Handle handle, KV_Key src_key, KV_Key dest_key) {
         status = KV_KEY_NOT_EXIST;
     }
     else if(errno == ENAMETOOLONG){
-    	status = KV_NAME_TO_LONG;
+    	status = KV_KEY_TOO_LONG;
     }
     else{
         LogActivity(H3_ERROR_MSG, "Copying key %s to %s failed - %s\n",src_key, dest_key, strerror(errno));
@@ -426,25 +483,25 @@ KV_Status KV_FS_Copy(KV_Handle handle, KV_Key src_key, KV_Key dest_key) {
 }
 
 KV_Status KV_FS_Delete(KV_Handle handle, KV_Key key) {
-    KV_Filesystem_Handle* fs_handle = (KV_Filesystem_Handle*) handle;
-    char* full_key = GetFullKey(fs_handle, key);
+    KV_Filesystem_Handle* storeHandle = (KV_Filesystem_Handle*) handle;
+    char* fullKey = GetFullKey(storeHandle, key);
     KV_Status status = KV_FAILURE;
 
-    if(full_key){
-    	if(remove(full_key) == 0){
+    if(fullKey){
+    	if(remove(fullKey) == 0){
     		status = KV_SUCCESS;
     	}
     	else if(errno == ENOENT){
     		status = KV_KEY_NOT_EXIST;
     	}
     	else if(errno == ENAMETOOLONG){
-    		status = KV_NAME_TO_LONG;
+    		status = KV_KEY_TOO_LONG;
     	}
     	else{
     		LogActivity(H3_ERROR_MSG, "Deleting key %s failed - %s\n",key, strerror(errno));
     	}
 
-    	free(full_key);
+    	free(fullKey);
     }
 
     return status;
@@ -452,15 +509,15 @@ KV_Status KV_FS_Delete(KV_Handle handle, KV_Key key) {
 
 
 KV_Status KV_FS_Move(KV_Handle handle, KV_Key src_key, KV_Key dest_key) {
-    KV_Filesystem_Handle* fs_handle = (KV_Filesystem_Handle*) handle;
+    KV_Filesystem_Handle* storeHandle = (KV_Filesystem_Handle*) handle;
     char *srcFullKey, *dstFullKey;
     KV_Status status = KV_FAILURE;
 
-    if(!(srcFullKey = GetFullKey(fs_handle, src_key))){
+    if(!(srcFullKey = GetFullKey(storeHandle, src_key))){
         return KV_FAILURE;
     }
 
-    if(!(dstFullKey = GetFullKey(fs_handle, dest_key))){
+    if(!(dstFullKey = GetFullKey(storeHandle, dest_key))){
         free(srcFullKey);
         return KV_FAILURE;
     }
@@ -474,7 +531,7 @@ KV_Status KV_FS_Move(KV_Handle handle, KV_Key src_key, KV_Key dest_key) {
         status = KV_KEY_NOT_EXIST;
     }
 	else if(errno == ENAMETOOLONG){
-		status = KV_NAME_TO_LONG;
+		status = KV_KEY_TOO_LONG;
 	}
     else {
         LogActivity(H3_ERROR_MSG, "Moving key %s to %s failed - %s\n",src_key, dest_key, strerror(errno));
@@ -495,6 +552,7 @@ KV_Status KV_FS_Sync(KV_Handle handle) {
 KV_Operations operationsFilesystem = {
     .init = KV_FS_Init,
     .free = KV_FS_Free,
+	.validate_key = KV_FS_ValidateKey,
 
     .metadata_read = KV_FS_Read,
     .metadata_write = KV_FS_Write,

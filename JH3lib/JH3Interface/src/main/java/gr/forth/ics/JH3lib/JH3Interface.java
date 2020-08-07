@@ -35,14 +35,14 @@ public interface JH3Interface extends Library {
         int H3_STORE_CONFIG = 0;
         /** Use mounted filesystem. */
         int H3_STORE_FILESYSTEM = 1;
-        /** Kreon cluster (not available). */
+        /** Kreon cluster. */
         int H3_STORE_KREON = 2;
-        /** RocksDB server (not available). */
+        /** RocksDB server. */
         int H3_STORE_ROCKSDB = 3;
-        /** Redis cluster (not available). */
-        int H3_STORE_REDIS = 4;
-        /** IME Cluster (not available). */
-        int H3_STORE_IME = 5;
+        /** Redis cluster. */
+        int H3_STORE_REDIS_CLUSTER = 4;
+        /** Redis. */
+        int H3_STORE_REDIS = 5;
         /** Not an option, used for iteration purposes. */
         int H3_STORE_NumOfStores = 6;
     }
@@ -70,10 +70,10 @@ public interface JH3Interface extends Library {
 
     /** Object/Bucket attributes supported by H3. */
     interface AttributeType {
-        /** Owner attributes. */
-        int H3_ATTRIBUTE_OWNER = 0;
         /** Permission attribute. */
-        int H3_ATTRIBUTE_PERMISSION =1;
+        int H3_ATTRIBUTE_PERMISSIONS = 0;
+        /** Owner attributes. */
+        int H3_ATTRIBUTE_OWNER = 1;
         /** Not an option, used for iteration purposes. */
         int H3_NumOfAttributes = 2;
     }

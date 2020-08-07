@@ -38,7 +38,7 @@ def test_simple(h3):
     assert h3.list_multiparts('b1') == ['m1']
 
     with open('/dev/urandom', 'rb') as f:
-        data = f.read(3 * MEGABYTE) 
+        data = f.read(3 * MEGABYTE)
 
     h3.create_object('b1', 'o1', data)
 
@@ -71,9 +71,10 @@ def test_simple(h3):
     object_info = h3.info_object('b1', 'm1')
     assert not object_info.is_bad
     assert object_info.size == (7 * MEGABYTE)
-    assert type(object_info.creation) == int
-    assert type(object_info.last_access) == int
-    assert type(object_info.last_modification) == int
+    assert type(object_info.creation) == float
+    assert type(object_info.last_access) == float
+    assert type(object_info.last_modification) == float
+    assert type(object_info.last_change) == float
 
     # Delete objects.
     h3.delete_object('b1', 'm1')

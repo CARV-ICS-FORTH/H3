@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include "util.h"
 
 //    http://web.theurbanpenguin.com/adding-color-to-your-output-from-c/
@@ -42,4 +43,13 @@ struct timespec Posterior(struct timespec* a, struct timespec* b){
 
 struct timespec Anterior(struct timespec* a, struct timespec* b){
 	return Compare(a,b)<0?*a:*b;
+}
+
+void* ReAllocFreeOnFail(void* buffer, size_t size){
+	void* tmp = realloc(buffer, size);
+	if(!tmp){
+		free(buffer);
+	}
+
+	return tmp;
 }

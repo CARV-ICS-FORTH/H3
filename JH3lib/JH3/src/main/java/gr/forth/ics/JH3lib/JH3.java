@@ -899,6 +899,85 @@ public class JH3 implements Serializable{
 
         return operationSucceeded(status);
     }
+
+    
+     /**
+     * Set an object's permissions attribute (used by h3fuse). The status of the
+     * operation is set and can be retrieved by {@link JH3#getStatus() getStatus()}.
+     * Expected status from operation:
+     * <p>
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful.
+     * <p>
+     * {@link JH3Status#JH3_FAILURE} - Unable to update object info or user has no access.
+     * <p>
+     * {@link JH3Status#JH3_NOT_EXISTS} - The object doesn't exist.
+     * <p>
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * <p>
+     * {@link JH3Status#JH3_NAME_TOO_LONG} - The bucket or object name is too long.
+     * 
+     * @param bucketName            The name of the bucket hosting the object.
+     * @param objectName            The name of the object.
+     * @param mode                  The objects permissions.
+     * @return              <code>true</code> if the operation was successful, <code>false</code> otherwise.
+     * @throws JH3Exception  If an unknown status is received.
+     */
+    public boolean setObjectPermissions(String bucketName, String objectName, int mode) throws JH3Exception {
+        Pointer bucket = new Memory(bucketName.length() + 1);
+        Pointer name = new Memory(objectName.length() + 1);
+
+        bucket.setString(0, bucketName);
+        name.setString(0, objectName);
+
+        NativeAttribute attr = new NativeAttribute();
+        attr.type = JH3AttributeType.JH3_ATTRIBUTE_PERMISSIONS.ordinal();
+        attr.unionval.mode = mode;
+
+        status = JH3Status.fromInt(JH3Interface.INSTANCE.H3_SetObjectAttributes(handle, token, bucket, name, attr));
+
+        return operationSucceeded(status);
+    }
+
+
+  /**
+     * Set an object's owner attribute (used by h3fuse). The status of the
+     * operation is set and can be retrieved by {@link JH3#getStatus() getStatus()}.
+     * Expected status from operation:
+     * <p>
+     * {@link JH3Status#JH3_SUCCESS} - The operation was successful.
+     * <p>
+     * {@link JH3Status#JH3_FAILURE} - Unable to update object info or user has no access.
+     * <p>
+     * {@link JH3Status#JH3_NOT_EXISTS} - The object doesn't exist.
+     * <p>
+     * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
+     * <p>
+     * {@link JH3Status#JH3_NAME_TOO_LONG} - The bucket or object name is too long.
+     * 
+     * @param bucketName            The name of the bucket hosting the object.
+     * @param objectName            The name of the object.
+     * @param uid                   The user id.
+     * @param gid                   The group id.
+     * @return              <code>true</code> if the operation was successful, <code>false</code> otherwise.
+     * @throws JH3Exception  If an unknown status is received.
+     */
+    public boolean setObjectOwner(String bucketName, String objectName, int uid, int gid) throws JH3Exception {
+        Pointer bucket = new Memory(bucketName.length() + 1);
+        Pointer name = new Memory(objectName.length() + 1);
+        
+        bucket.setString(0, bucketName);
+        name.setString(0, objectName);
+
+        NativeAttribute attr = new NativeAttribute();
+        attr.type = JH3AttributeType.JH3_ATTRIBUTE_OWNER.ordinal();
+        attr.unionval.structval.uid = uid;
+        attr.unionval.structval.gid = gid;
+
+        status = JH3Status.fromInt(JH3Interface.INSTANCE.H3_SetObjectAttributes(handle, token, bucket, name, attr));
+
+        return operationSucceeded(status);
+    }
+
     /* Multipart Management methods */
 
     /**
