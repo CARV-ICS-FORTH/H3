@@ -98,6 +98,7 @@ H3_Status H3_CreateMultipart(H3_Handle handle, H3_Token token, H3_Name bucketNam
         H3_ObjectMetadata objMeta;
         memcpy(objMeta.userId, userId, sizeof(H3_UserId));
         uuid_generate(objMeta.uuid);
+        objMeta.isBad = 0;
 
         // Populate multipart metadata
         H3_MultipartMetadata multiMeta;
