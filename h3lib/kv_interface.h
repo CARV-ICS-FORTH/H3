@@ -16,7 +16,6 @@
 #define KV_INTERFACE_H_
 
 #include <stdint.h>
-#include <glib.h>
 
 #define KV_LIST_BUFFER_SIZE 64*1024
 
@@ -33,7 +32,7 @@ typedef enum {
 
 // Key-value operations
 typedef struct KV_Operations {
-	KV_Handle (*init)(GKeyFile* cfgFile);
+	KV_Handle (*init)(const char* storageUri);
 	void (*free)(KV_Handle handle);
 	KV_Status (*validate_key)(KV_Key key);
 

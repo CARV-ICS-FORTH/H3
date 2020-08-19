@@ -17,23 +17,11 @@ import pytest
 from pyh3lib import H3
 
 def pytest_addoption(parser):
-    parser.addoption('--config', action='store', help="Specify h3lib's configuration file")
-    parser.addoption('--store', action='store', help="Choose which store to use (default: set in config file)")
+    parser.addoption('--storage', action='store', required=True, help="H3 storage URI")
 
 @pytest.fixture(scope='module')
 def h3(request):
-    config = request.config.getoption('--config')
-    store = request.config.getoption('--store')
+    storage_uri = request.config.getoption('--storage')
 
-    storage_type = None
-    if store == 'filesystem':
-        storage_type = H3.STORE_FILESYSTEM
-    elif store == 'kreon':
-        storage_type = H3.STORE_KREON
-    elif store == 'rocksdb':
-        storage_type = H3.STORE_ROCKSDB
-    if not storage_type:
-        storage_type = H3.STORE_CONFIG
-
-    assert config, 'You need to specify a configuration file with "--config"'
-    return H3(config, storage_type)
+    assert storage_uri, 'You need to specify a storage URI with "--storage"'
+    return H3(storage_uri)

@@ -17,7 +17,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <alloca.h>
-#include <glib.h>
 #include <unistd.h>
 #include <inttypes.h>
 #include <errno.h>
@@ -33,6 +32,7 @@
 #include "kv_interface.h"
 
 #include "util.h"
+#include "url_parser.h"
 
 #define KV_FS_DIRECTORY_CHAR	0x7F	// In place of last slash to turn directory object into file object
 
@@ -151,16 +151,27 @@ static KV_Status Write(int fd, KV_Value value, off_t offset, size_t size){
 
 
 
-KV_Handle KV_FS_Init(GKeyFile* cfgFile) {
-
-    g_autoptr(GError) error = NULL;
-    KV_Filesystem_Handle* handle = malloc(sizeof(KV_Filesystem_Handle));
-
-    handle->root = g_key_file_get_string (cfgFile, "FILESYSTEM", "root", &error);
-    if(handle->root == NULL){
-        // Key 'root' is not defined, or section 'FILESYSTEM' is missing, use default value instead
-        handle->root = strdup("/tmp/h3");
+KV_Handle KV_FS_Init(const char* storageUri) {
+    struct parsed_url *url = parse_url(storageUri);
+    if (url == NULL) {
+        LogActivity(H3_ERROR_MSG, "ERROR: Unrecognized storage URI\n");
+        return NULL;
     }
+
+    char *path;
+    if (url->path != NULL) {
+        path = malloc(strlen(url->path) + 2);
+        path[0] = '/';
+        strcpy(&(path[1]), url->path);
+        LogActivity(H3_INFO_MSG, "INFO: Path in URI: %s\n", path);
+    } else {
+        path = strdup("/tmp/h3");
+        LogActivity(H3_WARNING_MSG, "WARNING: No path in URI. Using default: /tmp/h3\n");
+    }
+    parsed_url_free(url);
+
+    KV_Filesystem_Handle* handle = malloc(sizeof(KV_Filesystem_Handle));
+    handle->root = path;
     StripSlashes(handle->root);
     handle->root_path_len = strlen(handle->root);
 

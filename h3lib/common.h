@@ -21,9 +21,6 @@
 
 #include <uuid/uuid.h>
 
-#include <glib.h>
-#include <glib/gi18n.h>
-
 #include "h3lib.h"
 #include "h3lib_config.h"
 #include "kv_interface.h"
@@ -61,6 +58,15 @@ typedef char H3_BucketId[H3_BUCKET_NAME_SIZE+2];
 typedef char H3_ObjectId[H3_BUCKET_NAME_SIZE + H3_OBJECT_NAME_SIZE + 1];
 typedef char H3_UUID[UUID_STR_LEN];
 typedef char H3_PartId[50];                                                 // '_' + UUID[36+1byte] + '#' + <part_number> + ['.' + <subpart_number>]
+
+typedef enum {
+    H3_STORE_FILESYSTEM = 0,    // Mounted filesystem
+    H3_STORE_KREON,             // Kreon cluster
+    H3_STORE_ROCKSDB,           // RocksDB server
+    H3_STORE_REDIS_CLUSTER,     // Redis cluster
+    H3_STORE_REDIS,             // Redis
+    H3_NumOfStores              // Not an option, used for iteration purposes
+} H3_StoreType;
 
 typedef enum {
 	MoveReplace,	// Overwrite destination if exists

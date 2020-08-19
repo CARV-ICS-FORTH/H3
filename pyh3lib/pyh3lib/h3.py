@@ -51,12 +51,17 @@ class H3Version(type):
 class H3(object, metaclass=H3Version):
     """Python interface to H3.
 
-    :param config_file: file containing configuration options for storage type
-    :param storage_type: backend storage type (choose one of ``STORE_*`` class attributes)
+    :param storage_uri: backend storage URI
     :param user_id: user performing all actions
-    :type storage_type: int
-    :type config_file: string
+    :type storage_uri: string
     :type user_id: int
+
+    Example backend URIs include (defaults for each type shown):
+
+    * ``file:///tmp/h3`` for local filesystem
+    * ``kreon://127.0.0.1:2181`` for Kreon, where the network location refers to the ZooKeeper host and port.
+    * ``rocksdb:///tmp/h3/rocksdb`` for `RocksDB <https://rocksdb.org>`_
+    * ``redis://127.0.0.1:6379`` for `Redis <https://redis.io>`_
 
     .. note::
        All functions may raise standard exceptions on internal errors, or some ``pyh3lib.*Error``
@@ -69,34 +74,8 @@ class H3(object, metaclass=H3Version):
     OBJECT_NAME_SIZE = h3lib.H3_OBJECT_NAME_SIZE
     """Maximum object name size."""
 
-    STORE_CONFIG = h3lib.H3_STORE_CONFIG
-    """Storage type to use whatever is set as ``store`` in the ``H3`` section of the config file (default).
-    Possible values for ``store`` are: ``filesystem``, ``kreon``, ``rocksdb``."""
-
-    STORE_FILESYSTEM = h3lib.H3_STORE_FILESYSTEM
-    """Storage type to use the filesystem as the backend.
-
-    The config file should contain a ``FILESYSTEM`` section, with the following variables:
-
-    ========  =================
-    ``root``  /tmp/h3 (default)
-    ========  =================
-    """
-
-    STORE_KREON = h3lib.H3_STORE_KREON
-    """Storage type to use Kreon as the backend."""
-
-    STORE_ROCKSDB = h3lib.H3_STORE_ROCKSDB
-    """Storage type to use `RocksDB <https://rocksdb.org>`_ as the backend."""
-
-    STORE_REDIS_CLUSTER = h3lib.H3_STORE_REDIS_CLUSTER
-    """Storage type to use `Redis <https://redis.io>`_ as the backend (cluster mode)."""
-
-    STORE_REDIS = h3lib.H3_STORE_REDIS
-    """Storage type to use `Redis <https://redis.io>`_ as the backend."""
-
-    def __init__(self, config_file, storage_type=h3lib.H3_STORE_CONFIG, user_id=0):
-        self._handle = h3lib.init(config_file, storage_type)
+    def __init__(self, storage_uri, user_id=0):
+        self._handle = h3lib.init(storage_uri)
         if not self._handle:
             raise SystemError('Could not create H3 handle')
         self._user_id = user_id

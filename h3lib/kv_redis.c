@@ -14,11 +14,14 @@
 
 #define _GNU_SOURCE
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <hiredis/hiredis.h>
 
 #include "kv_interface.h"
 
 #include "util.h"
+#include "url_parser.h"
 
 
 
@@ -27,42 +30,47 @@ typedef struct {
 }KV_Redis_Handle;
 
 
-KV_Handle KV_Redis_Init(GKeyFile* cfgFile) {
-    g_autoptr(GError) error = NULL;
-
-    char *host = g_key_file_get_string (cfgFile, "REDIS", "host", &error);
-    if(error){
-       if( g_error_matches(error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND)){
-          host = strdup("127.0.0.1");
-       }
-       else{
-         return NULL;
-       }
+KV_Handle KV_Redis_Init(const char* storageUri) {
+    struct parsed_url *url = parse_url(storageUri);
+    if (url == NULL) {
+        LogActivity(H3_ERROR_MSG, "ERROR: Unrecognized storage URI\n");
+        return NULL;
     }
 
-    int port = g_key_file_get_integer(cfgFile, "REDIS", "port", &error);
-    if(error){
-        if( g_error_matches(error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND)){
+    char *host;
+    if (url->host != NULL) {
+        host = strdup(url->host);
+        LogActivity(H3_INFO_MSG, "INFO: Host in URI: %s\n", host);
+    } else {
+        host = strdup("127.0.0.1");
+        LogActivity(H3_WARNING_MSG, "WARNING: No host in URI. Using default: 127.0.0.1\n");
+    }
+    int port;
+    if (url->port != NULL) {
+        port = atoi(url->port);
+        if (port == 0) {
             port = 6379;
-            g_clear_error(&error);
+            LogActivity(H3_WARNING_MSG, "WARNING: Unrecognized port in URI. Using default: 6379\n");
         }
-        else{
-            return NULL;
-        }
-     }
-
+    } else {
+        port = 6379;
+        LogActivity(H3_WARNING_MSG, "WARNING: No port in URI. Using default: 6379\n");
+    }
+    parsed_url_free(url);
 
     KV_Redis_Handle* handle = malloc(sizeof(KV_Redis_Handle));
-    if(handle){
-    	if((handle->ctx = redisConnect(host, port))){
-		    return (KV_Handle)handle;
-		}
+    if (!handle)
+        return NULL;
 
-		LogActivity(H3_ERROR_MSG, "HIREDIS - %s\n", handle->ctx->errstr);
+    if (!(handle->ctx = redisConnect(host, port))) {
+        LogActivity(H3_ERROR_MSG, "HIREDIS - %s\n", handle->ctx->errstr);
+        free(host);
+        free(handle);
+        return NULL;
     }
-    free(handle);
 
-    return NULL;
+    free(host);
+    return (KV_Handle)handle;
 }
 
 void KV_Redis_Free(KV_Handle handle) {

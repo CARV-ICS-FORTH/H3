@@ -47,15 +47,15 @@ def print_debug(args, msg):
     if args.debug:
         print(f'\033[94mDEBUG - {msg}\033[0m')
 
-def get_config_path():
-    try:
-        return os.environ['H3_CONFIG']
-    except KeyError:
-        config = os.path.join(os.getcwd(), 'config.ini')
-        if not os.access(config, os.F_OK):
-            config = os.path.join(os.environ['HOME'], '.h3', 'config.ini')
+# def get_config_path():
+#     try:
+#         return os.environ['H3_CONFIG']
+#     except KeyError:
+#         config = os.path.join(os.getcwd(), 'config.ini')
+#         if not os.access(config, os.F_OK):
+#             config = os.path.join(os.environ['HOME'], '.h3', 'config.ini')
 
-        return config
+#         return config
 
 def parse_h3_path(path):
     bucket = ''
@@ -530,12 +530,13 @@ def cmd_remove_object(config_path, args):
 #         print_error(f'Cannot access the H3 service at {server_url}')
 
 def main(cmd=None):
-    config_path = get_config_path()
+    # config_path = get_config_path()
 
     parser = argparse.ArgumentParser(description='H3 command line tool')
     parser.add_argument('-d', '--debug', action='store_true', help='Print debug info')
     parser.add_argument('--version', action='version', version=f'{pyh3lib.__version__}')
-    parser.add_argument('--config', help=f'H3 configuration file (default: {config_path})')
+    parser.add_argument('--storage', required=True, help=f'H3 storage URI')
+    # parser.add_argument('--config', help=f'H3 configuration file (default: {config_path})')
     subprasers = parser.add_subparsers(dest='command', title='H3 commands')
 
     make_bucket = subprasers.add_parser('mb', help='Creates an H3 bucket')
@@ -616,8 +617,9 @@ def main(cmd=None):
     # abort_multipart_upload.set_defaults(func=cmd_abort_mutlipart_upload)
 
     args = parser.parse_args(cmd)
-    if args.config:
-        config_path = os.path.abspath(args.config)
+    # if args.config:
+    #     config_path = os.path.abspath(args.config)
+    config_path = args.storage # XXX Rename this...
     if args.command:
         args.func(config_path, args)
     else:

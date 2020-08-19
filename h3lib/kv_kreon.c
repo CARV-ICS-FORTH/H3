@@ -15,9 +15,11 @@
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "kv_interface.h"
 #include "util.h"
+#include "url_parser.h"
 
 #include <kreon/kreon_rdma_client.h>
 
@@ -34,38 +36,46 @@ void KV_Kreon_Free(KV_Handle _handle) {
     return;
 }
 
-KV_Handle KV_Kreon_Init(GKeyFile* cfgFile) {
-    g_autoptr(GError) error = NULL;
+KV_Handle KV_Kreon_Init(const char* storageUri) {
+    struct parsed_url *url = parse_url(storageUri);
+    if (url == NULL) {
+        LogActivity(H3_ERROR_MSG, "ERROR: Unrecognized storage URI\n");
+        return NULL;
+    }
+
+    char *host;
+    if (url->host != NULL) {
+        host = strdup(url->host);
+        LogActivity(H3_INFO_MSG, "INFO: Host in URI: %s\n", host);
+    } else {
+        host = strdup("127.0.0.1");
+        LogActivity(H3_WARNING_MSG, "WARNING: No host in URI. Using default: 127.0.0.1\n");
+    }
+    int port;
+    if (url->port != NULL) {
+        port = atoi(url->port);
+        if (port == 0) {
+            port = 2181;
+            LogActivity(H3_WARNING_MSG, "WARNING: Unrecognized port in URI. Using default: 2181\n");
+        }
+    } else {
+        port = 2181;
+        LogActivity(H3_WARNING_MSG, "WARNING: No port in URI. Using default: 2181\n");
+    }
+    parsed_url_free(url);
+
     KV_Kreon_Handle* handle = malloc(sizeof(KV_Kreon_Handle));
     krc_ret_code status;
 
-    handle->port = g_key_file_get_integer(cfgFile, "KREON", "port", &error);
-    if(error){
-	if( g_error_matches(error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND)){
-	    	handle->port = 2181;	// Default ZooKeeper port
-    		g_clear_error(&error);
-	 }
-	 else{
-	    	free(handle);
-	    	return NULL;
-	 }
-     }
+    if (!handle)
+        return NULL;
 
-    handle->ip = g_key_file_get_string (cfgFile, "KREON", "zookeeper", &error);
-    if(error){
-       if( g_error_matches(error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND)){
-    	  handle->ip = strdup("127.0.0.1");
-       }
-       else{
-    	 free(handle);
-    	 return NULL;
-       }
-    }
-
+    handle->ip = host;
+    handle->port = port;
     if((status = krc_init(handle->ip, handle->port)) != KRC_SUCCESS){
-    	LogActivity(H3_ERROR_MSG, "Kreon - Failed to initialize (ip:%s  port:%d) Error:%d\n",handle->ip, handle->port, status);
-    	KV_Kreon_Free(handle);
-    	return NULL;
+        LogActivity(H3_ERROR_MSG, "Kreon - Failed to initialize (ip:%s  port:%d) Error:%d\n",handle->ip, handle->port, status);
+        KV_Kreon_Free(handle);
+        return NULL;
     }
 
     return (KV_Handle)handle;

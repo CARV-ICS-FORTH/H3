@@ -142,14 +142,13 @@ void h3lib_free(PyObject *capsule) {
 }
 
 static PyObject *h3lib_init(PyObject* self, PyObject *args, PyObject *kw) {
-    char *cfgFileName;
-    H3_StoreType storageType = H3_STORE_CONFIG;
+    char *storageUri;
 
-    static char *kwlist[] = {"config_file", "storage_type", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "s|i", kwlist, &cfgFileName, &storageType))
+    static char *kwlist[] = {"storage_uri", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "s", kwlist, &storageUri))
         return NULL;
 
-    H3_Handle handle = H3_Init(storageType, cfgFileName);
+    H3_Handle handle = H3_Init(storageUri);
     if (handle == NULL) {
         PyErr_SetNone(invalid_args_status);
         return NULL;
@@ -1113,17 +1112,8 @@ static struct PyModuleDef module_definition = {
 PyMODINIT_FUNC PyInit_h3lib(void) {
     PyObject *module = PyModule_Create(&module_definition);
 
-    // PyModule_AddIntConstant(module, "H3_ERROR_MESSAGE", H3_ERROR_MESSAGE);
-
     PyModule_AddIntConstant(module, "H3_BUCKET_NAME_SIZE", H3_BUCKET_NAME_SIZE);
     PyModule_AddIntConstant(module, "H3_OBJECT_NAME_SIZE", H3_OBJECT_NAME_SIZE);
-
-    PyModule_AddIntConstant(module, "H3_STORE_CONFIG", H3_STORE_CONFIG);
-    PyModule_AddIntConstant(module, "H3_STORE_FILESYSTEM", H3_STORE_FILESYSTEM);
-    PyModule_AddIntConstant(module, "H3_STORE_KREON", H3_STORE_KREON);
-    PyModule_AddIntConstant(module, "H3_STORE_ROCKSDB", H3_STORE_ROCKSDB);
-    PyModule_AddIntConstant(module, "H3_STORE_REDIS_CLUSTER", H3_STORE_REDIS_CLUSTER);
-    PyModule_AddIntConstant(module, "H3_STORE_REDIS", H3_STORE_REDIS);
 
     PyStructSequence_InitType(&bucket_stats_type, &bucket_stats_desc);
     PyStructSequence_InitType(&bucket_info_type, &bucket_info_desc);

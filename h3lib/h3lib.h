@@ -60,18 +60,6 @@ typedef enum {
     H3_CONTINUE         //!< Operation succeeded though there are more data to retrieve
 } H3_Status;
 
-/*! \brief Storage providers supported by H3 */
-typedef enum {
-    H3_STORE_CONFIG = 0,    //!< Provider is set in the configuration file
-    H3_STORE_FILESYSTEM,    //!< Mounted filesystem
-    H3_STORE_KREON,         //!< Kreon cluster
-    H3_STORE_ROCKSDB,       //!< RocksDB server
-    H3_STORE_REDIS_CLUSTER, //!< Redis cluster
-    H3_STORE_REDIS,         //!< Redis
-    H3_NumOfStores          //!< Not an option, used for iteration purposes
-} H3_StoreType;
-
-
 /*! \brief Object/Bucket attributes supported by H3 */
 typedef enum {
     H3_ATTRIBUTE_PERMISSIONS = 0,   //!< Permissions attribute
@@ -148,13 +136,11 @@ typedef struct {
  * \return Null terminated string
  */
 char* H3_Version();
-H3_StoreType H3_String2Type(const char* type);
-const char* H3_Type2String(H3_StoreType type);
 
 /** \defgroup handle Handle management
  *  @{
  */
-H3_Handle H3_Init(H3_StoreType storageType, const char* cfgFileName);
+H3_Handle H3_Init(const char* storageUri);
 void H3_Free(H3_Handle handle);
 /** @}*/
 

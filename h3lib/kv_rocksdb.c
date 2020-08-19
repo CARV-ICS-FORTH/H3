@@ -15,8 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-
-#include <glib.h>
+#include <string.h>
 
 #include <rocksdb/c.h>
 
@@ -33,18 +32,24 @@ typedef struct {
     rocksdb_writeoptions_t* writeoptions;
 } KV_RocksDB_Handle;
 
-KV_Handle KV_RocksDb_Init(GKeyFile* cfgFile) {
-    g_autoptr (GError)error = NULL;
-    char *path = g_key_file_get_string(cfgFile, "ROCKSDB", "path", &error);
-    if (path == NULL) {
-        if (g_error_matches(error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND)) {
-            // Key "path" is not defined, use default value instead.
-            path = "/tmp/h3/rocksdb";
-        } else {
-            // Error, section "RocksDB" is missing.
-            return NULL;
-        }
+KV_Handle KV_RocksDb_Init(const char* storageUri) {
+    struct parsed_url *url = parse_url(storageUri);
+    if (url == NULL) {
+        LogActivity(H3_ERROR_MSG, "ERROR: Unrecognized storage URI\n");
+        return NULL;
     }
+
+    char *path;
+    if (url->path != NULL) {
+        path = malloc(strlen(url->path) + 2);
+        path[0] = '/';
+        strcpy(&(path[1]), url->path);
+        LogActivity(H3_INFO_MSG, "INFO: Path in URI: %s\n", path);
+    } else {
+        path = strdup("/tmp/h3/rocksdb");
+        LogActivity(H3_WARNING_MSG, "WARNING: No path in URI. Using default: /tmp/h3\n");
+    }
+    parsed_url_free(url);
 
     // Prepare options.
     rocksdb_options_t *options = rocksdb_options_create();
@@ -99,7 +104,7 @@ KV_Handle KV_RocksDb_Init(GKeyFile* cfgFile) {
     }
 
     KV_RocksDB_Handle* handle = malloc(sizeof(KV_RocksDB_Handle));
-    handle->path = strdup(path);
+    handle->path = path;
     handle->db = db;
     handle->readoptions = readoptions;
     handle->writeoptions = writeoptions;

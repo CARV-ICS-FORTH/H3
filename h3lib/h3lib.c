@@ -13,6 +13,7 @@
 // limitations under the License.
 #include "common.h"
 #include "util.h"
+#include "url_parser.h"
 
 extern KV_Operations operationsFilesystem;
 
@@ -130,10 +131,10 @@ char* H3_Version(){
 }
 
 H3_StoreType H3_String2Type(const char* type){
-	H3_StoreType store = H3_STORE_CONFIG;
+	H3_StoreType store = -1;
 
     if(type){
-        if(     strcmp(type, "filesystem") == 0)     store = H3_STORE_FILESYSTEM;
+        if(     strcmp(type, "file") == 0)           store = H3_STORE_FILESYSTEM;
         else if(strcmp(type, "kreon") == 0)          store = H3_STORE_KREON;
         else if(strcmp(type, "rocksdb") == 0)        store = H3_STORE_ROCKSDB;
         else if(strcmp(type, "rediscluster") == 0)   store = H3_STORE_REDIS_CLUSTER;
@@ -144,7 +145,7 @@ H3_StoreType H3_String2Type(const char* type){
 }
 
 
-const char* const StoreType[] = {"config", "filesystem", "kreon", "rocksdb", "rediscluster", "redis", "unknown"};
+const char* const StoreType[] = {"file", "kreon", "rocksdb", "rediscluster", "redis", "unknown"};
 const char* H3_Type2String(H3_StoreType type){
 	const char* string;
 
@@ -215,22 +216,17 @@ int GrantMultipartAccess(H3_UserId id, H3_MultipartMetadata* meta){
 }
 
 /*! Initialize library
- * @param[in] storageType   The storage provider to be used with this instance
- * @param[in] cfgFileName   The configuration file containing provider specific information
+ * @param[in] storageUri    The storage provider URI to be used with this instance
  * @result  The handle if connected to provider, NULL otherwise.
  */
-// https://developer.gnome.org/glib/stable/glib-Key-value-file-parser.html
-H3_Handle H3_Init(H3_StoreType storageType, const char* cfgFileName) {
-    g_autoptr(GError) error = NULL;
-    GKeyFile* cfgFile = g_key_file_new();
-    // printf("Filename %s\n",cfgFileName);
-    if( !g_key_file_load_from_file(cfgFile, cfgFileName, G_KEY_FILE_NONE, &error)) {
+H3_Handle H3_Init(const char* storageUri) {
+    struct parsed_url *url = parse_url(storageUri);
+    if (url == NULL) {
+        LogActivity(H3_ERROR_MSG, "ERROR: Unrecognized storage URI\n");
         return NULL;
     }
-
-    if(storageType == H3_STORE_CONFIG){
-        storageType = H3_String2Type(g_key_file_get_string (cfgFile, "H3", "store", NULL));
-    }
+    H3_StoreType storageType = H3_String2Type(url->scheme);
+    parsed_url_free(url);
 
     H3_Context* ctx = malloc(sizeof(H3_Context));
 
@@ -288,7 +284,7 @@ H3_Handle H3_Init(H3_StoreType storageType, const char* cfgFileName) {
 		}
 
 
-		if(!ctx->operation || !(ctx->handle = ctx->operation->init(cfgFile))){
+		if(!ctx->operation || !(ctx->handle = ctx->operation->init(storageUri))){
 			free(ctx);
 			ctx = NULL;
 			LogActivity(H3_ERROR_MSG, "ERROR: Failed to initialize storage\n");
