@@ -78,7 +78,7 @@ void GetObjectId(H3_Name bucketName, H3_Name objectName, H3_ObjectId id){
 }
 
 
-H3_MultipartId GeneratetMultipartId(uuid_t uuid ){
+H3_MultipartId GenerateMultipartId(uuid_t uuid ){
     H3_MultipartId id = malloc(H3_MULIPARTID_SIZE);
     H3_UUID uuidString;
     uuid_unparse_lower(uuid, uuidString);

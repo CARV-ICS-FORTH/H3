@@ -106,7 +106,7 @@ H3_Status H3_CreateMultipart(H3_Handle handle, H3_Token token, H3_Name bucketNam
         memcpy(multiMeta.userId, userId, sizeof(H3_UserId));
 
         // Generate multipart ID
-        *multipartId = GeneratetMultipartId(objMeta.uuid);
+        *multipartId = GenerateMultipartId(objMeta.uuid);
 
         objMeta.nParts = 0;
         clock_gettime(CLOCK_REALTIME, &objMeta.creation);
