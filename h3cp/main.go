@@ -23,35 +23,9 @@ import (
     "fmt"
     "flag"
     "os"
-    "path"
     "strings"
     "unsafe"
 )
-
-func getConfigPath() string {
-    configFile := os.Getenv("H3_CONFIG")
-    if configFile != "" {
-        return configFile
-    }
-
-    wd, err := os.Getwd()
-    if err == nil {
-        configFile = path.Join(wd, "config.ini")
-        stat, err := os.Stat(configFile)
-        if err == nil {
-            if !stat.IsDir() {
-                return "config.ini"
-            }
-        }
-    }
-
-    home, err := os.UserHomeDir()
-    if err == nil {
-        return path.Join(home, ".h3", "config.ini")
-    }
-
-    return "config.ini"
-}
 
 func parseH3Path(H3Path string) (string, string) {
     if strings.HasPrefix(H3Path, "h3://") {
@@ -62,19 +36,19 @@ func parseH3Path(H3Path string) (string, string) {
 }
 
 func usage() {
-     fmt.Printf("Usage: %s [-c <config>] <src> <dst>\n", os.Args[0])
+     fmt.Printf("Usage: %s -s <storage_uri> <src> <dst>\n", os.Args[0])
      flag.PrintDefaults()
 }
 
 func main() {
-    configFile := getConfigPath()
+    storageUri := ""
 
     flag.Usage = usage
-    flag.StringVar(&configFile, "c", configFile, "H3 configuration file")
+    flag.StringVar(&storageUri, "s", "", "H3 storage URI")
     flag.Parse()
 
     args := flag.Args()
-    if len(args) != 2 {
+    if storageUri == "" || len(args) != 2 {
         usage()
         return
     }
@@ -90,10 +64,10 @@ func main() {
         return
     }
 
-    fmt.Println("Info: Using configuration file:", configFile)
-    cfgFileName := C.CString(configFile)
-    defer C.free(unsafe.Pointer(cfgFileName))
-    handle := C.H3_Init(C.H3_STORE_CONFIG, cfgFileName) // XXX Check...
+    fmt.Println("Info: Using storage URI:", storageUri)
+    storageUriStr := C.CString(storageUri)
+    defer C.free(unsafe.Pointer(storageUriStr))
+    handle := C.H3_Init(storageUriStr)
     defer C.H3_Free(handle)
 
     if srcBucket != "" {
