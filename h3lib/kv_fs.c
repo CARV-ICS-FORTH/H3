@@ -166,7 +166,7 @@ KV_Handle KV_FS_Init(const char* storageUri) {
         LogActivity(H3_INFO_MSG, "INFO: Path in URI: %s\n", path);
     } else {
         path = strdup("/tmp/h3");
-        LogActivity(H3_WARNING_MSG, "WARNING: No path in URI. Using default: /tmp/h3\n");
+        LogActivity(H3_INFO_MSG, "WARNING: No path in URI. Using default: /tmp/h3\n");
     }
     parsed_url_free(url);
 

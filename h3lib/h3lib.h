@@ -23,7 +23,6 @@
 #include <stdint.h>
 #include <time.h>
 #include <unistd.h>
-#include <ftw.h>
 
 /** \defgroup Macros
  *  @{

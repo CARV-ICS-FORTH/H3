@@ -9,7 +9,7 @@
  * Original code found at: http://draft.scyphus.co.jp/lang/c/url_parser.html.
  * Changes marked with "FIXED".
  *
- * Copyright 2019 FORTH-ICS
+ * Copyright 2020 FORTH-ICS
  *
  * Authors:
  *      Antony Chazapis

@@ -43,18 +43,18 @@ KV_Handle KV_Redis_Init(const char* storageUri) {
         LogActivity(H3_INFO_MSG, "INFO: Host in URI: %s\n", host);
     } else {
         host = strdup("127.0.0.1");
-        LogActivity(H3_WARNING_MSG, "WARNING: No host in URI. Using default: 127.0.0.1\n");
+        LogActivity(H3_INFO_MSG, "WARNING: No host in URI. Using default: 127.0.0.1\n");
     }
     int port;
     if (url->port != NULL) {
         port = atoi(url->port);
         if (port == 0) {
             port = 6379;
-            LogActivity(H3_WARNING_MSG, "WARNING: Unrecognized port in URI. Using default: 6379\n");
+            LogActivity(H3_INFO_MSG, "WARNING: Unrecognized port in URI. Using default: 6379\n");
         }
     } else {
         port = 6379;
-        LogActivity(H3_WARNING_MSG, "WARNING: No port in URI. Using default: 6379\n");
+        LogActivity(H3_INFO_MSG, "WARNING: No port in URI. Using default: 6379\n");
     }
     parsed_url_free(url);
 

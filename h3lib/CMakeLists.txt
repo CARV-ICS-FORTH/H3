@@ -120,27 +120,19 @@ install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES h3lib.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME} )
 
 # https://gitlab.kitware.com/cmake/community/wikis/doc/ctest/Testing-With-CTest
-# enable_testing()
-# add_subdirectory(tests)
+enable_testing()
+add_subdirectory(tests)
 
 
-#https://cmake.org/cmake/help/v3.16/command/add_custom_command.html?highlight=add_custom_command
-# add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
-#                                                              ${CMAKE_SOURCE_DIR}/tests/config.ini
-#                                                              ${CMAKE_CURRENT_BINARY_DIR}/tests/config.ini)
+add_subdirectory(tools)
 
-# add_subdirectory(tools)
-# add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
-#                                                              ${CMAKE_SOURCE_DIR}/tests/config.ini
-#                                                              ${CMAKE_CURRENT_BINARY_DIR}/tools/config.ini)
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink
+                                                             ${CMAKE_SOURCE_DIR}/tools/run_benchmark.sh
+                                                             ${CMAKE_CURRENT_BINARY_DIR}/tools/run_benchmark.sh)
 
-# add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink
-#                                                              ${CMAKE_SOURCE_DIR}/tools/run_benchmark.sh
-#                                                              ${CMAKE_CURRENT_BINARY_DIR}/tools/run_benchmark.sh)
-
-# add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink
-#                                                              ${CMAKE_SOURCE_DIR}/tools/generate_flamegraph.sh
-#                                                              ${CMAKE_CURRENT_BINARY_DIR}/tools/generate_flamegraph.sh)
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink
+                                                             ${CMAKE_SOURCE_DIR}/tools/generate_flamegraph.sh
+                                                             ${CMAKE_CURRENT_BINARY_DIR}/tools/generate_flamegraph.sh)
 
 
 set(CPACK_PACKAGE_NAME ${PROJECT_NAME})
