@@ -122,7 +122,7 @@ H3_Status H3_CreateBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
     }
     else if(kvStatus == KV_KEY_EXIST)
         return H3_EXISTS;
-
+    
     else if(kvStatus == KV_KEY_TOO_LONG)
         return H3_NAME_TOO_LONG;
 
@@ -184,6 +184,7 @@ H3_Status H3_DeleteBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
         H3_BucketMetadata* bucketMetadata = (H3_BucketMetadata*)value;
         value = NULL; size = 0;
         if( GrantBucketAccess(userId, bucketMetadata)                              &&
+
             (kvStatus = op->list(_handle, prefix, 0, NULL, 0, &nKeys)) == KV_SUCCESS && !nKeys  &&
             (kvStatus = op->metadata_read(_handle, userId, 0, &value, &size)) == KV_SUCCESS     &&
             (kvStatus = op->metadata_delete(_handle, bucketId)) == KV_SUCCESS                     ){

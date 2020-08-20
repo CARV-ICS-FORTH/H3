@@ -33,6 +33,7 @@ public class NativeBucketInfo extends Structure {
     /**
      * Create native bucket info
      * @param creation  Creation timestamp
+     * @param mode      Bucket type and mode (used by h3fuse)
      * @param stats     Aggregate object statistics
      */
     public NativeBucketInfo(NativeTimespec creation, NativeBucketStats stats) {

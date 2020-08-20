@@ -134,8 +134,11 @@ public class JH3BucketTest {
             assertFalse(client.createBucket("/bucketId"));
             assertEquals(JH3Status.JH3_INVALID_ARGS, client.getStatus());
 
-            assertFalse(client.createBucket("\bucketId"));
-            assertEquals(JH3Status.JH3_INVALID_ARGS, client.getStatus());
+            assertTrue(client.createBucket("\bucketId"));
+            assertEquals(JH3Status.JH3_SUCCESS, client.getStatus());
+
+            assertTrue(client.deleteBucket("\bucketId")); 
+            assertEquals(JH3Status.JH3_SUCCESS, client.getStatus());
 
         } catch (JH3Exception e) {
             e.printStackTrace();

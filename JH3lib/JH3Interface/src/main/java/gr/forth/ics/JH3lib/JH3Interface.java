@@ -17,7 +17,7 @@ public interface JH3Interface extends Library {
     // public static final JH3libInterface INSTANCE = (JH3libInterface) Native.load(JH3libInterface.JNA_LIBRARY_NAME, JH3libInterface.class);
 
     /** The instance of the native h3lib. */
-    JH3Interface INSTANCE = Native.load("h3lib", JH3Interface.class);
+    JH3Interface INSTANCE = LibraryLoader.load(); 
 
     // Defines of H3
     /** Maximum number of characters allowed for a bucket. */
@@ -28,7 +28,7 @@ public interface JH3Interface extends Library {
 
     /**  This character can only appear at the end of an object-name */
     String H3_LAST_ONLY_CHAR = (String)"%";
-
+    
     /** Storage providers supported by H3;  Represents values of H3_StoreType enum. */
     interface StoreType {
         /** Provider is set in the configuration file. */
@@ -531,4 +531,15 @@ public interface JH3Interface extends Library {
      * @return H3_SUCCESS on success, or H3_NOT_EXISTS/H3_INVALID_ARGS/H3_FAILURE on failure
      */
     int H3_CreatePartCopy(Pointer handle, NativeAuth token, Pointer objectName, NativeLong offset, NativeLong size, Pointer multipartId, int partNumber);
+}
+
+class LibraryLoader {
+    static JH3Interface load(){
+        String JNA_LIBRARY_NAME = System.getenv("H3LIB_PATH");
+        if(JNA_LIBRARY_NAME != null){
+            return (JH3Interface) Native.load(JNA_LIBRARY_NAME, JH3Interface.class);
+        } 
+        // H3LIB_PATH was not specified; use default path
+        return (JH3Interface) Native.load("h3lib", JH3Interface.class);
+    }
 }
