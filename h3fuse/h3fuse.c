@@ -38,10 +38,9 @@ enum {
 };
 
 typedef struct {
-     char* cfgFileName;
+     char* storageUri;
      char* token;
      char* bucket;
-     char* type;
 } H3FS_Config;
 
 typedef struct {
@@ -766,8 +765,7 @@ static struct fuse_operations h3fsOperations = {
 
 #define H3FS_OPT(t, p, v) { t, offsetof(H3FS_Config, p), v }
 static struct fuse_opt h3fsOptions[] = {
-        H3FS_OPT("type=%s",     type,           0),
-        H3FS_OPT("cfg=%s",      cfgFileName,    0),
+        H3FS_OPT("storage=%s",  storageUri,     0),
 		H3FS_OPT("bucket=%s",   bucket,    		0),
 
         FUSE_OPT_KEY("-V",                      KEY_VERSION),
@@ -782,9 +780,8 @@ static int H3FS_OptionParser(void *data, const char *arg, int key, struct fuse_a
     switch (key) {
         case KEY_HELP:
                 fprintf(stderr,"h3fs options:\n"
-                               "    -o cfg=STRING          path to configuration file\n"
-                			   "    -o bucket=STRING       bucket name\n"
-                               "    -o type=STRING         backend type\n");
+                               "    -o storage=STRING      storage URI\n"
+                			   "    -o bucket=STRING       bucket name\n");
                 fuse_opt_add_arg(outargs, "-h");
                 fuse_main(outargs->argc, outargs->argv, &h3fsOperations, NULL);
                 exit(1);
@@ -804,22 +801,15 @@ int main(int argc, char *argv[]) {
     struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
     H3FS_Config conf;
     H3_BucketInfo info;
-    H3_StoreType storeType = H3_STORE_CONFIG;
 
 
     // Allow full access to newly created files/directories
     umask(0);
 
-    /* Set defaults -- we have to use strdup so that
-       fuse_opt_parse can free the defaults if other
-       values are specified */
-    conf.cfgFileName = strdup("config.ini");
-    conf.type = NULL;
-
     fuse_opt_parse(&args, &conf, h3fsOptions, H3FS_OptionParser);
 
-    if(!conf.cfgFileName){
-        fprintf(stderr, "Missing h3lib configuration path\n");
+    if(!conf.storage){
+        fprintf(stderr, "Missing storage URI\n");
         exit(1);
     }
 
@@ -828,17 +818,12 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    storeType = H3_String2Type(conf.type);
-
-    // Initialize h3lib
-    printf("cfgFileName:%s  type:%s\n", conf.cfgFileName, conf.type);
-
     // TODO: Replace the hard-coded token
     data.token.userId = 0;
 
     // H3lib cleanup will be handled by fuse.destroy
     data.bucket = strdup(conf.bucket);
-    data.handle = H3_Init(storeType, conf.cfgFileName);
+    data.handle = H3_Init(conf.storage);
     if(H3_InfoBucket(data.handle, &data.token, data.bucket, &info, 0) == H3_SUCCESS){
         ret = fuse_main(args.argc, args.argv, &h3fsOperations, (void*)&data);
         fuse_opt_free_args(&args);
