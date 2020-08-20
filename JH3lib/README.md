@@ -45,8 +45,7 @@ Instructions are same as JH3Interface module.
 
 ### JH3HadoopFS:
 A H3lib plugin for Hadoop FileSystem API.
-Instructions are same as JH3Interface module.
-
+To specify the back-end storage, set the environment variable H3LIB\_STORAGE\_URI.
 #### How to add JH3HadoopFS to Hadoop:
 ```$xslt
 cp path/to/JH3lib/JH3HadoopFS/target/<JH3HadoopFS-jar-with-dependencies.jar> path/to/hadoop/share/common/lib

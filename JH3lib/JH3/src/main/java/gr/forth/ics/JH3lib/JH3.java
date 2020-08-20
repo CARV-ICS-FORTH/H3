@@ -37,10 +37,7 @@ public class JH3 implements Serializable{
      */
     //public JH3Client(){ }
 
-    //public JH3Client(H3StoreType storeType, String config, int userId){
-    //    this.init(storeType, config, userId);
-    //}
-    //// TODO Consider if this is needed
+     //// TODO Consider if this is needed
     //public void free() {
     //    JH3libInterface.INSTANCE.H3_Free(handle);
     //    handle = null;      // handle is no longer valid
@@ -49,14 +46,19 @@ public class JH3 implements Serializable{
 
     /**
      * Create a JH3 client.
-     * @param storeType The backend Storage type.
-     * @param config    Path of file containing options for storage type.
-     * @param userId    The user that performs all operations.
+     * Example backend URIs include (defaults for each type shown):
+     * ``file:///tmp/h3`` for local filesystem
+     * ``kreon://127.0.0.1:2181`` for Kreon, where the network location refers to the ZooKeeper host and port
+     * ``rocksdb:///tmp/h3/rocksdb`` for `RocksDB <https://rocksdb.org>`_
+     * ``redis://127.0.0.1:6379`` for `Redis <https://redis.io>`_
+
+     * @param storageURI  The backend storage URI.
+     * @param userId      The user that performs all operations.
      */
-    public JH3(JH3StoreType storeType, String config, int userId) throws JH3Exception {
-        Pointer configPath = new Memory(config.length() + 1);
-        configPath.setString(0, config);
-        handle = JH3Interface.INSTANCE.H3_Init(storeType.getStoreType(), configPath);
+    public JH3(String storageURI, int userId) throws JH3Exception {
+        Pointer uri = new Memory(storageURI.length() + 1);
+        uri.setString(0, storageURI);
+        handle = JH3Interface.INSTANCE.H3_Init(uri);
         if(handle == null){
             throw new JH3Exception("Could not initialize H3");
         }
@@ -68,12 +70,11 @@ public class JH3 implements Serializable{
 
     /**
      * Create a JH3 client.
-     * @param storeType The backend Storage type.
-     * @param config Path of the file containing options for storage type.
-     * @param token The authentication token of the user that performs all operations.
+     * @param storageURI  The backend storage URI.
+     * @param token       The authentication token of the user that performs all operations.
      */
-    public JH3(JH3StoreType storeType, String config, JH3Auth token) throws JH3Exception {
-        this(storeType, config, token.getUserId());
+    public JH3(String storageURI, JH3Auth token) throws JH3Exception {
+        this(storageURI, token.getUserId());
     }
 
     /**

@@ -12,30 +12,35 @@ import static org.junit.Assert.*;
 
 public class JH3BucketTest {
 
-    private String config = "config.ini";                                   // Path of configuration file
-    private JH3StoreType storeType = JH3StoreType.JH3_STORE_CONFIG;            // Use local filesystem
-    private int userId = 0;                                                 // Dummy userId
-    private String dir = "/tmp/h3";
-
-    void deleteDir(File file) {
-        File[] contents = file.listFiles();
-        if (contents != null) {
-            for (File f : contents) {
-                if (!Files.isSymbolicLink(f.toPath())) {
-                    deleteDir(f);
-                }
-            }
-        }
-        file.delete();
+    // Initialize storage URI; if H3LIB_STORAGE_URI is not set, use default uri (local filesystem: /tmp/h3) 
+    private static String storageURI = null;
+    static {
+      storageURI = System.getenv("H3LIB_STORAGE_URI");
+      if(storageURI == null){
+        storageURI = "file:///tmp/h3";
+      }
     }
+
+    private int userId = 0;                                                 // Dummy userId
+
+
     /**
-     * Delete any files in /tmp/h3
+     * Cleanup backend before each test.
      */
     @Before
-    public void cleanup() {
-        deleteDir(new File(dir));
+    public void cleanup(){
+      try{
+        JH3 client = new JH3(storageURI, userId);
+        ArrayList<String> buckets = client.listBuckets();
+        for (String bucket : buckets){
+         ArrayList<String> objects = client.listObjects(bucket, 0);
+          for (String object : objects){
+            client.deleteObject(bucket, object);
+          }
+          client.deleteBucket(bucket);
+        }
+      } catch(JH3Exception e){}
     }
-
 
     /**
      * List / create / delete a bucket
@@ -46,7 +51,7 @@ public class JH3BucketTest {
             ArrayList<String> buckets;
 
             // Initialize client
-            JH3 client = new JH3(storeType, config, userId);
+            JH3 client = new JH3(storageURI, userId);
 
             // Check if there are any buckets
             buckets = client.listBuckets();
@@ -112,7 +117,7 @@ public class JH3BucketTest {
     public void argumentsTest(){
         try {
             // Initialize client
-            JH3 client = new JH3(storeType, config, userId);
+            JH3 client = new JH3(storageURI, userId);
 
             // Bucket with empty name
             assertFalse(client.createBucket(""));
@@ -158,7 +163,7 @@ public class JH3BucketTest {
             ArrayList<String> buckets;
 
             // Initialize client
-            JH3 client = new JH3(storeType, config, userId);
+            JH3 client = new JH3(storageURI, userId);
 
             // Check if there are any buckets
             buckets = client.listBuckets();

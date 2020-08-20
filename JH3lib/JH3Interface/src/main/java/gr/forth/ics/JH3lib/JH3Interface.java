@@ -28,24 +28,7 @@ public interface JH3Interface extends Library {
 
     /**  This character can only appear at the end of an object-name */
     String H3_LAST_ONLY_CHAR = (String)"%";
-    
-    /** Storage providers supported by H3;  Represents values of H3_StoreType enum. */
-    interface StoreType {
-        /** Provider is set in the configuration file. */
-        int H3_STORE_CONFIG = 0;
-        /** Use mounted filesystem. */
-        int H3_STORE_FILESYSTEM = 1;
-        /** Kreon cluster. */
-        int H3_STORE_KREON = 2;
-        /** RocksDB server. */
-        int H3_STORE_ROCKSDB = 3;
-        /** Redis cluster. */
-        int H3_STORE_REDIS_CLUSTER = 4;
-        /** Redis. */
-        int H3_STORE_REDIS = 5;
-        /** Not an option, used for iteration purposes. */
-        int H3_STORE_NumOfStores = 6;
-    }
+  
     /** Status/error codes supported by H3; Represents values of H3_Status enum */
     interface Status {
         /** Operation failed. */
@@ -93,11 +76,10 @@ public interface JH3Interface extends Library {
     //----------------------- Handle Management -----------------------
     /**
      * Initialize an H3 library.
-     * @param   storageType     The storage provider to be used with this instance
-     * @param   cfgFileName     The configuration file containing provider specific information
+     * @param   storageURI      The backend storage URI.
      * @return                  The handle if connected to provider, NULL otherwise.
      */
-    Pointer H3_Init(int storageType, Pointer cfgFileName);
+    Pointer H3_Init(Pointer storageURI);
 
     /**
      * Destroy an h3lib handle. Deallocates buffers and renders handle inoperable. Using the handle after it has

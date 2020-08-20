@@ -59,12 +59,12 @@ public class JH3HadoopFS extends FileSystem {
     log.trace("JH3FS: initialize - URI: " + name + ", Configuration: " + originalConf);
 
     try {
-      String h3Config = System.getenv("HADOOP_H3_CONFIG");
-      if (h3Config == null)
-        throw new IOException("HADOOP_H3_CONFIG environment variable is not set.");
+      String storageURI = System.getenv("H3LIB_STORAGE_URI");
+      if (storageURI == null)
+        throw new IOException("H3_STORAGE_URI environment variable is not set.");
 
       // TODO update with a valid user authentication method
-      client = new JH3(JH3StoreType.JH3_STORE_CONFIG, h3Config, 0);
+      client = new JH3(storageURI, 0);
       setUri(name);
       workingDir = new Path("/").makeQualified(this.uri, this.getWorkingDirectory());
       bucket = name.getHost();
