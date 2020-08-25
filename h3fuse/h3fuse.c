@@ -808,7 +808,7 @@ int main(int argc, char *argv[]) {
 
     fuse_opt_parse(&args, &conf, h3fsOptions, H3FS_OptionParser);
 
-    if(!conf.storage){
+    if(!conf.storageUri){
         fprintf(stderr, "Missing storage URI\n");
         exit(1);
     }
@@ -823,7 +823,7 @@ int main(int argc, char *argv[]) {
 
     // H3lib cleanup will be handled by fuse.destroy
     data.bucket = strdup(conf.bucket);
-    data.handle = H3_Init(conf.storage);
+    data.handle = H3_Init(conf.storageUri);
     if(H3_InfoBucket(data.handle, &data.token, data.bucket, &info, 0) == H3_SUCCESS){
         ret = fuse_main(args.argc, args.argv, &h3fsOperations, (void*)&data);
         fuse_opt_free_args(&args);
