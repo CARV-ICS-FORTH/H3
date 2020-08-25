@@ -6,7 +6,7 @@ H3 is a thin, stateless layer that provides object semantics on top of a high-pe
 Overview
 --------
 
-H3 provides a flat organization scheme where each data object is linked to a globally unique identifier called bucket. Buckets belong to users and contain objects. The H3 API supports typical bucket operations, such as create, list, and delete. Object management includes reading/writing objects from/to H3, copying, renaming, listing, and deleting. H3 also supports multipart operations, where objects are written in parts and coalesced at the end. [Additionally, it provides a file-stream API, enabling access to H3 objects using typical file-like function calls.]
+H3 provides a flat organization scheme where each data object is linked to a globally unique identifier called bucket. Buckets belong to users and contain objects. The H3 API supports typical bucket operations, such as create, list, and delete. Object management includes reading/writing objects from/to H3, copying, renaming, listing, and deleting. H3 also supports multipart operations, where objects are written in parts and coalesced at the end.
 
 In essence, H3 implements a translation layer between the object namespace and a key-value store, similar to how a filesystem provides a hierarchical namespace of files on top of a block device. However, there are major differences:
 
@@ -16,12 +16,10 @@ In essence, H3 implements a translation layer between the object namespace and a
 
 H3 is provided as C library, called ``h3lib``. ``h3lib`` implements the object API as a series of functions that translate the bucket and object operations to operations in the provided key-value backend. The key-value store interface is abstracted into a common API with implementations for `RocksDB <https://rocksdb.org>`_, `Redis <https://redis.io>`_, Kreon, and a filesystem.
 
-The ``h3lib`` API is outlined here. [Provide internal link to ``h3lib`` API documentation generated from docstrings.]
-
 User management
 ---------------
 
-H3 maps user credentials, given at library initialization, to a user id with the help of an external service [TBD]. The user id is passed along in all H3 calls and stored in bucket/object metadata when they are created. Bucket/object operations fail if the provided user id does not match the respective id stored for the specific entity. [Elaborate authorization policies are planned with per-bucket/object ACLs.]
+H3 maps user credentials, given at library initialization, to a user id with the help of an external service [TBD]. The user id is passed along in all H3 calls and stored in bucket/object metadata when they are created. Bucket/object operations fail if the provided user id does not match the respective id stored for the specific entity.
 
 Note that H3 cannot enforce strict data protection semantics, due to its nature - being a library layered on top of a key-value store and not a REST service. Complete data isolation between users can really only be accomplished either by mapping H3 users to backend domains of some kind (assuming the key-value store supports it), or by using separate key-value deployments/namespaces per user.
 
