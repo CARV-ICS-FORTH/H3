@@ -1,51 +1,30 @@
 H3 library
 ==========
 
-Installation::
+``h3lib`` is an embedded object store in C.
+
+Installation
+------------
+
+To compile ``h3lib`` you need CMake v3.10 or latter. H3 uses the ``glib2`` and ``uuid`` libraries, so make sure you have them installed, along with their header files. You also need the ``cppcheck`` utility.
+
+**Note:** For CentOS 7, use the ``cmake3`` package available in EPEL. Replace ``cmake`` in the following commands with ``cmake3``.
+
+**Note:** For macOS, install ``cmake``, ``pkgconfig``, ``glib2``, and ``libuuid`` via MacPorts. ``h3lib`` requires GCC to build, so you also need to install ``gcc9`` and replace the following ``cmake`` command with: ``export CC=<path to gcc>; cmake -DCMAKE_C_COMPILER=$CC <path to h3lib directory>``
+
+For key-value store plugins install the appropriate library dependencies. ``h3lib`` will build and link with any such libraries available:
+
+* For Kreon, use ``cmake .. -DCMAKE_BUILD_TYPE=Release -DKREON_BUILD_CPACK=TRUE``.
+* For `RocksDB <https://rocksdb.org>`_, instal all dependencies as per https://github.com/facebook/rocksdb/blob/master/INSTALL.md (``make shared_lib && make install-shared``).
+* For `Redis <https://redis.io>`_, install the ``hiredis`` client library.
+
+To build and install::
 
     mkdir -p build && cd build
     cmake ..
     make
     make install
-    make test
 
-Run tests::
+To package (generates RPM file)::
 
-    make test
-
-To build in a Debian container install dependencies first::
-
-    apt-get install cmake libhiredis-dev libglib2.0-dev cppcheck file dpkg-dev
-
-For more options, consult the `documentation <../docs/>`_.
-
-RocksDB
--------
-Install all dependencies as per https://github.com/facebook/rocksdb/blob/master/INSTALL.md::
-
-    make shared_lib
-    make install-shared
-
-Kreon
------
-``cmake .. -DCMAKE_BUILD_TYPE=Release -DKREON_BUILD_CPACK=TRUE``
-
-Redis Cluster
--------------
-Clone the hiredis-vip client from https://github.com/vipshop/hiredis-vip/tree/master.
-The driver is build using a patched version of the client (master, commit: f12060498004494a3e1de11f653a8624f3d218c3).
-The patch is stored in h3lib root directory, apply it with git, i.e. ``git apply h3lib.patch``.
-To run the tests you have to execute script ``run_rediscluster.sh``. Note it will clone/compile the latest redis-server into
-directory "rediscluster" created within the working directory. Read issue #118.
-
-Redis
------
-Install the hiredis client library.
-
-FlameGraph
-----------
-Download FlameGraph suite from https://github.com/brendangregg/FlameGraph. Add flamegraph path to ``$PATH``::
-
-    export PATH=~/git/FlameGraph:$PATH <-- temporary
-    sudo perf record -F 999 -g -o benchmark_filesystem.raw ./benchmark -d filesystem -s 10M -o 205 -t 1
-    ./generate_flamegraph.sh benchmark_filesystem.raw [path to FlameGraph if not in $PATH]
+    make package

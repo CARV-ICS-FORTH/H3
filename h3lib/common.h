@@ -19,6 +19,8 @@
 //#include <regex.h>
 #include <sys/stat.h>
 
+#include <glib.h>
+
 #include <uuid/uuid.h>
 
 #include "h3lib.h"
@@ -63,7 +65,6 @@ typedef enum {
     H3_STORE_FILESYSTEM = 0,    // Mounted filesystem
     H3_STORE_KREON,             // Kreon cluster
     H3_STORE_ROCKSDB,           // RocksDB server
-    H3_STORE_REDIS_CLUSTER,     // Redis cluster
     H3_STORE_REDIS,             // Redis
     H3_NumOfStores              // Not an option, used for iteration purposes
 } H3_StoreType;

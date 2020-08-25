@@ -1,26 +1,26 @@
-# JH3lib: 
-A Java suite containing modules related to h3lib. Project was created using Maven 3.6.0
+# H3 Java wrapper and tests
 
-#### Compile all modules:
+A Java suite containing modules related to h3lib. Project was created using Maven 3.6.0. Java version 9 or higher is required.
+
+#### Compile all modules
 - mvn compile
 
-#### Test all modules:
+#### Test all modules
 - mvn test
 
-#### Package all modules(create  .jar):
+#### Package all modules (create .jar)
 - mvn package
-- packages are created in each module's target folder
+- packages are created in each module's `target` folder
 
-#### Install all modules:
+#### Install all modules
 - mvn install
 
-
-*To compile/package/install specific modules use -pl flag and the name of the module(s). 
+*To compile/package/install specific modules use -pl flag and the name of the module(s).
 e.g mvn -pl JH3,JH3Interface compile*
 
 *Testing phase can be skipped by using -DskipTests flag*
 
-### JH3Interface: 
+### JH3Interface:
 A Java Interface for h3lib. This project uses [JNA](https://github.com/java-native-access/jna) to provide native access
  to h3lib. Navigate into the module's folder to compile/package/install.
 
@@ -28,24 +28,25 @@ A Java Interface for h3lib. This project uses [JNA](https://github.com/java-nati
 - mvn compile
 
 #### Test module
-- mvn test 
+- mvn test
 
 #### Package module
-- mvn package 
+- mvn package
 
 #### Build only package with dependencies
 - mvn compile assembly:single
 
 #### Install module
 - mvn install
- 
+
 ### JH3:
-Uses JH3Interface to provide a class to make h3lib access more Java-like. 
+Uses JH3Interface to provide a class to make h3lib access more Java-like.
 Instructions are same as JH3Interface module.
 
 ### JH3HadoopFS:
 A H3lib plugin for Hadoop FileSystem API.
 To specify the back-end storage, set the environment variable H3LIB\_STORAGE\_URI.
+
 #### How to add JH3HadoopFS to Hadoop:
 ```$xslt
 cp path/to/JH3lib/JH3HadoopFS/target/<JH3HadoopFS-jar-with-dependencies.jar> path/to/hadoop/share/common/lib
@@ -71,6 +72,6 @@ cp spark-env.sh.template spart-env.sh
 add to spark-env:
  export SPARK_DIST_CLASSPATH=$(/path/to/built-hadoop/bin/hadoop classpath)
 ```
-When ``h3://`` is used as the schema part of the URI in Spark, 
+When ``h3://`` is used as the schema part of the URI in Spark,
 Hadoop will use the plugin instead of hdfs, local etc.
 See spark-examples folder under JH3HadoopFS module.

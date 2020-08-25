@@ -44,10 +44,6 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${FUSE_INCLUDE_DIRS} ${GLIB_I
 target_link_libraries(${PROJECT_NAME} PRIVATE ${FUSE_LIBRARIES}  ${GLIB_LDFLAGS} h3lib)
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${FUSE_CFLAGS}")
 
-# https://gitlab.kitware.com/cmake/community/wikis/doc/ctest/Testing-With-CTest
-enable_testing()
-add_subdirectory(tests)
-
 message(STATUS "Fuse version: ${FUSE_VERSION}" )
 
 install(TARGETS ${PROJECT_NAME})

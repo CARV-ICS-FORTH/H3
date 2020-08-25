@@ -13,3 +13,5 @@ __pychache__
 _build/
 *.pyc
 h3cp/h3cp
+docs/packages.rst
+docs/gr/
