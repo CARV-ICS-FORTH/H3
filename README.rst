@@ -7,6 +7,14 @@ For design details and APIs, consult the `documentation <docs/>`_.
 
 H3 is developed by the `Computer Architecture and VLSI Systems (CARV) <https://www.ics.forth.gr/carv/>`_ lab of the `Institute of Computer Science (ICS) <https://www.ics.forth.gr>`_ at the `Foundation for Research and Technology Hellas (FORTH) <https://www.ics.forth.gr>`_ and is available under the Apache License, Version 2.0. There is also a `list of contributors <CREDITS>`_.
 
+Installation
+------------
+
+To install locally, check the ``README`` file in each folder.
+
+A Docker image is also `available <https://hub.docker.com/r/carvicsforth/h3>`_ (build with ``docker build -t h3:<version> .``).
+
+
 Acknowledgements
 ----------------
 This project has received funding from the European Union’s Horizon 2020 research and innovation programme under grant agreement No 825061 (EVOLVE - `website <https://www.evolve-h2020.eu>`_, `CORDIS <https://cordis.europa.eu/project/id/825061>`_).
