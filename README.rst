@@ -1,7 +1,7 @@
 H3
 ===
 
-H3 is an embedded High speed, High volume, and High availability object store, backed by a high-performance key-value store (Kreon, RocksDB, Redis, etc.) or a filesystem. H3 is implemented in the h3lib library, which provides a cloud-friendly API, similar to Amazon's S3. Python and Java wrappers are also available.
+H3 is an embedded High speed, High volume, and High availability object store, backed by a high-performance key-value store (Kreon, RocksDB, Redis, etc.) or a filesystem. H3 is implemented in the h3lib library, which provides a cloud-friendly API, similar to Amazon's S3. Python and Java wrappers are also available. An H3 FUSE-based filesystem allows object access using file semantics.
 
 For design details and APIs, consult the `documentation <docs/>`_.
 
@@ -14,6 +14,12 @@ To install locally, check the ``README`` file in each folder.
 
 A Docker image is also `available <https://hub.docker.com/r/carvicsforth/h3>`_ (build with ``docker build -t h3:<version> .``).
 
+Extensions
+----------
+
+The `CSI H3 mount plugin <https://github.com/CARV-ICS-FORTH/csi-h3>`_ (``csi-h3`` for short), allows you to use H3 FUSE for implementing persistent volumes in Kubernetes.
+
+The `h3-support branch <https://github.com/CARV-ICS-FORTH/argo/tree/h3-support>`_ in our Argo fork adds support for using H3 as a workflow artifact repository. `Argo <https://argoproj.github.io>`_ is a workflow engine for Kubernetes.
 
 Acknowledgements
 ----------------
