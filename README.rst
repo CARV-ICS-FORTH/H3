@@ -17,6 +17,8 @@ A Docker image is also `available <https://hub.docker.com/r/carvicsforth/h3>`_ (
 Extensions
 ----------
 
+Use the `h3-benchmark <https://github.com/CARV-ICS-FORTH/h3-benchmark>`_ to measure H3 performance.
+
 The `CSI H3 mount plugin <https://github.com/CARV-ICS-FORTH/csi-h3>`_ (``csi-h3`` for short), allows you to use H3 FUSE for implementing persistent volumes in Kubernetes.
 
 The `h3-support branch <https://github.com/CARV-ICS-FORTH/argo/tree/h3-support>`_ in our Argo fork adds support for using H3 as a workflow artifact repository. `Argo <https://argoproj.github.io>`_ is a workflow engine for Kubernetes.
