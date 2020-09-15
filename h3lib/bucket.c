@@ -84,7 +84,7 @@ H3_Status H3_CreateBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
     memcpy(bucketMetadata.userId, userId, sizeof(H3_UserId));
     clock_gettime(CLOCK_REALTIME, &bucketMetadata.creation);
 
-    if( (kvStatus = op->metadata_create(_handle, bucketId, (KV_Value)&bucketMetadata, 0, sizeof(H3_BucketMetadata))) == KV_SUCCESS){
+    if( (kvStatus = op->metadata_create(_handle, bucketId, (KV_Value)&bucketMetadata, sizeof(H3_BucketMetadata))) == KV_SUCCESS){
 
         if( (kvStatus = op->metadata_read(_handle, userId, 0, &value, &metaSize)) == KV_SUCCESS){
             // Extend existing user's metadata to fit new bucket-id if needed
@@ -112,7 +112,7 @@ H3_Status H3_CreateBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
         if(userMetadata){
 			// Populate metadata and push them to the store
 			strncpy(userMetadata->bucket[userMetadata->nBuckets++], bucketName, sizeof(H3_BucketId));
-			op->metadata_write(_handle, userId, (KV_Value)userMetadata, 0, metaSize);
+			op->metadata_write(_handle, userId, (KV_Value)userMetadata, metaSize);
 			free(userMetadata);
 
 			return H3_SUCCESS;
@@ -122,7 +122,7 @@ H3_Status H3_CreateBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
     }
     else if(kvStatus == KV_KEY_EXIST)
         return H3_EXISTS;
-    
+
     else if(kvStatus == KV_KEY_TOO_LONG)
         return H3_NAME_TOO_LONG;
 
@@ -204,7 +204,7 @@ H3_Status H3_DeleteBucket(H3_Handle handle, H3_Token token, H3_Name bucketName){
                 }
 
                 // Push the updated metadata to the store
-                op->metadata_write(_handle, userId, (KV_Value)userMetadata, 0, size);
+                op->metadata_write(_handle, userId, (KV_Value)userMetadata, size);
                 status = H3_SUCCESS;
             }
 
@@ -295,7 +295,7 @@ H3_Status H3_ListBuckets(H3_Handle handle, H3_Token token, H3_Name* bucketNameAr
     }
     else if(status == KV_KEY_NOT_EXIST){
         H3_UserMetadata userMetadata = {.nBuckets = 0};
-        if(op->metadata_write(_handle, userId, (KV_Value)&userMetadata, 0, sizeof(H3_UserMetadata)) == KV_SUCCESS){
+        if(op->metadata_write(_handle, userId, (KV_Value)&userMetadata, sizeof(H3_UserMetadata)) == KV_SUCCESS){
             *nBuckets = 0;
             return H3_SUCCESS;
         }
@@ -521,7 +521,7 @@ H3_Status H3_SetBucketAttributes(H3_Handle handle, H3_Token token, H3_Name bucke
         if( GrantBucketAccess(userId, bucketMetadata) ){
             // No attributes implemented yet
 
-            if(op->metadata_write(_handle, bucketId, (KV_Value)bucketMetadata, 0, size) == KV_SUCCESS){
+            if(op->metadata_write(_handle, bucketId, (KV_Value)bucketMetadata, size) == KV_SUCCESS){
                 status = H3_SUCCESS;
             }
         }

@@ -47,10 +47,10 @@ typedef struct KV_Operations {
 	 * Otherwise the backend will fill it with up to "size" data.
 	 *
 	 *
-	 * --- Write Operations ---
+	 * --- Write/Update Operations ---
 	 * Write operations create a key if doesn't exist or update its value otherwise. For
 	 * functions metadata_write() and write(), argument "size" indicates the size of the
-	 * caller supplied value, whereas argument "offset" indicates the starting-position
+	 * caller supplied value, whereas argument "offset" (for updates) indicates the starting-position
 	 * within the current buffer associated with the key that will be replaced by value.
 	 * If the size of the buffer is smaller than the offset the buffer will be padded
 	 * with 0x00 to make the offset fit. Padding is applied even if the key is just created.
@@ -78,8 +78,8 @@ typedef struct KV_Operations {
 	 */
 
 	KV_Status (*metadata_read)(KV_Handle handle, KV_Key key, off_t offset, KV_Value* value, size_t* size);
-	KV_Status (*metadata_write)(KV_Handle handle, KV_Key key, KV_Value value, off_t offset, size_t size);
-	KV_Status (*metadata_create)(KV_Handle handle, KV_Key key, KV_Value value, off_t offset, size_t size);
+	KV_Status (*metadata_write)(KV_Handle handle, KV_Key key, KV_Value value, size_t size);
+	KV_Status (*metadata_create)(KV_Handle handle, KV_Key key, KV_Value value, size_t size);
 	KV_Status (*metadata_delete)(KV_Handle handle, KV_Key key);
 	KV_Status (*metadata_move)(KV_Handle handle, KV_Key srcKey, KV_Key dstKey);
 	KV_Status (*metadata_exists)(KV_Handle handle, KV_Key key);
@@ -87,8 +87,9 @@ typedef struct KV_Operations {
 	KV_Status (*list)(KV_Handle handle, KV_Key prefix, uint8_t nTrim, KV_Key key, uint32_t offset, uint32_t* nKeys);
 	KV_Status (*exists)(KV_Handle handle, KV_Key key);
 	KV_Status (*read)(KV_Handle handle, KV_Key key, off_t offset, KV_Value* value, size_t* size);
-	KV_Status (*create)(KV_Handle handle, KV_Key key, KV_Value value, off_t offset, size_t size);
-	KV_Status (*write)(KV_Handle handle, KV_Key key, KV_Value value, off_t offset, size_t size);
+	KV_Status (*create)(KV_Handle handle, KV_Key key, KV_Value value, size_t size);
+	KV_Status (*update)(KV_Handle handle, KV_Key key, KV_Value value, off_t offset, size_t size);
+	KV_Status (*write)(KV_Handle handle, KV_Key key, KV_Value value, size_t size);
 	KV_Status (*copy)(KV_Handle handle, KV_Key srcKey, KV_Key dstKey);
 	KV_Status (*move)(KV_Handle handle, KV_Key srcKey, KV_Key dstKey);
 	KV_Status (*delete)(KV_Handle handle, KV_Key key);

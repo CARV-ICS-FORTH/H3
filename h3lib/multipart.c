@@ -115,8 +115,8 @@ H3_Status H3_CreateMultipart(H3_Handle handle, H3_Token token, H3_Name bucketNam
         clock_gettime(CLOCK_REALTIME, &objMeta.creation);
 
         // Upload multipart and temp object metadata
-        if((storeStatus = op->metadata_create(_handle, multiMeta.objectId, (KV_Value)&objMeta, 0, sizeof(H3_ObjectMetadata))) == KV_SUCCESS){
-            if( (storeStatus = op->metadata_create(_handle, *multipartId, (KV_Value)&multiMeta, 0, sizeof(H3_MultipartMetadata))) == KV_SUCCESS){
+        if((storeStatus = op->metadata_create(_handle, multiMeta.objectId, (KV_Value)&objMeta, sizeof(H3_ObjectMetadata))) == KV_SUCCESS){
+            if( (storeStatus = op->metadata_create(_handle, *multipartId, (KV_Value)&multiMeta, sizeof(H3_MultipartMetadata))) == KV_SUCCESS){
                 status = H3_SUCCESS;
             }
             else
@@ -203,9 +203,9 @@ H3_Status H3_CompleteMultipart(H3_Handle handle, H3_Token token, H3_MultipartId 
 
 
                 // Create ordinary object (delete pre-existing ordinary object with same ID if any)
-                if( (kvStatus = op->metadata_create(_handle, objId, (KV_Value)objMeta, 0, mSize)) == KV_SUCCESS  ||
+                if( (kvStatus = op->metadata_create(_handle, objId, (KV_Value)objMeta, mSize)) == KV_SUCCESS  ||
                     (kvStatus == KV_KEY_EXIST && DeleteObject(ctx, userId, objId, 0) == H3_SUCCESS &&
-                     op->metadata_create(_handle, objId, (KV_Value)objMeta, 0, mSize) == KV_SUCCESS               )   ){
+                     op->metadata_create(_handle, objId, (KV_Value)objMeta, mSize) == KV_SUCCESS               )   ){
 
                     // Delete temporary object metadata and indirector
                     if( op->metadata_delete(_handle, multiMeta->objectId)== KV_SUCCESS &&
@@ -579,7 +579,7 @@ H3_Status H3_CreatePart(H3_Handle handle, H3_Token token, H3_MultipartId multipa
                 if(objMeta){
 					// The object has already been modified thus we need to record its state
 					kvStatus = CreatePart(ctx, objMeta, data, size, 0, partNumber);
-					if(op->metadata_write(_handle, multiMeta->objectId, (KV_Value)objMeta, 0, objMetaSize) == KV_SUCCESS && kvStatus == KV_SUCCESS){
+					if(op->metadata_write(_handle, multiMeta->objectId, (KV_Value)objMeta, objMetaSize) == KV_SUCCESS && kvStatus == KV_SUCCESS){
 						status = H3_SUCCESS;
 					}
                 }
@@ -587,7 +587,7 @@ H3_Status H3_CreatePart(H3_Handle handle, H3_Token token, H3_MultipartId multipa
 
             // failed to delete all or some of the part's previous version so update the metadata
             else {
-                op->metadata_write(_handle, multiMeta->objectId, (KV_Value)objMeta, 0, mSize);
+                op->metadata_write(_handle, multiMeta->objectId, (KV_Value)objMeta, mSize);
             }
 
             if(objMeta)
@@ -701,7 +701,7 @@ H3_Status H3_CreatePartCopy(H3_Handle handle, H3_Token token, H3_Name objectName
 
 						// We have to update metadata even if writing failed because we might have already deleted the previous
 						// version of the part.
-						if(op->metadata_write(_handle, multiMeta->objectId, (KV_Value)dstObjMeta, 0, dstObjMetaSize) == KV_SUCCESS){
+						if(op->metadata_write(_handle, multiMeta->objectId, (KV_Value)dstObjMeta, dstObjMetaSize) == KV_SUCCESS){
 							status = H3_SUCCESS;
 						}
                     }

@@ -151,10 +151,60 @@ KV_Status KV_Kreon_Read(KV_Handle handle, KV_Key key, off_t offset, KV_Value* va
 	return status;
 }
 
-KV_Status KV_Kreon_Write(KV_Handle handle, KV_Key key, KV_Value value, off_t offset, size_t size) {
+KV_Status KV_Kreon_Update(KV_Handle handle, KV_Key key, KV_Value value, off_t offset, size_t size) {
+    KV_Status status;
+
+    KV_Value* currentValue;
+    size_t currentSize;
+    KV_Value* newValue;
+    size_t newSize;
+    int freeNewValue = 0;
+
+    switch(krc_get(strlen(key)+1, key, (char**)&currentValue, (uint32_t*)&currentSize, 0)){
+        case KRC_SUCCESS:
+            if (offset + size <= currentSize) {
+                newValue = currentValue;
+                memcpy(currentValue + offset, value, size);
+                newSize = currentSize;
+            } else {
+                newValue = (KV_Value *)malloc(offset + size);
+                freeNewValue = 1;
+                memcpy(newValue, currentValue, currentSize);
+                memcpy(newValue + offset, value, size);
+                newSize = offset + size;
+            }
+            break;
+        case KRC_KEY_NOT_FOUND:
+            if (!offset) {
+                newValue = value;
+            } else {
+                newValue = (KV_Value *)calloc(1, offset + size);
+                freeNewValue = 1;
+                memcpy(newValue + offset, value, size);
+            }
+            newSize = offset + size;
+            break;
+        default:
+            return KV_FAILURE;
+            break;
+    }
+
+    // Convert key blob to string
+    if(krc_put(strlen(key)+1, key, newSize, newValue) == KRC_SUCCESS) {
+        status = KV_SUCCESS;
+    } else {
+        status = KV_FAILURE;
+    }
+    if (freeNewValue)
+        free(newValue);
+
+    return status;
+}
+
+KV_Status KV_Kreon_Write(KV_Handle handle, KV_Key key, KV_Value value, size_t size) {
 
 	// Convert key blob to string
-	if(krc_put_with_offset(strlen(key)+1, key, offset, size, value) == KRC_SUCCESS)
+	if(krc_put(strlen(key)+1, key, size, value) == KRC_SUCCESS)
 		return KV_SUCCESS;
 
 	return KV_FAILURE;
@@ -173,12 +223,12 @@ KV_Status KV_Kreon_Delete(KV_Handle handle, KV_Key key) {
 	return status;
 }
 
-KV_Status KV_Kreon_Create(KV_Handle _handle, KV_Key key, KV_Value value, off_t offset, size_t size){
+KV_Status KV_Kreon_Create(KV_Handle _handle, KV_Key key, KV_Value value, size_t size){
 	KV_Status status;
 	KV_Kreon_Handle* handle = (KV_Kreon_Handle *)_handle;
 
 	if( (status = KV_Kreon_Exists(handle, key)) == KV_KEY_NOT_EXIST){
-		 status = KV_Kreon_Write(handle, key, value, offset, size);
+		 status = KV_Kreon_Write(handle, key, value, size);
 	}
 
 	return status;
@@ -191,7 +241,7 @@ KV_Status KV_Kreon_Copy(KV_Handle _handle, KV_Key src_key, KV_Key dest_key) {
 	KV_Kreon_Handle* handle = (KV_Kreon_Handle *)_handle;
 
 	if((status = KV_Kreon_Read(handle, src_key, 0, &value, &size)) == KV_SUCCESS){
-		status = KV_Kreon_Write(handle, dest_key, value, 0, size);
+		status = KV_Kreon_Write(handle, dest_key, value, size);
 	}
 
 	return status;
@@ -204,7 +254,7 @@ KV_Status KV_Kreon_Move(KV_Handle _handle, KV_Key src_key, KV_Key dest_key) {
 	KV_Kreon_Handle* handle = (KV_Kreon_Handle *)_handle;
 
 	if( (status = KV_Kreon_Read(handle, src_key, 0, &value, &size)) == KV_SUCCESS &&
-		(status = KV_Kreon_Write(handle, dest_key, value, 0, size)) == KV_SUCCESS		){
+		(status = KV_Kreon_Write(handle, dest_key, value, size)) == KV_SUCCESS		){
 		status = KV_Kreon_Delete(handle, src_key);
 	}
 
@@ -231,6 +281,7 @@ KV_Operations operationsKreon = {
     .exists = KV_Kreon_Exists,
     .read = KV_Kreon_Read,
     .create = KV_Kreon_Create,
+    .update = KV_Kreon_Update,
     .write = KV_Kreon_Write,
     .copy = KV_Kreon_Copy,
     .move = KV_Kreon_Move,

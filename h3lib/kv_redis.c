@@ -193,30 +193,12 @@ KV_Status KV_Redis_Read(KV_Handle handle, KV_Key key, off_t offset, KV_Value* va
 	return status;
 }
 
-KV_Status KV_Redis_Create(KV_Handle handle, KV_Key key, KV_Value value, off_t offset, size_t size){
+KV_Status KV_Redis_Create(KV_Handle handle, KV_Key key, KV_Value value, size_t size){
 	KV_Redis_Handle* storeHandle = (KV_Redis_Handle*) handle;
 	KV_Status status = KV_FAILURE;
 	redisReply* reply;
 
-	if(offset){
-
-		// Attempt to reserve the key...
-		if((reply = redisCommand(storeHandle->ctx, "SET %s %d NX", key, 0))){
-
-			freeReplyObject(reply);
-			if(reply->type == REDIS_REPLY_STRING ){
-
-				//... and then populate it
-				reply = redisCommand(storeHandle->ctx, "SETRANGE %s %d %b", key, offset, value, size);
-			}
-			else{
-				freeReplyObject(reply);
-				return KV_KEY_EXIST;
-			}
-		}
-	}
-	else
-		reply = redisCommand(storeHandle->ctx, "SET %s %b NX", key, value, size);
+	reply = redisCommand(storeHandle->ctx, "SET %s %b NX", key, value, size);
 
 	if(reply){
 		switch(reply->type){
@@ -225,7 +207,6 @@ KV_Status KV_Redis_Create(KV_Handle handle, KV_Key key, KV_Value value, off_t of
 				break;
 
 			case REDIS_REPLY_STATUS:		// SET
-			case REDIS_REPLY_INTEGER: 		// SETRANGE
 				status = KV_SUCCESS;
 				break;
 		}
@@ -235,23 +216,42 @@ KV_Status KV_Redis_Create(KV_Handle handle, KV_Key key, KV_Value value, off_t of
 	return status;
 }
 
-KV_Status KV_Redis_Write(KV_Handle handle, KV_Key key, KV_Value value, off_t offset, size_t size) {
+KV_Status KV_Redis_Update(KV_Handle handle, KV_Key key, KV_Value value, off_t offset, size_t size) {
+  KV_Redis_Handle* storeHandle = (KV_Redis_Handle*) handle;
+  KV_Status status = KV_FAILURE;
+  redisReply* reply;
+
+  if(offset)
+    reply = redisCommand(storeHandle->ctx, "SETRANGE %s %d %b", key, offset, value, size);
+  else
+    reply = redisCommand(storeHandle->ctx, "SET %s %b", key, value, size);
+
+  if(reply){
+    switch(reply->type){
+      case REDIS_REPLY_STATUS:    // SET
+      case REDIS_REPLY_INTEGER:     // SETRANGE
+        status = KV_SUCCESS;
+        break;
+    }
+    freeReplyObject(reply);
+  }
+
+  return status;
+}
+
+KV_Status KV_Redis_Write(KV_Handle handle, KV_Key key, KV_Value value, size_t size) {
 	KV_Redis_Handle* storeHandle = (KV_Redis_Handle*) handle;
 	KV_Status status = KV_FAILURE;
 	redisReply* reply;
 
-	if(offset)
-		reply = redisCommand(storeHandle->ctx, "SETRANGE %s %d %b", key, offset, value, size);
-	else
-		reply = redisCommand(storeHandle->ctx, "SET %s %b", key, value, size);
+	reply = redisCommand(storeHandle->ctx, "SET %s %b", key, value, size);
 
-	if(reply){
-		switch(reply->type){
-			case REDIS_REPLY_STATUS:		// SET
-			case REDIS_REPLY_INTEGER: 		// SETRANGE
-				status = KV_SUCCESS;
-				break;
-		}
+  if(reply){
+    switch(reply->type){
+      case REDIS_REPLY_STATUS:    // SET
+        status = KV_SUCCESS;
+        break;
+    }
 		freeReplyObject(reply);
 	}
 
@@ -351,6 +351,7 @@ KV_Operations operationsRedis = {
     .exists = KV_Redis_Exists,
     .read = KV_Redis_Read,
     .create = KV_Redis_Create,
+    .update = KV_Redis_Update,
     .write = KV_Redis_Write,
     .copy = KV_Redis_Copy,
     .move = KV_Redis_Move,

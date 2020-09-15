@@ -240,8 +240,7 @@ KV_Status KV_RocksDb_Read(KV_Handle handle, KV_Key key, off_t offset, KV_Value* 
 	return status;
 }
 
-
-KV_Status KV_RocksDb_Write(KV_Handle handle, KV_Key key, KV_Value value, off_t offset, size_t size) {
+KV_Status KV_RocksDb_Update(KV_Handle handle, KV_Key key, KV_Value value, off_t offset, size_t size) {
 
     // XXX Do this with a merge operation...
 	//     i.e. rocksdb_mergeoperator_create()
@@ -307,6 +306,20 @@ KV_Status KV_RocksDb_Write(KV_Handle handle, KV_Key key, KV_Value value, off_t o
     return KV_SUCCESS;
 }
 
+KV_Status KV_RocksDb_Write(KV_Handle handle, KV_Key key, KV_Value value, size_t size) {
+    char* error = NULL;
+    KV_RocksDB_Handle* storeHandle = (KV_RocksDB_Handle *)handle;
+
+    rocksdb_put(storeHandle->db, storeHandle->writeoptions, key, strlen(key)+1, (char*)value, size, &error);
+    if (error){
+        LogActivity(H3_ERROR_MSG, "RocksDB - %s\n",error);
+        free(error);
+        return KV_FAILURE;
+    }
+
+    return KV_SUCCESS;
+}
+
 KV_Status KV_RocksDb_Delete(KV_Handle handle, KV_Key key) {
     KV_RocksDB_Handle* storeHandle = (KV_RocksDB_Handle *)handle;
 
@@ -334,11 +347,11 @@ KV_Status KV_RocksDb_Exists(KV_Handle handle, KV_Key key) {
     return status;
 }
 
-KV_Status KV_RocksDb_Create(KV_Handle handle, KV_Key key, KV_Value value, off_t offset, size_t size) {
+KV_Status KV_RocksDb_Create(KV_Handle handle, KV_Key key, KV_Value value, size_t size) {
 	KV_Status status;
 
 	if( (status = KV_RocksDb_Exists(handle, key)) == KV_KEY_NOT_EXIST){
-		 status = KV_RocksDb_Write(handle, key, value, offset, size);
+		 status = KV_RocksDb_Write(handle, key, value, size);
 	}
 
 	return status;
@@ -350,7 +363,7 @@ KV_Status KV_RocksDb_Copy(KV_Handle handle, KV_Key src_key, KV_Key dest_key) {
 	KV_Status status;
 
 	if((status = KV_RocksDb_Read(handle, src_key, 0, &value, &size)) == KV_SUCCESS){
-		status = KV_RocksDb_Write(handle, dest_key, value, 0, size);
+		status = KV_RocksDb_Write(handle, dest_key, value, size);
 	}
 
 	return status;
@@ -362,7 +375,7 @@ KV_Status KV_RocksDb_Move(KV_Handle handle, KV_Key src_key, KV_Key dest_key) {
 	KV_Status status;
 
 	if( (status = KV_RocksDb_Read(handle, src_key, 0, &value, &size)) == KV_SUCCESS &&
-		(status = KV_RocksDb_Write(handle, dest_key, value, 0, size)) == KV_SUCCESS		){
+		(status = KV_RocksDb_Write(handle, dest_key, value, size)) == KV_SUCCESS		){
 		status = KV_RocksDb_Delete(handle, src_key);
 	}
 
@@ -389,6 +402,7 @@ KV_Operations operationsRocksDB = {
 	.exists = KV_RocksDb_Exists,
 	.read = KV_RocksDb_Read,
 	.create = KV_RocksDb_Create,
+    .update = KV_RocksDb_Update,
 	.write = KV_RocksDb_Write,
 	.copy = KV_RocksDb_Copy,
 	.move = KV_RocksDb_Move,

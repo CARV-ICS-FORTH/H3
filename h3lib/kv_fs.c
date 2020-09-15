@@ -386,7 +386,7 @@ KV_Status KV_FS_Read(KV_Handle handle, KV_Key key, off_t offset, KV_Value* value
     return status;
 }
 
-KV_Status KV_FS_Create(KV_Handle handle, KV_Key key, KV_Value value, off_t offset, size_t size){
+KV_Status KV_FS_Create(KV_Handle handle, KV_Key key, KV_Value value, size_t size){
     KV_Filesystem_Handle* storeHandle = (KV_Filesystem_Handle*) handle;
     char* fullKey = GetFullKey(storeHandle, key);
     KV_Status status = KV_FAILURE;
@@ -399,7 +399,7 @@ KV_Status KV_FS_Create(KV_Handle handle, KV_Key key, KV_Value value, off_t offse
     MakePath(fullKey, S_IRWXU | S_IRWXG | S_IRWXO);
 
     if( (fd = open(fullKey,O_CREAT|O_EXCL|O_WRONLY,0666)) != -1){
-        return Write(fd, value, offset, size);
+        return Write(fd, value, 0, size);
     }
     else if( errno == EEXIST ){
         status =  KV_KEY_EXIST;
@@ -415,7 +415,7 @@ KV_Status KV_FS_Create(KV_Handle handle, KV_Key key, KV_Value value, off_t offse
     return status;
 }
 
-KV_Status KV_FS_Write(KV_Handle handle, KV_Key key, KV_Value value, off_t offset, size_t size) {
+KV_Status KV_FS_Update(KV_Handle handle, KV_Key key, KV_Value value, off_t offset, size_t size) {
     KV_Filesystem_Handle* storeHandle = (KV_Filesystem_Handle*) handle;
     char* fullKey = GetFullKey(storeHandle, key);
     KV_Status status = KV_FAILURE;
@@ -442,6 +442,10 @@ KV_Status KV_FS_Write(KV_Handle handle, KV_Key key, KV_Value value, off_t offset
 
     free(fullKey);
     return status;
+}
+
+KV_Status KV_FS_Write(KV_Handle handle, KV_Key key, KV_Value value, size_t size) {
+    return KV_FS_Update(handle, key, value, 0, size);
 }
 
 KV_Status KV_FS_Copy(KV_Handle handle, KV_Key src_key, KV_Key dest_key) {
@@ -576,6 +580,7 @@ KV_Operations operationsFilesystem = {
     .exists = KV_FS_Exists,
     .read = KV_FS_Read,
     .create = KV_FS_Create,
+    .update = KV_FS_Update,
     .write = KV_FS_Write,
     .copy = KV_FS_Copy,
     .move = KV_FS_Move,

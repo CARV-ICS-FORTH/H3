@@ -253,7 +253,7 @@ KV_Status CopyData(H3_Context* ctx, H3_UserId userId, H3_ObjectId srcObjId, H3_O
                 memcpy(dstObjMeta, srcObjMeta, mSize);
                 uuid_generate(dstObjMeta->uuid);
                 dstObjMeta->nParts = 0;
-                if((status = op->metadata_create(_handle, dstObjId, (KV_Value)dstObjMeta, 0, mSize)) == KV_SUCCESS){
+                if((status = op->metadata_create(_handle, dstObjId, (KV_Value)dstObjMeta, mSize)) == KV_SUCCESS){
 
                     // Copy the data in parts
                     KV_Value buffer = malloc(H3_PART_SIZE);
@@ -362,13 +362,13 @@ H3_Status H3_CreateObject(H3_Handle handle, H3_Token token, H3_Name bucketName, 
         InitMode(objMeta);
 
         // Reserve object
-        if( (storeStatus = op->metadata_create(_handle, objId, (KV_Value)objMeta, 0, objMetaSize)) == KV_SUCCESS){
+        if( (storeStatus = op->metadata_create(_handle, objId, (KV_Value)objMeta, objMetaSize)) == KV_SUCCESS){
 
             // Write object
             clock_gettime(CLOCK_REALTIME, &objMeta->creation);
             objMeta->isBad = WriteData(ctx, objMeta, data, size, 0) != KV_SUCCESS?1:0;
             objMeta->lastAccess = objMeta->lastModification;
-            if( op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, objMetaSize) == KV_SUCCESS && !objMeta->isBad){
+            if( op->metadata_write(_handle, objId, (KV_Value)objMeta, objMetaSize) == KV_SUCCESS && !objMeta->isBad){
                 status = H3_SUCCESS;
             }
         }
@@ -459,7 +459,7 @@ H3_Status H3_CreateObjectFromFile(H3_Handle handle, H3_Token token, H3_Name buck
         InitMode(objMeta);
 
         // Reserve object
-        if( (storeStatus = op->metadata_create(_handle, objId, (KV_Value)objMeta, 0, objMetaSize)) == KV_SUCCESS){
+        if( (storeStatus = op->metadata_create(_handle, objId, (KV_Value)objMeta, objMetaSize)) == KV_SUCCESS){
 
         	size_t readSize, bufferSize = min(H3_CHUNK, size);
         	KV_Value buffer = malloc(bufferSize);
@@ -476,7 +476,7 @@ H3_Status H3_CreateObjectFromFile(H3_Handle handle, H3_Token token, H3_Name buck
                 objMeta->lastAccess = objMeta->lastModification;
                 objMeta->isBad = storeStatus != KV_SUCCESS?1:0;
 
-                if(op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, objMetaSize) == KV_SUCCESS && readSize != -1 && !objMeta->isBad){
+                if(op->metadata_write(_handle, objId, (KV_Value)objMeta, objMetaSize) == KV_SUCCESS && readSize != -1 && !objMeta->isBad){
 					status = H3_SUCCESS;
 				}
 
@@ -566,7 +566,7 @@ H3_Status H3_CreateDummyObject(H3_Handle handle, H3_Token token, H3_Name bucketN
         InitMode(objMeta);
 
         // Reserve object
-        if( (storeStatus = op->metadata_create(_handle, objId, (KV_Value)objMeta, 0, objMetaSize)) == KV_SUCCESS){
+        if( (storeStatus = op->metadata_create(_handle, objId, (KV_Value)objMeta, objMetaSize)) == KV_SUCCESS){
 
 			off_t offset = 0;
 			size_t writeSize = min(objectSize, bufferSize);
@@ -581,7 +581,7 @@ H3_Status H3_CreateDummyObject(H3_Handle handle, H3_Token token, H3_Name bucketN
 			objMeta->lastAccess = objMeta->lastModification;
 			objMeta->isBad = storeStatus != KV_SUCCESS?1:0;
 
-			if(op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, objMetaSize) == KV_SUCCESS && !objectSize && !objMeta->isBad){
+			if(op->metadata_write(_handle, objId, (KV_Value)objMeta, objMetaSize) == KV_SUCCESS && !objectSize && !objMeta->isBad){
 				status = H3_SUCCESS;
 			}
         }
@@ -675,7 +675,7 @@ H3_Status H3_ReadObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
             clock_gettime(CLOCK_REALTIME, &objMeta->lastAccess);
             if(*data){
                 if( ReadData(ctx, objMeta, *data, size, offset) == KV_SUCCESS                      &&
-                    op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, mSize) == KV_SUCCESS     ){
+                    op->metadata_write(_handle, objId, (KV_Value)objMeta, mSize) == KV_SUCCESS     ){
 
                     if((objectSize - offset) > *size)
                         status = H3_CONTINUE;
@@ -873,7 +873,7 @@ H3_Status H3_ReadObjectToFile(H3_Handle handle, H3_Token token, H3_Name bucketNa
         		free(buffer);
 
         		clock_gettime(CLOCK_REALTIME, &objMeta->lastAccess);
-        		if(storeStatus == KV_SUCCESS && chunkSize != -1 && op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, mSize) == KV_SUCCESS){
+        		if(storeStatus == KV_SUCCESS && chunkSize != -1 && op->metadata_write(_handle, objId, (KV_Value)objMeta, mSize) == KV_SUCCESS){
 
         			if(*size)
         				*size -= requiredSize;
@@ -1042,7 +1042,7 @@ H3_Status H3_SetObjectAttributes(H3_Handle handle, H3_Token token, H3_Name bucke
             }
 
             clock_gettime(CLOCK_REALTIME, &objMeta->lastChange);
-            if(op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, mSize) == KV_SUCCESS){
+            if(op->metadata_write(_handle, objId, (KV_Value)objMeta, mSize) == KV_SUCCESS){
                 status = H3_SUCCESS;
             }
         }
@@ -1080,9 +1080,9 @@ H3_Status DeleteObject(H3_Context* ctx, H3_UserId userId, H3_ObjectId objId, cha
             clock_gettime(CLOCK_REALTIME, &objMeta->lastAccess);
             if(objMeta->nParts){
                 objMeta->isBad = 1;
-                op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, mSize);
+                op->metadata_write(_handle, objId, (KV_Value)objMeta, mSize);
             }
-            else if(( truncate && op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, mSize) == KV_SUCCESS) ||
+            else if(( truncate && op->metadata_write(_handle, objId, (KV_Value)objMeta, mSize) == KV_SUCCESS) ||
                     (!truncate && op->metadata_delete(_handle, objId) == KV_SUCCESS)                                ){
                 status = H3_SUCCESS;
             }
@@ -1231,7 +1231,7 @@ H3_Status H3_TruncateObject(H3_Handle handle, H3_Token token, H3_Name bucketName
 						if(extra)
 							objMeta->isBad = 1;
 
-						if(op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, objMetaSize) == KV_SUCCESS && !objMeta->isBad){
+						if(op->metadata_write(_handle, objId, (KV_Value)objMeta, objMetaSize) == KV_SUCCESS && !objMeta->isBad){
 							status = H3_SUCCESS;
 						}
 
@@ -1266,7 +1266,7 @@ H3_Status H3_TruncateObject(H3_Handle handle, H3_Token token, H3_Name bucketName
 					objMeta->isBad = 1;
 
 				clock_gettime(CLOCK_REALTIME, &objMeta->lastModification);
-				if(op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, mSize) == KV_SUCCESS && !objMeta->isBad){
+				if(op->metadata_write(_handle, objId, (KV_Value)objMeta, mSize) == KV_SUCCESS && !objMeta->isBad){
 					status = H3_SUCCESS;
 				}
         	}
@@ -1348,8 +1348,8 @@ H3_Status MoveObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Na
                                 break;
 
                             case MoveExchange:
-                                if(op->metadata_write(_handle, srcObjId, (KV_Value)dstObjMeta, 0, dstMetaSize) == KV_SUCCESS &&
-                                   op->metadata_write(_handle, dstObjId, (KV_Value)srcObjMeta, 0, srcMetaSize) == KV_SUCCESS    ){
+                                if(op->metadata_write(_handle, srcObjId, (KV_Value)dstObjMeta, dstMetaSize) == KV_SUCCESS &&
+                                   op->metadata_write(_handle, dstObjId, (KV_Value)srcObjMeta, srcMetaSize) == KV_SUCCESS    ){
                                     status = H3_SUCCESS;
                                 }
                                 break;
@@ -1504,7 +1504,7 @@ H3_Status H3_CopyObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
                 // Reserve the destination object
                 uuid_generate(dstObjMeta->uuid);
                 dstObjMeta->nParts = 0;
-                if(op->metadata_create(_handle, dstObjId, (KV_Value)dstObjMeta, 0, mSize) == KV_SUCCESS){
+                if(op->metadata_create(_handle, dstObjId, (KV_Value)dstObjMeta, mSize) == KV_SUCCESS){
 
                     // Copy the parts
                     H3_PartId srcPartId, dstPartId;
@@ -1525,8 +1525,8 @@ H3_Status H3_CopyObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
                     // Update source metadata
                     clock_gettime(CLOCK_REALTIME, &srcObjMeta->lastAccess);
 
-                    if( op->metadata_write(_handle, dstObjId, (KV_Value)dstObjMeta, 0, mSize)== KV_SUCCESS &&
-                        op->metadata_write(_handle, srcObjId, (KV_Value)srcObjMeta, 0, mSize)== KV_SUCCESS      ){
+                    if( op->metadata_write(_handle, dstObjId, (KV_Value)dstObjMeta, mSize)== KV_SUCCESS &&
+                        op->metadata_write(_handle, srcObjId, (KV_Value)srcObjMeta, mSize)== KV_SUCCESS      ){
                         status =  H3_SUCCESS;
                     }
                 }
@@ -1806,7 +1806,7 @@ H3_Status H3_WriteObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H
 
 #ifndef DEBUG
 			if( (storeStatus = WriteData(ctx, objMeta, data, size, offset)) == KV_SUCCESS         &&
-				(storeStatus = op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, objMetaSize)) == KV_SUCCESS     ){
+				(storeStatus = op->metadata_write(_handle, objId, (KV_Value)objMeta, objMetaSize)) == KV_SUCCESS     ){
 				status = H3_SUCCESS;
 			}
 			else if(storeStatus == KV_KEY_TOO_LONG)
@@ -1815,7 +1815,7 @@ H3_Status H3_WriteObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H
 			if( (storeStatus = WriteData(ctx, objMeta, data, size, offset)) != KV_SUCCESS ){
 				LogActivity(H3_ERROR_MSG, "failed to write data\n");
 			}
-			else if( (storeStatus = op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, objMetaSize)) != KV_SUCCESS){
+			else if( (storeStatus = op->metadata_write(_handle, objId, (KV_Value)objMeta, objMetaSize)) != KV_SUCCESS){
 				LogActivity(H3_ERROR_MSG, "failed to update meta-data\n");
 			}
 
@@ -1927,7 +1927,7 @@ H3_Status H3_WriteObjectFromFile(H3_Handle handle, H3_Token token, H3_Name bucke
 					size -= readSize;
 				}
 
-				if(readSize != -1 && storeStatus == KV_SUCCESS && op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, objMetaSize) == KV_SUCCESS ){
+				if(readSize != -1 && storeStatus == KV_SUCCESS && op->metadata_write(_handle, objId, (KV_Value)objMeta, objMetaSize) == KV_SUCCESS ){
 					status = H3_SUCCESS;
 				}
 
