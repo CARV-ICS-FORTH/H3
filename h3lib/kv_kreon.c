@@ -18,10 +18,66 @@
 #include <string.h>
 
 #include "kv_interface.h"
+#include "common.h"
 #include "util.h"
 #include "url_parser.h"
 
 #include <kreon/kreon_rdma_client.h>
+
+#define KREON_COMPRESSION
+
+#ifdef KREON_COMPRESSION
+
+#include <zstd.h>
+
+krc_ret_code krc_put_compressed(uint32_t key_size, void *key, uint32_t val_size, void *value) {
+    void *compressed_value = malloc(H3_PART_SIZE);
+
+    // The last argument to the function is the compression level, which can range from 1 (lowest) to 22 (highest).
+    uint32_t compressed_value_len = ZSTD_compress(compressed_value, H3_PART_SIZE, value, val_size, -1);
+    if (ZSTD_isError(compressed_value_len)) {
+        LogActivity(H3_ERROR_MSG, "Failed to compress the value!");
+        return KRC_FAILURE;
+    }
+
+    krc_ret_code result = krc_put(key_size, key, compressed_value_len, compressed_value);
+    free(compressed_value);
+
+    return result;
+}
+
+krc_ret_code krc_get_compressed(uint32_t key_size, char *key, char **buffer, uint32_t *size, uint32_t offset) {
+    krc_ret_code result = krc_get(key_size, key, buffer, size, offset);
+    if (result != KRC_SUCCESS) {
+        return result;
+    }
+
+    void *decompressed_value = malloc(H3_PART_SIZE);
+
+    uint32_t uncompressed_value_len = ZSTD_decompress(decompressed_value, H3_PART_SIZE, buffer, *size);
+    if (ZSTD_isError(uncompressed_value_len)) {
+        LogActivity(H3_ERROR_MSG, "Failed to decompress the value!");
+        result = KRC_FAILURE;
+    } else {
+        result = KRC_SUCCESS;
+    }
+
+    free(*buffer);
+
+    return result;
+}
+
+#else
+
+krc_ret_code krc_put_compressed(uint32_t key_size, void *key, uint32_t val_size, void *value) {
+    return krc_put(key_size, key, val_size, value);
+}
+
+krc_ret_code krc_get_compressed(uint32_t key_size, char *key, char **buffer, uint32_t *size, uint32_t offset) {
+    return krc_get(key_size, key, buffer, size, offset);
+}
+
+#endif
 
 typedef struct {
     char* ip;
@@ -142,7 +198,7 @@ KV_Status KV_Kreon_Exists(KV_Handle _handle, KV_Key key) {
 KV_Status KV_Kreon_Read(KV_Handle handle, KV_Key key, off_t offset, KV_Value* value, size_t* size) {
 	KV_Status status;
 
-	switch(krc_get(strlen(key)+1, key, (char**)value, (uint32_t*)size, (uint32_t)offset)){
+	switch(krc_get_compressed(strlen(key)+1, key, (char**)value, (uint32_t*)size, (uint32_t)offset)){
 		case KRC_SUCCESS: status = KV_SUCCESS; break;
 		case KRC_KEY_NOT_FOUND: status = KV_KEY_NOT_EXIST; break;
 		default: status = KV_FAILURE; break;
@@ -154,20 +210,20 @@ KV_Status KV_Kreon_Read(KV_Handle handle, KV_Key key, off_t offset, KV_Value* va
 KV_Status KV_Kreon_Update(KV_Handle handle, KV_Key key, KV_Value value, off_t offset, size_t size) {
     KV_Status status;
 
-    KV_Value* currentValue;
+    KV_Value currentValue;
     size_t currentSize;
-    KV_Value* newValue;
+    KV_Value newValue;
     size_t newSize;
     int freeNewValue = 0;
 
-    switch(krc_get(strlen(key)+1, key, (char**)&currentValue, (uint32_t*)&currentSize, 0)){
+    switch(krc_get_compressed(strlen(key)+1, key, (char**)&currentValue, (uint32_t*)&currentSize, 0)){
         case KRC_SUCCESS:
             if (offset + size <= currentSize) {
                 newValue = currentValue;
                 memcpy(currentValue + offset, value, size);
                 newSize = currentSize;
             } else {
-                newValue = (KV_Value *)malloc(offset + size);
+                newValue = (KV_Value)malloc(offset + size);
                 freeNewValue = 1;
                 memcpy(newValue, currentValue, currentSize);
                 memcpy(newValue + offset, value, size);
@@ -178,7 +234,7 @@ KV_Status KV_Kreon_Update(KV_Handle handle, KV_Key key, KV_Value value, off_t of
             if (!offset) {
                 newValue = value;
             } else {
-                newValue = (KV_Value *)calloc(1, offset + size);
+                newValue = (KV_Value)calloc(1, offset + size);
                 freeNewValue = 1;
                 memcpy(newValue + offset, value, size);
             }
@@ -190,7 +246,7 @@ KV_Status KV_Kreon_Update(KV_Handle handle, KV_Key key, KV_Value value, off_t of
     }
 
     // Convert key blob to string
-    if(krc_put(strlen(key)+1, key, newSize, newValue) == KRC_SUCCESS) {
+    if(krc_put_compressed(strlen(key)+1, key, newSize, newValue) == KRC_SUCCESS) {
         status = KV_SUCCESS;
     } else {
         status = KV_FAILURE;
@@ -204,7 +260,7 @@ KV_Status KV_Kreon_Update(KV_Handle handle, KV_Key key, KV_Value value, off_t of
 KV_Status KV_Kreon_Write(KV_Handle handle, KV_Key key, KV_Value value, size_t size) {
 
 	// Convert key blob to string
-	if(krc_put(strlen(key)+1, key, size, value) == KRC_SUCCESS)
+	if(krc_put_compressed(strlen(key)+1, key, size, value) == KRC_SUCCESS)
 		return KV_SUCCESS;
 
 	return KV_FAILURE;
