@@ -105,29 +105,35 @@ KV_Status WriteData(H3_Context* ctx, H3_ObjectMetadata* meta, KV_Value value, si
 
 		off_t partOffset, inPartOffset;
 		char overWrite = 0;
+        char writeWhole = 0;
 
 		// Check for overwriting parts based on offset...
 		for(i=0; i<meta->nParts && !overWrite; i++){
 			uint partEnd = meta->part[i].offset + meta->part[i].size - 1;
 
 			// Segment starts within part
-			if(meta->part[i].offset <= offset && offset <= partEnd){
+			if( (i < meta->nParts -1  && meta->part[i].offset <= offset && offset <= partEnd) ||
+                (i == meta->nParts -1 && meta->part[i].offset <= offset && offset < (meta->part[i].offset + H3_PART_SIZE)) ){
 				inPartOffset = offset - meta->part[i].offset;
 				overWrite = 1;
+                if (inPartOffset == 0 && segmentEnd == partEnd)
+                    writeWhole = 1;
 			}
 
-			// Segment ends within part or overlaps it
-			else if( (meta->part[i].offset <= segmentEnd && segmentEnd <= partEnd) ||
-					 (offset < meta->part[i].offset && partEnd < segmentEnd) ){
+			// Segment ends within part
+			else if(meta->part[i].offset <= segmentEnd && segmentEnd <= partEnd){
 				inPartOffset = 0;
 				overWrite = 1;
+                if (segmentEnd == partEnd)
+                    writeWhole = 1;
 			}
 
-			// Segment appends part
-			else if(partEnd < offset && offset < (meta->part[i].offset + H3_PART_SIZE)){
-				inPartOffset = meta->part[i].size;
-				overWrite = 1;
-			}
+            // Segment overlaps part
+            else if(offset < meta->part[i].offset && partEnd < segmentEnd){
+                inPartOffset = 0;
+                overWrite = 1;
+                writeWhole = 1;
+            }
 		}
 
 		if(overWrite){
@@ -152,12 +158,19 @@ KV_Status WriteData(H3_Context* ctx, H3_ObjectMetadata* meta, KV_Value value, si
             partOffset = partNumber * H3_PART_SIZE;
             inPartOffset = offset % H3_PART_SIZE;
             partSize = min((H3_PART_SIZE - inPartOffset), size);
+            writeWhole = 1;
             nNewParts++;
         }
 
 		H3_PartId partId;
 		CreatePartId(partId, meta->uuid, partNumber, partSubNumber);
-        if( (status = ctx->operation->write(ctx->handle, partId, value, inPartOffset, partSize)) == KV_SUCCESS){
+        if (writeWhole) {
+            status = ctx->operation->write(ctx->handle, partId, value, partSize);
+        }
+        else {
+            status = ctx->operation->update(ctx->handle, partId, value, inPartOffset, partSize);
+        }
+        if(status == KV_SUCCESS){
 
             // Create/Update metadata entry
             meta->part[partIndex].number = partNumber;

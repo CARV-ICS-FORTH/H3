@@ -488,7 +488,7 @@ KV_Status CreatePart(H3_Context* ctx, H3_ObjectMetadata* objMeta, KV_Value value
     	int partIndex = objMeta->nParts;
 
     	CreatePartId(partId, objMeta->uuid, partNumber, partSubNumber);
-        if( (status = ctx->operation->write(ctx->handle, partId, value, 0, partSize)) == KV_SUCCESS){
+        if( (status = ctx->operation->write(ctx->handle, partId, value, partSize)) == KV_SUCCESS){
 
             // Create/Update metadata entry
         	objMeta->part[partIndex].number = partNumber;
