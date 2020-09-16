@@ -21,6 +21,7 @@
 
 #include "kv_interface.h"
 #include "util.h"
+#include "url_parser.h"
 
 #define ROCKSDB_KEY_BATCH_SIZE 4096
 
