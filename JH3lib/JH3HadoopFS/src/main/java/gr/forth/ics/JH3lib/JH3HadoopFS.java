@@ -61,7 +61,7 @@ public class JH3HadoopFS extends FileSystem {
     try {
       String storageURI = System.getenv("H3LIB_STORAGE_URI");
       if (storageURI == null)
-        throw new IOException("H3_STORAGE_URI environment variable is not set.");
+        throw new IOException("H3LIB_STORAGE_URI environment variable is not set.");
 
       // TODO update with a valid user authentication method
       client = new JH3(storageURI, 0);
@@ -299,7 +299,15 @@ public class JH3HadoopFS extends FileSystem {
         Set<String> children = new HashSet<>();
         // Only immediate children should be listed
         for (String objectName : objectNames) {
-          String immediate_child = objectName.substring(prefix.length() + 1).split("/")[0];
+          String immediate_child;
+          // When prefix is empty we are listing a bucket
+          if(prefix.isEmpty())
+            immediate_child = objectName.split("/")[0];
+          else{
+            // prefix is part of an object key
+            immediate_child = objectName.substring(prefix.length()+1).split("/")[0];
+          }
+
           // an empty immediate child means that its the directory itself
           if (!immediate_child.isEmpty()) {
             children.add(immediate_child);
