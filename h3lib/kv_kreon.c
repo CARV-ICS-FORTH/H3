@@ -63,6 +63,7 @@ krc_ret_code krc_get_compressed(uint32_t key_size, char *key, char **buffer, uin
     }
 
     free(*buffer);
+    *buffer = decompressed_value;
 
     return result;
 }
