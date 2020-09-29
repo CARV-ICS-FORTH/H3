@@ -32,11 +32,11 @@
 
 krc_ret_code krc_put_compressed(uint32_t key_size, void *key, uint32_t val_size, void *value) {
     void *compressed_value = malloc(H3_PART_SIZE);
-
     // The last argument to the function is the compression level, which can range from 1 (lowest) to 22 (highest).
     uint32_t compressed_value_len = ZSTD_compress(compressed_value, H3_PART_SIZE, value, val_size, -1);
     if (ZSTD_isError(compressed_value_len)) {
         LogActivity(H3_ERROR_MSG, "Failed to compress the value!");
+        free(compressed_value);
         return KRC_FAILURE;
     }
 
@@ -47,22 +47,30 @@ krc_ret_code krc_put_compressed(uint32_t key_size, void *key, uint32_t val_size,
 }
 
 krc_ret_code krc_get_compressed(uint32_t key_size, char *key, char **buffer, uint32_t *size, uint32_t offset) {
-    krc_ret_code result = krc_get(key_size, key, buffer, size, offset);
+    void *compressed_value = malloc(H3_PART_SIZE);
+    uint32_t compressed_value_len;
+
+    krc_ret_code result = krc_get(key_size, key, &compressed_value, &compressed_value_len, 0);
     if (result != KRC_SUCCESS) {
+        free(compressed_value);
         return result;
     }
 
     void *decompressed_value = malloc(H3_PART_SIZE);
-
-    uint32_t uncompressed_value_len = ZSTD_decompress(decompressed_value, H3_PART_SIZE, buffer, *size);
-    if (ZSTD_isError(uncompressed_value_len)) {
+    uint32_t decompressed_value_len = ZSTD_decompress(decompressed_value, H3_PART_SIZE, compressed_value, compressed_value_len);
+    if (ZSTD_isError(decompressed_value_len)) {
         LogActivity(H3_ERROR_MSG, "Failed to decompress the value!");
         result = KRC_FAILURE;
     } else {
-        result = KRC_SUCCESS;
+        if ((decompressed_value_len - offset) < *size) {
+            result = KRC_FAILURE;
+        } else {
+            memcpy(*buffer, (char *)decompressed_value + offset, *size);
+            result = KRC_SUCCESS;
+        }
     }
-
-    free(*buffer);
+    free(decompressed_value);
+    free(compressed_value);
 
     return result;
 }
