@@ -1,7 +1,7 @@
 H3
 ===
 
-H3 is an embedded High speed, High volume, and High availability object store, backed by a high-performance key-value store (Kreon, RocksDB, Redis, etc.) or a filesystem. H3 is implemented in the h3lib library, which provides a cloud-friendly API, similar to Amazon's S3. Python and Java wrappers are also available. An H3 FUSE-based filesystem allows object access using file semantics.
+H3 is an embedded High speed, High volume, and High availability object store, backed by a high-performance key-value store (Kreon, RocksDB, Redis, etc.) or a filesystem. H3 is implemented in the h3lib library, which provides a C-based cloud-friendly API, similar to Amazon's S3. Python and Java wrappers are also available. The H3 FUSE filesystem allows object access using file semantics.
 
 For design details and APIs, consult the `documentation <docs/>`_.
 

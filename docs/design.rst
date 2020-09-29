@@ -1,7 +1,7 @@
 Design
 ======
 
-H3 is a thin, stateless layer that provides object semantics on top of a high-performance key-value store - a typical service deployed in HPC and Big Data environments. By from a transitioning cloud-based S3 service to H3 and running in a cluster, we expect applications to enjoy much faster data operations and - if the key-value store is distributed - to easily scale out accross all cluster nodes. In the later case, the object service is not provided centrally, but *everywhere* on the cluster.
+H3 is a thin, stateless layer that provides object semantics on top of a high-performance key-value store - a typical service deployed in HPC and Big Data environments. By transitioning a cloud-based S3 service to H3 and running in a cluster, we expect applications to enjoy much faster data operations and - if the key-value store is distributed - to easily scale out accross all cluster nodes. In the later case, the object service is not provided centrally, but *everywhere* on the cluster.
 
 Overview
 --------
@@ -14,7 +14,7 @@ In essence, H3 implements a translation layer between the object namespace and a
 * Buckets can only include data files, not special files, like links, sockets, etc.
 * The key-value store provides a much richer set of data query and manipulation primitives, in contrast to a typical block device. It can handle arbitrary value sizes, scan keys (return all keys starting with a prefix), operate on multiple keys in a single transaction, etc. H3 takes advantage of those primitives in order to minimize code complexity and exploit any optimizations done in the key-value layer.
 
-H3 is provided as C library, called ``h3lib``. ``h3lib`` implements the object API as a series of functions that translate the bucket and object operations to operations in the provided key-value backend. The key-value store interface is abstracted into a common API with implementations for `RocksDB <https://rocksdb.org>`_, `Redis <https://redis.io>`_, Kreon, and a filesystem.
+H3 is provided as C library, called ``h3lib``. ``h3lib`` implements the object API as a series of functions that convert the bucket and object operations to operations in the provided key-value backend. The key-value store interface is abstracted into a common API with implementations for `RocksDB <https://rocksdb.org>`_, `Redis <https://redis.io>`_, Kreon, and a filesystem.
 
 User management
 ---------------
