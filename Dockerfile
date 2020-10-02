@@ -20,17 +20,17 @@ COPY h3lib /root/h3lib/
 COPY h3fuse /root/h3fuse/
 COPY pyh3lib /root/pyh3lib/
 
+ARG BUILD_TYPE=Release
+
 WORKDIR /root/h3lib
 RUN rm -rf build && \
     mkdir build && \
-    (cd build && cmake3 .. && make package) && \
-    yum install -y build/h3lib-1.0-1.x86_64.rpm
+    (cd build && cmake3 -DCMAKE_INSTALL_PREFIX="/usr" -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" .. && make package && make install)
 
 WORKDIR /root/h3fuse
 RUN rm -rf build && \
     mkdir build && \
-    (cd build && cmake3 .. && make package) && \
-    yum install -y build/h3fuse-1.0-1.x86_64.rpm
+    (cd build && cmake3 -DCMAKE_INSTALL_PREFIX="/usr" -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" .. && make package && make install)
 
 WORKDIR /root/pyh3lib
 RUN ./setup.py bdist_wheel && \

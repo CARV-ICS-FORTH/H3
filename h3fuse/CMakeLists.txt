@@ -29,7 +29,7 @@ set(CMAKE_C_STANDARD 11)
 #https://gitlab.kitware.com/cmake/community/wikis/doc/cmake/Useful-Variables
 #https://cmake.org/cmake/help/v3.10/command/add_compile_options.html?highlight=add_compile_options
 add_compile_options(-Wall -Werror)
-SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -DDEBUG")
+SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -O0 -DDEBUG")
 SET(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3")
 
 #https://cmake.org/cmake/help/v3.10/command/add_library.html
