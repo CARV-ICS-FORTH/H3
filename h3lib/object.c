@@ -65,7 +65,6 @@ uint EstimateNumOfParts(H3_ObjectMetadata* objMeta, size_t size, off_t offset){
 
     	// Remove overlapping parts
     	if(regionFirstPartNumber <= partNumber && partNumber <= regionLastPartNumber){
-    		nParts--;
     	}
 
     	// Add non-overlapping parts
@@ -200,14 +199,14 @@ KV_Status ReadData(H3_Context* ctx, H3_ObjectMetadata* meta, KV_Value value, siz
     	if(meta->part[i].offset <= offset && offset <= partEnd){
     		inPartOffset = offset - meta->part[i].offset;
     		bufferOffset = 0;
-    		readSize = min(meta->part[i].size - inPartOffset, *size);
+    		readSize = min(meta->part[i].size - inPartOffset, remaining);
     	}
 
     	// Segment end within a part or overlaps it
     	else if((meta->part[i].offset <= segmentEnd && segmentEnd <= partEnd)|| (offset < meta->part[i].offset && partEnd < segmentEnd )){
     		inPartOffset = 0;
     		bufferOffset = meta->part[i].offset - offset;
-    		readSize = min(meta->part[i].size, *size);
+    		readSize = min(meta->part[i].size, remaining);
     	}
     	else
     		contributes = 0;
@@ -658,6 +657,8 @@ H3_Status H3_ReadObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
 
         if(objMeta->nParts)
             objectSize = objMeta->part[objMeta->nParts-1].offset + objMeta->part[objMeta->nParts-1].size;
+        if (objectSize == 0)
+            status = H3_SUCCESS;
 
         // User has access, the object is healthy and the offset is reasonable
         if(GrantObjectAccess(userId, objMeta) && !objMeta->isBad && offset < objectSize){
@@ -980,6 +981,84 @@ H3_Status H3_InfoObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
     return status;
 }
 
+/*! \brief  Update object access and modification times
+ *
+ * Retrieve an object's size, health status and creation, etc timestamps.
+ *
+ * @param[in]    handle             An h3lib handle
+ * @param[in]    token              Authentication information
+ * @param[in]    bucketName         The name of the bucket to host the object
+ * @param[in]    objectName         The name of the object to be created
+ * @param[in]    lastAccess         Pointer to a last access time, or NULL for now
+ * @param[in]    lastModification   Pointer to a last modification time, or NULL for now
+
+ *
+ * @result \b H3_SUCCESS            Operation completed successfully
+ * @result \b H3_FAILURE            Unable to retrieve object info or user has no access
+ * @result \b H3_NOT_EXISTS         Object does not exist
+ * @result \b H3_INVALID_ARGS       Missing or malformed arguments
+ * @result \b H3_NAME_TOO_LONG      Bucket or Object name is longer than H3_BUCKET_NAME_SIZE or H3_OBJECT_NAME_SIZE respectively
+ *
+ */
+H3_Status H3_TouchObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, struct timespec *lastAccess, struct timespec *lastModification){
+
+    // Argument check
+    if(!handle || !token  || !bucketName || !objectName || !lastAccess || !lastModification ){
+        return H3_INVALID_ARGS;
+    }
+
+    H3_Status status;
+    H3_Context* ctx = (H3_Context*)handle;
+    KV_Handle _handle = ctx->handle;
+    KV_Operations* op = ctx->operation;
+
+    H3_UserId userId;
+    H3_ObjectId objId;
+    KV_Status storeStatus;
+    KV_Value value = NULL;
+    size_t mSize = 0;
+
+    // Validate bucketName & extract userId from token
+    if( (status = ValidBucketName(op, bucketName)) != H3_SUCCESS || (status = ValidObjectName(op, objectName)) != H3_SUCCESS){
+        return status;
+    }
+
+    if( !GetUserId(token, userId) ){
+        return H3_INVALID_ARGS;
+    }
+
+    status = H3_FAILURE;
+    GetObjectId(bucketName, objectName, objId);
+    if((storeStatus = op->metadata_read(_handle, objId, 0, &value, &mSize)) == KV_SUCCESS){
+
+        // Make sure user has access to the object
+        H3_ObjectMetadata* objMeta = (H3_ObjectMetadata*)value;
+        if(GrantObjectAccess(userId, objMeta)){
+
+            clock_gettime(CLOCK_REALTIME, &objMeta->lastChange);
+            if (lastAccess == NULL)
+                objMeta->lastAccess = objMeta->lastChange;
+            else
+                objMeta->lastAccess = *lastAccess;
+            if (lastModification == NULL)
+                objMeta->lastModification = objMeta->lastChange;
+            else
+                objMeta->lastModification = *lastModification;
+
+            if(op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, mSize) == KV_SUCCESS){
+                status = H3_SUCCESS;
+            }
+        }
+        free(objMeta);
+    }
+    else if(storeStatus == KV_KEY_NOT_EXIST)
+        return H3_NOT_EXISTS;
+
+    else if(storeStatus == KV_KEY_TOO_LONG)
+        return H3_NAME_TOO_LONG;
+
+    return status;
+}
 
 /*! \brief  Set an object's permission bits
  *

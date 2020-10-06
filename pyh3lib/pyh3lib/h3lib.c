@@ -191,7 +191,8 @@ static PyObject *h3lib_list_buckets(PyObject* self, PyObject *args, PyObject *kw
 
         PyList_SET_ITEM(list, i, Py_BuildValue("s", current_name));
     }
-    free(bucketNameArray);
+    if (bucketNameArray != NULL)
+        free(bucketNameArray);
 
     return list;
 }
@@ -362,7 +363,8 @@ static PyObject *h3lib_list_objects(PyObject* self, PyObject *args, PyObject *kw
 
         PyList_SET_ITEM(list, i, Py_BuildValue("s", current_name));
     }
-    free(objectNameArray);
+    if (objectNameArray != NULL)
+        free(objectNameArray);
 
     return Py_BuildValue("(OO)", list, (return_value == H3_SUCCESS ? Py_True : Py_False));
 }
@@ -411,6 +413,41 @@ static PyObject *h3lib_info_object(PyObject* self, PyObject *args, PyObject *kw)
     return object_info;
 }
 
+static PyObject *h3lib_touch_object(PyObject* self, PyObject *args, PyObject *kw) {
+    PyObject *capsule = NULL;
+    H3_Name bucketName;
+    H3_Name objectName;
+    double lastAccess = -1;
+    double lastModification = -1;
+    uint32_t userId = 0;
+
+    static char *kwlist[] = {"handle", "bucket_name", "object_name", "last_access", "last_modification", "user_id", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "Oss|ddI", kwlist, &capsule, &bucketName, &objectName, &lastAccess, &lastModification, &userId))
+        return NULL;
+
+    H3_Handle handle = (H3_Handle)PyCapsule_GetPointer(capsule, NULL);
+    if (handle == NULL)
+        return NULL;
+
+    H3_Auth auth;
+    struct timespec accessTime;
+    struct timespec modificationTime;
+
+    auth.userId = userId;
+    if (lastAccess >= 0) {
+        accessTime.tv_sec = (long)lastAccess;
+        accessTime.tv_nsec = (lastAccess - accessTime.tv_sec) * 1000000000ULL;
+    }
+    if (lastModification >= 0) {
+        modificationTime.tv_sec = (long)lastModification;
+        modificationTime.tv_nsec = (lastModification - modificationTime.tv_sec) * 1000000000ULL;
+    }
+    if (did_raise_exception(H3_TouchObject(handle, &auth, bucketName, objectName, (lastAccess >= 0 ? &accessTime : NULL), (lastModification >= 0 ? &modificationTime : NULL))))
+        return NULL;
+
+    Py_RETURN_TRUE;
+}
+
 static PyObject *h3lib_set_object_permissions(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
@@ -419,7 +456,7 @@ static PyObject *h3lib_set_object_permissions(PyObject* self, PyObject *args, Py
     uint32_t userId = 0;
 
     static char *kwlist[] = {"handle", "bucket_name", "object_name", "mode", "user_id", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "Ossii|I", kwlist, &capsule, &bucketName, &objectName, &mode, &userId))
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "Ossi|I", kwlist, &capsule, &bucketName, &objectName, &mode, &userId))
         return NULL;
 
     H3_Handle handle = (H3_Handle)PyCapsule_GetPointer(capsule, NULL);
@@ -684,9 +721,9 @@ static PyObject *h3lib_read_object(PyObject* self, PyObject *args, PyObject *kw)
     H3_Status return_value = H3_ReadObject(handle, &auth, bucketName, objectName, offset, &data, &size);
     if (did_raise_exception(return_value))
         return NULL;
-
     PyObject *data_object = Py_BuildValue("y#", data, size);
-    free(data);
+    if (data != NULL)
+        free(data);
 
     return Py_BuildValue("(OO)", data_object, (return_value == H3_SUCCESS ? Py_True : Py_False));
 }
@@ -888,7 +925,8 @@ static PyObject *h3lib_list_multiparts(PyObject* self, PyObject *args, PyObject 
 
         PyList_SET_ITEM(list, i, Py_BuildValue("s", current_name));
     }
-    free(multipartIdArray);
+    if (multipartIdArray != NULL)
+        free(multipartIdArray);
 
     return Py_BuildValue("(OO)", list, (return_value == H3_SUCCESS ? Py_True : Py_False));
 }
@@ -1074,6 +1112,7 @@ static PyMethodDef module_functions[] = {
 
     {"list_objects",            (PyCFunction)h3lib_list_objects,            METH_VARARGS|METH_KEYWORDS, NULL},
     {"info_object",             (PyCFunction)h3lib_info_object,             METH_VARARGS|METH_KEYWORDS, NULL},
+    {"touch_object",            (PyCFunction)h3lib_touch_object,            METH_VARARGS|METH_KEYWORDS, NULL},
     {"set_object_permissions",  (PyCFunction)h3lib_set_object_permissions,  METH_VARARGS|METH_KEYWORDS, NULL},
     {"set_object_owner",        (PyCFunction)h3lib_set_object_owner,        METH_VARARGS|METH_KEYWORDS, NULL},
     {"create_object",           (PyCFunction)h3lib_create_object,           METH_VARARGS|METH_KEYWORDS, NULL},

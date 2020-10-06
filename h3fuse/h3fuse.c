@@ -120,7 +120,7 @@ static int GetObjectInfo(const char* path, struct stat* stbuf){
     	}
 
     	// ...a real one, i.e. listing an externally populated bucket
-    	else if( H3_ListObjects(data.handle, &data.token, data.bucket, object, 0, &objectNameArray, &nObjects) == H3_SUCCESS){
+    	else if( H3_ListObjects(data.handle, &data.token, data.bucket, directory, 0, &objectNameArray, &nObjects) == H3_SUCCESS){
     		if(nObjects){
     			stbuf->st_mode = S_IFDIR | 0755;
     			stbuf->st_nlink = 2;
@@ -251,15 +251,18 @@ static int H3FS_RmDir(const char* path){
     size_t length = strlen(object);
 
     if(length){
-		uint32_t nObjects = 0;
+        H3_Status status;
 		H3_Name objectNameArray;
-		H3_Status status;
-		if((status = H3_ListObjects(data.handle, &data.token, data.bucket, object, 0, &objectNameArray, &nObjects)) == H3_SUCCESS || status == H3_CONTINUE ){
+        H3_Name directory = NULL;
+        uint32_t nObjects = 0;
+
+        asprintf(&directory, "%s/", object);
+		if((status = H3_ListObjects(data.handle, &data.token, data.bucket, directory, 0, &objectNameArray, &nObjects)) == H3_SUCCESS || status == H3_CONTINUE ){
 			if(!nObjects){
 				res = -ENOTDIR;
 			}
 			else if(nObjects == 1){
-				if(H3_DeleteObject(data.handle, &data.token, data.bucket, object) != H3_SUCCESS)
+				if(H3_DeleteObject(data.handle, &data.token, data.bucket, directory) != H3_SUCCESS)
 					res = -EINVAL;
 			}
 			else{
@@ -269,6 +272,7 @@ static int H3FS_RmDir(const char* path){
 		}
 		else
 			res = -EINVAL;
+        free(directory);
     }
     else
     	res = -ENOTDIR;
@@ -280,10 +284,11 @@ int ExamineObject(H3_Name object, char* isDir, char* isEmpty){
 	int res = 0;
     H3_Status status;
     H3_Name objectNameArray;
+    H3_Name directory = NULL;
     uint32_t nObjects = 0;
 
-
-	if( (status = H3_ListObjects(data.handle, &data.token, data.bucket, object, 0, &objectNameArray, &nObjects)) == H3_SUCCESS || status == H3_CONTINUE){
+    asprintf(&directory, "%s/", object);
+	if( (status = H3_ListObjects(data.handle, &data.token, data.bucket, directory, 0, &objectNameArray, &nObjects)) == H3_SUCCESS || status == H3_CONTINUE){
 		if(nObjects > 1){
 			*isDir = 1;
 			*isEmpty = 0;
@@ -299,6 +304,7 @@ int ExamineObject(H3_Name object, char* isDir, char* isEmpty){
 		res = 1;
 		free(objectNameArray);
 	}
+    free(directory);
 
 	return res;
 }
@@ -415,6 +421,20 @@ static int H3FS_ChMod(const char* path, mode_t mode, struct fuse_file_info* fi){
     	}
     }
 
+    if (res == -ENOENT) {
+        // Check if this is a directory
+        char isDir = 0, isEmpty = 0;
+        if(!ExamineObject(object, &isDir, &isEmpty))
+            return -EINVAL;
+
+        if (isDir) {
+            char *directory_path = NULL;
+            asprintf(&directory_path, "/%s/", object);
+            res = H3FS_ChMod(directory_path, mode, fi);
+            free(directory_path);
+        }
+    }
+
     return res;
 }
 
@@ -436,26 +456,19 @@ static int H3FS_ChOwn(const char* path, uid_t uid, gid_t gid, struct fuse_file_i
 		default:				res = -EINVAL; 			break;
 	}
 
-//	if(res == -ENOENT){
-//
-//		// Check if object is a file within a directory
-//		char* fileName = strrchr(object, '/');
-//		if(fileName && strlen(fileName) > H3_FUSE_MAX_FILENAME){
-//			res = -ENAMETOOLONG;
-//		}
-//
-//		// Check if the object is a directory
-//		else{
-//			switch(H3_SetObjectAttributes(data.handle, &data.token, data.bucket, TurnToDir(&object), attrib)){
-//				case H3_SUCCESS:		res = 0; 				break;
-//				case H3_NOT_EXISTS:		res = -ENOENT;			break;
-//				case H3_FAILURE:		res = -EIO;				break;
-//				case H3_NAME_TOO_LONG:	res = -ENAMETOOLONG;	break;
-//				default:				res = -EINVAL; 			break;
-//			}
-//			free(object);
-//		}
-//	}
+    if (res == -ENOENT) {
+        // Check if this is a directory
+        char isDir = 0, isEmpty = 0;
+        if(!ExamineObject(object, &isDir, &isEmpty))
+            return -EINVAL;
+
+        if (isDir) {
+            char *directory_path = NULL;
+            asprintf(&directory_path, "/%s/", object);
+            res = H3FS_ChOwn(directory_path, uid, gid, fi);
+            free(directory_path);
+        }
+    }
 
 	return res;
 }
@@ -490,25 +503,28 @@ static int H3FS_Read(const char* path, char* buffer, size_t size, off_t offset ,
     H3_Name object = (H3_Name)&path[1];
     size_t length = strlen(object);
 
-    void* voidBuffer = (void*)buffer; // syntactic sugar
+    if (!length)
+        return -ENOENT;
 
-    if(length){
-        switch(H3_ReadObject(data.handle, &data.token, data.bucket, object, offset, &voidBuffer, &size)){
+    do {
+        void *buf = (void *)&(buffer[res]);
+        size_t buf_size = size - res;
+        switch(H3_ReadObject(data.handle, &data.token, data.bucket, object, offset + res, &buf, &buf_size)){
             case H3_SUCCESS:
+                res += buf_size;
+                return res;
+
             case H3_CONTINUE:
-                res = size;
+                res += buf_size;
                 break;
 
             case H3_NOT_EXISTS:
-                res = -ENOENT;
-                break;
+                return -ENOENT;
 
             default:
-                res = -EINVAL;
+                return -EINVAL;
         }
-    }
-    else
-        res = -ENOENT;
+    } while (res >= 0 && res < size);
 
     return res;
 }
@@ -551,6 +567,11 @@ static int H3FS_ReadDir(const char* path, void* buffer, fuse_fill_dir_t filler, 
     H3_Name prefix = (H3_Name)&path[1];
     size_t length = strlen(prefix);
 
+    char *directory = NULL;
+    if (length) {
+       asprintf(&directory, "%s/", prefix);
+    } else directory = "";
+
     int isDir = 0;
     GHashTable* uniqueDirEntries = g_hash_table_new(g_str_hash, g_str_equal);
     GPtrArray* objectArrays = g_ptr_array_new_full(20, free);
@@ -559,7 +580,7 @@ static int H3FS_ReadDir(const char* path, void* buffer, fuse_fill_dir_t filler, 
     H3_Name objectNameArray;
     H3_Status status;
     uint32_t h3Offset = 0;
-    while( (status = H3_ListObjects(data.handle, &data.token, data.bucket, prefix, h3Offset, &objectNameArray, &nObjects)) == H3_CONTINUE || (status == H3_SUCCESS && nObjects)){
+    while( (status = H3_ListObjects(data.handle, &data.token, data.bucket, directory, h3Offset, &objectNameArray, &nObjects)) == H3_CONTINUE || (status == H3_SUCCESS && nObjects)){
     	h3Offset += nObjects;
     	g_ptr_array_add(objectArrays, objectNameArray);
 
@@ -572,6 +593,9 @@ static int H3FS_ReadDir(const char* path, void* buffer, fuse_fill_dir_t filler, 
     		nextEntry = &nextEntry[strlen(nextEntry)+1];
     	}
     }
+
+    if (length)
+        free(directory);
 
     if(status != H3_SUCCESS){
     	res = -EINVAL;
@@ -680,6 +704,43 @@ static int H3FS_Create(const char* path , mode_t mode, struct fuse_file_info* fi
     return res;
 }
 
+static int H3FS_Utimens(const char *path, const struct timespec tv[2], struct fuse_file_info *fi) {
+    int res = 0;
+    H3_Name object = (H3_Name)&path[1];
+    size_t length = strlen(object);
+
+    if(length == 0){
+        res = -ENOENT;
+    }
+    else if(length > H3_OBJECT_NAME_SIZE){
+        res = -ENAMETOOLONG;
+    }
+    else{
+
+        switch(H3_TouchObject(data.handle, &data.token, data.bucket, object, (struct timespec *)(tv != NULL ? &(tv[0]) : NULL), (struct timespec *)(tv != NULL ? &(tv[1]) : NULL))){
+            case H3_SUCCESS:    res = 0;        break;
+            case H3_NOT_EXISTS: res = -ENOENT;  break;
+            case H3_FAILURE:    res = -EIO;     break;
+            default:            res = -EINVAL;  break;
+        }
+
+        if (res == -ENOENT) {
+            // Check if this is a directory
+            char isDir = 0, isEmpty = 0;
+            if(!ExamineObject(object, &isDir, &isEmpty))
+                return -EINVAL;
+
+            if (isDir) {
+                char *directory_path = NULL;
+                asprintf(&directory_path, "/%s/", object);
+                res = H3FS_Utimens(directory_path, tv, fi);
+                free(directory_path);
+            }
+        }
+    }
+
+    return res;
+}
 
 static ssize_t H3FS_CopyFileRange(const char* srcPath, struct fuse_file_info* srcFi, off_t srcOffset, const char* dstPath, struct fuse_file_info* dtsFi, off_t dstOffset, size_t size, int flags){
 	ssize_t res = 0;
@@ -751,7 +812,7 @@ static struct fuse_operations h3fsOperations = {
     .access				= H3FS_Access,
     .create				= H3FS_Create,
 //    NOT SUPPORTED - int (*lock) (const char *, struct fuse_file_info *, int cmd, struct flock *);
-//    NOT SUPPORTED - int (*utimens) (const char *, const struct timespec tv[2], struct fuse_file_info *fi);
+    .utimens            = H3FS_Utimens,
 //    NOT SUPPORTED - int (*bmap) (const char *, size_t blocksize, uint64_t *idx);
 //    NOT SUPPORTED - int (*ioctl) (const char *, unsigned int cmd, void *arg, struct fuse_file_info *, unsigned int flags, void *data);
 //    NOT SUPPORTED - int (*poll) (const char *, struct fuse_file_info *, struct fuse_pollhandle *ph, unsigned *reventsp);
@@ -799,7 +860,7 @@ static int H3FS_OptionParser(void *data, const char *arg, int key, struct fuse_a
 int main(int argc, char *argv[]) {
     int ret = 0;
     struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
-    H3FS_Config conf;
+    H3FS_Config conf = {0};
     H3_BucketInfo info;
 
 

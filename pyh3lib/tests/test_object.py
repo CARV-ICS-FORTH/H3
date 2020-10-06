@@ -306,3 +306,22 @@ def test_file(h3):
     assert h3.list_objects('b1') == []
 
     assert h3.delete_bucket('b1') == True
+
+def test_empty(h3):
+    """Create and read an empty object."""
+
+    assert h3.list_buckets() == []
+
+    assert h3.create_bucket('b1') == True
+
+    h3.create_object('b1', 'o1', b'')
+    object_info = h3.info_object('b1', 'o1')
+    assert not object_info.is_bad
+    assert object_info.size == 0
+
+    object_data = h3.read_object('b1', 'o1')
+    assert object_data == b''
+
+    h3.delete_object('b1', 'o1')
+
+    assert h3.delete_bucket('b1') == True
