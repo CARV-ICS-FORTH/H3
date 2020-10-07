@@ -39,7 +39,7 @@ set(CMAKE_C_STANDARD 11)
 #add_compile_options(-Wall -Wno-uninitialized -Wno-unused-result -Wl,--no-as-needed) <-- libs are considered irrespective of the order they are presented to the compiler/linker
 add_compile_options(-Wall -Wno-uninitialized -Wno-unused-result)
 
-SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -DDEBUG")
+SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -O0 -DDEBUG")
 SET(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3")
 
 
