@@ -25,15 +25,17 @@
 #include <kreon/kreon_rdma_client.h>
 
 #define KREON_COMPRESSION
-
 #ifdef KREON_COMPRESSION
 
 #include <zstd.h>
 
 krc_ret_code krc_put_compressed(uint32_t key_size, void *key, uint32_t val_size, void *value) {
-    void *compressed_value = malloc(H3_PART_SIZE);
+    uint32_t compress_bound = ZSTD_compressBound(val_size);
+    void *compressed_value = malloc(compress_bound);
+    
     // The last argument to the function is the compression level, which can range from 1 (lowest) to 22 (highest).
-    uint32_t compressed_value_len = ZSTD_compress(compressed_value, H3_PART_SIZE, value, val_size, -1);
+    uint32_t compressed_value_len = ZSTD_compress(compressed_value, compress_bound, value, val_size, -1);
+    
     if (ZSTD_isError(compressed_value_len)) {
         LogActivity(H3_ERROR_MSG, "Failed to compress the value!");
         free(compressed_value);
@@ -46,34 +48,54 @@ krc_ret_code krc_put_compressed(uint32_t key_size, void *key, uint32_t val_size,
     return result;
 }
 
+
 krc_ret_code krc_get_compressed(uint32_t key_size, char *key, char **buffer, uint32_t *size, uint32_t offset) {
-    void *compressed_value = malloc(H3_PART_SIZE);
+    void *compressed_value = NULL;
     uint32_t compressed_value_len;
 
-    krc_ret_code result = krc_get(key_size, key, &compressed_value, &compressed_value_len, 0);
+    // Retrieve whole compressed value 
+    krc_ret_code result = krc_get(key_size, key, (char **)&compressed_value, &compressed_value_len, 0);
     if (result != KRC_SUCCESS) {
-        free(compressed_value);
         return result;
     }
+    
+    uint32_t frameContentSize = ZSTD_getFrameContentSize(compressed_value, compressed_value_len); 
+    // Check if returned ZSTD_CONTENTSIZE_ERROR (error occured) / ZSTD_CONTENTSIZE_UNKNOWN (size can't be determined)
+    if(frameContentSize == ZSTD_CONTENTSIZE_ERROR 
+      || frameContentSize == ZSTD_CONTENTSIZE_UNKNOWN){
+	LogActivity(H3_ERROR_MSG, "%s: could not retrieve original size!", key);
+	free(compressed_value);
+	return KRC_FAILURE;
+    }
 
-    void *decompressed_value = malloc(H3_PART_SIZE);
-    uint32_t decompressed_value_len = ZSTD_decompress(decompressed_value, H3_PART_SIZE, compressed_value, compressed_value_len);
+    void *decompressed_value = malloc(frameContentSize);
+    uint32_t decompressed_value_len = ZSTD_decompress(decompressed_value, frameContentSize, compressed_value, compressed_value_len);
+
     if (ZSTD_isError(decompressed_value_len)) {
         LogActivity(H3_ERROR_MSG, "Failed to decompress the value!");
         result = KRC_FAILURE;
     } else {
-        if ((decompressed_value_len - offset) < *size) {
-            result = KRC_FAILURE;
+        // Retrieve whole decompressed value
+        if(*buffer == NULL){
+          *buffer = decompressed_value;
+          *size = decompressed_value_len;
         } else {
+          // Retrieve a part of the value
+          if ((decompressed_value_len - offset) < *size) {
+            result = KRC_FAILURE;
+          } else {
             memcpy(*buffer, (char *)decompressed_value + offset, *size);
             result = KRC_SUCCESS;
+          }
+          free(decompressed_value);
         }
-    }
-    free(decompressed_value);
+    }   
+
     free(compressed_value);
 
     return result;
 }
+
 
 #else
 
