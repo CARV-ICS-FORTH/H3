@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
-project(h3lib VERSION 1.0 LANGUAGES C)
+project(h3lib VERSION 1.1 LANGUAGES C)
 
 # Code checking
 find_program(CMAKE_C_CPPCHECK NAMES cppcheck)

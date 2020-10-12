@@ -96,6 +96,8 @@ KV_Status KV_Redis_List(KV_Handle handle, KV_Key prefix, uint8_t nTrim, KV_Key b
    do{
    	freeReplyObject(reply);
    	if((reply = redisCommand(storeHandle->ctx, "SCAN %s MATCH %s*", cursor, prefix))){
+        if (!reply->elements) break;
+
    		int i;
 
    		for(i=0; i<reply->element[1]->elements && status != KV_CONTINUE; i++){
@@ -143,7 +145,7 @@ KV_Status KV_Redis_List(KV_Handle handle, KV_Key prefix, uint8_t nTrim, KV_Key b
 KV_Status KV_Redis_Exists(KV_Handle handle, KV_Key key) {
 	KV_Redis_Handle* storeHandle = (KV_Redis_Handle*) handle;
     KV_Status status = KV_FAILURE;
-    redisReply* reply;
+    redisReply* reply = NULL;
 
     if((reply = redisCommand(storeHandle->ctx, "EXISTS %s", key))){
 
@@ -161,10 +163,10 @@ KV_Status KV_Redis_Exists(KV_Handle handle, KV_Key key) {
 KV_Status KV_Redis_Read(KV_Handle handle, KV_Key key, off_t offset, KV_Value* value, size_t* size) {
 	KV_Redis_Handle* storeHandle = (KV_Redis_Handle*) handle;
 	KV_Status status = KV_FAILURE;
-	redisReply* reply;
+	redisReply* reply = NULL;
 
 	if(offset)
-		reply = redisCommand(storeHandle->ctx, "GETRANGE %s %d %d", key, offset, size);
+		reply = redisCommand(storeHandle->ctx, "GETRANGE %s %d %d", key, offset, offset + *size);
 	else
 		reply = redisCommand(storeHandle->ctx, "GET %s", key);
 
@@ -196,7 +198,7 @@ KV_Status KV_Redis_Read(KV_Handle handle, KV_Key key, off_t offset, KV_Value* va
 KV_Status KV_Redis_Create(KV_Handle handle, KV_Key key, KV_Value value, size_t size){
 	KV_Redis_Handle* storeHandle = (KV_Redis_Handle*) handle;
 	KV_Status status = KV_FAILURE;
-	redisReply* reply;
+	redisReply* reply = NULL;
 
 	reply = redisCommand(storeHandle->ctx, "SET %s %b NX", key, value, size);
 
@@ -242,7 +244,7 @@ KV_Status KV_Redis_Update(KV_Handle handle, KV_Key key, KV_Value value, off_t of
 KV_Status KV_Redis_Write(KV_Handle handle, KV_Key key, KV_Value value, size_t size) {
 	KV_Redis_Handle* storeHandle = (KV_Redis_Handle*) handle;
 	KV_Status status = KV_FAILURE;
-	redisReply* reply;
+	redisReply* reply = NULL;
 
 	reply = redisCommand(storeHandle->ctx, "SET %s %b", key, value, size);
 
@@ -261,7 +263,7 @@ KV_Status KV_Redis_Write(KV_Handle handle, KV_Key key, KV_Value value, size_t si
 KV_Status KV_Redis_Copy(KV_Handle handle, KV_Key src_key, KV_Key dest_key) {
 	KV_Redis_Handle* storeHandle = (KV_Redis_Handle*) handle;
     KV_Status status = KV_FAILURE;
-    redisReply *setReply, *getReply;
+    redisReply *setReply = NULL, *getReply = NULL;
 
     // NOTE: Command RESTORE does not work
     if((getReply = redisCommand(storeHandle->ctx, "GET %s", src_key))){
@@ -285,7 +287,7 @@ KV_Status KV_Redis_Copy(KV_Handle handle, KV_Key src_key, KV_Key dest_key) {
 KV_Status KV_Redis_Delete(KV_Handle handle, KV_Key key) {
 	KV_Redis_Handle* storeHandle = (KV_Redis_Handle*) handle;
     KV_Status status = KV_FAILURE;
-    redisReply* reply;
+    redisReply* reply = NULL;
 
     if((reply = redisCommand(storeHandle->ctx, "DEL %s", key))){
 
@@ -304,7 +306,7 @@ KV_Status KV_Redis_Delete(KV_Handle handle, KV_Key key) {
 KV_Status KV_Redis_Move(KV_Handle handle, KV_Key src_key, KV_Key dest_key) {
 //  KV_Redis_Cluster_Handle* storeHandle = (KV_Redis_Cluster_Handle*) handle;
 //  KV_Status status = KV_FAILURE;
-//  redisReply* reply;
+//  redisReply* reply = NULL;
 //
 //  if((reply = redisClusterCommand(storeHandle->ctx, "RENAME %s %s", src_key, dest_key))){
 //      switch(reply->type){

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(h3fuse VERSION 1.0 LANGUAGES C)
+project(h3fuse VERSION 1.1 LANGUAGES C)
 
 # Code checking
 find_program(CMAKE_C_CPPCHECK NAMES cppcheck)
@@ -56,7 +56,7 @@ set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "An embedded object store filesystem")
 set(CPACK_GENERATOR "RPM")
 set(CPACK_RPM_PACKAGE_LICENSE "ASL v2.0")
 set(CPACK_RPM_PACKAGE_GROUP "Development/Libraries")
-set(CPACK_RPM_PACKAGE_REQUIRES "glib2 >= 2.56, fuse3-libs >= 3.6.1, h3lib >= 1.0")
+set(CPACK_RPM_PACKAGE_REQUIRES "glib2 >= 2.56, fuse3-libs >= 3.6.1, h3lib >= 1.1")
 set(CPACK_RPM_PACKAGE_DESCRIPTION "H3 is an embedded High speed, High volume, and High availability object store, backed by a high-performance key-value store (Kreon, RocksDB, etc.) or a filesystem. H3 FUSE provides a filesystem using the h3lib library.")
 #set(CPACK_GENERATOR "DEB")
 #set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)

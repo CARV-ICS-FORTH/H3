@@ -1,0 +1,12 @@
+.git/
+**/.DS_Store
+**/*.pyc
+**/__pycache__/
+docs/
+h3lib/build/
+h3fuse/build/
+pyh3lib/build/
+pyh3lib/dist/
+pyh3lib/*.egg-info/
+pyh3lib/venv/
+JH3lib/

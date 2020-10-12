@@ -190,6 +190,22 @@ class H3(object, metaclass=H3Version):
 
         return h3lib.info_object(self._handle, bucket_name, object_name, self._user_id)
 
+    def touch_object(self, bucket_name, object_name, last_access=-1, last_modification=-1):
+        """Set object access and modification times (used by h3fuse).
+
+        :param bucket_name: the bucket name
+        :param object_name: the object name
+        :param last_access: last access timestamp
+        :param last_modification: last modification timestamp
+        :type bucket_name: string
+        :type object_name: string
+        :type last_access: float
+        :type last_modification: float
+        :returns: ``True`` if the call was successful
+        """
+
+        return h3lib.touch_object(self._handle, bucket_name, object_name, last_access, last_modification, self._user_id)
+
     def set_object_permissions(self, bucket_name, object_name, mode):
         """Set object permissions attribute (used by h3fuse).
 
@@ -333,6 +349,8 @@ class H3(object, metaclass=H3Version):
         """
 
         data, done = h3lib.read_object(self._handle, bucket_name, object_name, offset, size, self._user_id)
+        if data is None:
+            data = b''
         return H3Bytes(data, done=done)
 
     def read_object_to_file(self, bucket_name, object_name, filename, offset=0, size=0):
