@@ -1058,7 +1058,7 @@ H3_Status H3_TouchObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H
             else
                 objMeta->lastModification = *lastModification;
 
-            if(op->metadata_write(_handle, objId, (KV_Value)objMeta, 0, mSize) == KV_SUCCESS){
+            if(op->metadata_write(_handle, objId, (KV_Value)objMeta, mSize) == KV_SUCCESS){
                 status = H3_SUCCESS;
             }
         }
