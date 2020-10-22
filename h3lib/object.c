@@ -94,76 +94,69 @@ KV_Status WriteData(H3_Context* ctx, H3_ObjectMetadata* meta, KV_Value value, si
      * new size such that it doesn't overlap with the next part (if any).
      */
 
-	uint i, partIndex, partNumber, nNewParts = 0;
-	int partSubNumber;
-	KV_Status status = KV_SUCCESS;
-	uint segmentEnd = offset + size -1;
-	size_t partSize;
+    uint i, partIndex, partNumber, nNewParts = 0;
+    int partSubNumber;
+    KV_Status status = KV_SUCCESS;
+    uint segmentEnd = offset + size -1;
+    size_t partSize;
 
-	while(size && status == KV_SUCCESS) {
+    while(size && status == KV_SUCCESS) {
 
-		off_t partOffset, inPartOffset;
-		char overWrite = 0;
-        char writeWhole = 0;
+        off_t partOffset, inPartOffset;
+        char overWrite = 0;
 
-		// Check for overwriting parts based on offset...
-		for(i=0; i<meta->nParts && !overWrite; i++){
-			uint partEnd = meta->part[i].offset + meta->part[i].size - 1;
+        // Check for overwriting parts based on offset...
+        for(i=0; i<meta->nParts && !overWrite; i++){
+            uint partEnd = meta->part[i].offset + meta->part[i].size - 1;
 
-			// Segment starts within part
-			if( (i < meta->nParts -1  && meta->part[i].offset <= offset && offset <= partEnd) ||
-                (i == meta->nParts -1 && meta->part[i].offset <= offset && offset < (meta->part[i].offset + H3_PART_SIZE)) ){
-				inPartOffset = offset - meta->part[i].offset;
-				overWrite = 1;
-                if (inPartOffset == 0 && segmentEnd == partEnd)
-                    writeWhole = 1;
-			}
+            // Segment starts within part
+            if(meta->part[i].offset <= offset && offset <= partEnd){
+                inPartOffset = offset - meta->part[i].offset;
+                overWrite = 1;
+            }
 
-			// Segment ends within part
-			else if(meta->part[i].offset <= segmentEnd && segmentEnd <= partEnd){
-				inPartOffset = 0;
-				overWrite = 1;
-                if (segmentEnd == partEnd)
-                    writeWhole = 1;
-			}
-
-            // Segment overlaps part
-            else if(offset < meta->part[i].offset && partEnd < segmentEnd){
+            // Segment ends within part or overlaps it
+            else if( (meta->part[i].offset <= segmentEnd && segmentEnd <= partEnd) ||
+                     (offset < meta->part[i].offset && partEnd < segmentEnd) ){
                 inPartOffset = 0;
                 overWrite = 1;
-                writeWhole = 1;
             }
-		}
 
-		if(overWrite){
-			partIndex = --i; // Account for the auto-increment in the overlap detection loop
-			partNumber = meta->part[partIndex].number;
-			partSubNumber = meta->part[partIndex].subNumber;
-			partOffset = meta->part[partIndex].offset;
+            // Segment appends part
+            else if(partEnd < offset && offset < (meta->part[i].offset + H3_PART_SIZE)){
+                inPartOffset = meta->part[i].size;
+                overWrite = 1;
+            }
+        }
+
+        if(overWrite){
+            partIndex = --i; // Account for the auto-increment in the overlap detection loop
+            partNumber = meta->part[partIndex].number;
+            partSubNumber = meta->part[partIndex].subNumber;
+            partOffset = meta->part[partIndex].offset;
 
             // Check the next part for size restriction in case object was created as multipart
             if( i < meta->nParts -1){
                 partSize = min(meta->part[i+1].offset - (inPartOffset + partOffset), size);
             }
             else
-            	partSize = min((H3_PART_SIZE - inPartOffset), size);
-		}
+                partSize = min((H3_PART_SIZE - inPartOffset), size);
+        }
         else {
-        	// if inPartOffset != 0x00 then the store-backend will left pad the value with 0x00
-        	// if necessary in order to make the part-offset aligned to H3_PART_SIZE.
+            // if inPartOffset != 0x00 then the store-backend will left pad the value with 0x00
+            // if necessary in order to make the part-offset aligned to H3_PART_SIZE.
             partIndex = meta->nParts + nNewParts;
             partNumber = offset / H3_PART_SIZE;
             partSubNumber = -1;
             partOffset = partNumber * H3_PART_SIZE;
             inPartOffset = offset % H3_PART_SIZE;
             partSize = min((H3_PART_SIZE - inPartOffset), size);
-            writeWhole = 1;
             nNewParts++;
         }
 
-		H3_PartId partId;
-		CreatePartId(partId, meta->uuid, partNumber, partSubNumber);
-        if (writeWhole) {
+        H3_PartId partId;
+        CreatePartId(partId, meta->uuid, partNumber, partSubNumber);
+        if (inPartOffset == 0 && partSize == H3_PART_SIZE) {
             status = ctx->operation->write(ctx->handle, partId, value, partSize);
         }
         else {
@@ -182,15 +175,15 @@ KV_Status WriteData(H3_Context* ctx, H3_ObjectMetadata* meta, KV_Value value, si
             value += partSize;
             size -= partSize;
         }
-	}
+    }
 
     // Update object metadata
-	meta->isBad = status==KV_SUCCESS?0:1;
+    meta->isBad = status==KV_SUCCESS?0:1;
     meta->nParts += nNewParts;
     clock_gettime(CLOCK_REALTIME, &meta->lastModification);
     qsort(meta->part, meta->nParts, sizeof(H3_PartMetadata), ComparePartMetadataByOffset);
 
-	return status;
+    return status;
 }
 
 KV_Status ReadData(H3_Context* ctx, H3_ObjectMetadata* meta, KV_Value value, size_t* size, off_t offset){
