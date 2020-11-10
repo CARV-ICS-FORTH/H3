@@ -115,7 +115,7 @@ The following table outlines in pseudocode how H3 operations are implemented wit
     | ``object_metadata = get(key=object_id)``
     | ``if user_id != object_metadata.user_id: abort``
     | ``for object_part_id in object_metadata.parts: delete(object_part_id)``
-    | ``if error: object_metadata.is_bad = false, abort``
+    | ``if error: object_metadata.is_bad = true, abort``
     | ``delete(key=object_id)``
 :Read object:
     | ``object_metadata = get(key=object_id)``
@@ -128,7 +128,7 @@ The following table outlines in pseudocode how H3 operations are implemented wit
     | ``object_metadata = get(key=object_id)``
     | ``if user_id != object_metadata.user_id: abort``
     | ``put(key=object_part_id, offset, length, data)`` (one or more)
-    | ``if error: object_metadata.is_bad = false else: abort``
+    | ``if error: object_metadata.is_bad = true, abort``
     | ``update object_metadata timestamps``
     | ``put(key=object_id, value=object_metadata)``
 :Write object from object data:
