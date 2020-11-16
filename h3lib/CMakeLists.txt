@@ -50,7 +50,6 @@ find_package(rocksdb)
 find_package(kreon)
 find_package(hiredis)
 
-
 #https://cmake.org/cmake/help/v3.10/command/add_library.html
 set(SOURCE_FILES h3lib.c bucket.c object.c multipart.c kv_fs.c util.c url_parser.c)
 if(ROCKSDB_FOUND)
@@ -77,7 +76,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE ${GLIB_LDFLAGS} uuid)
 
 if(ROCKSDB_FOUND)
 	target_include_directories(${PROJECT_NAME} PRIVATE ${ROCKSDB_INCLUDE_DIR})
-	target_link_libraries(${PROJECT_NAME} PRIVATE ${ROCKSDB_LIBRARIES} dl )
+	target_link_libraries(${PROJECT_NAME} PRIVATE ${ROCKSDB_LIBRARIES} dl)
 endif()
 
 if(KREON_FOUND)
@@ -90,6 +89,12 @@ if(HIREDIS_FOUND)
   target_link_libraries(${PROJECT_NAME} PRIVATE ${HIREDIS_LIBRARIES})
 endif()
 
+if(H3LIB_USE_COMPRESSION)
+  find_library(ZSTD_LIBRARY zstd REQUIRED)
+  message(STATUS "Zstandard found")
+  add_definitions(-DH3LIB_USE_COMPRESSION)
+  target_link_libraries(${PROJECT_NAME} PRIVATE ${ZSTD_LIBRARY})
+endif()
 
 #target_include_directories( ${PROJECT_NAME} PUBLIC
 #                            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

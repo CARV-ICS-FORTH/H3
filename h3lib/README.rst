@@ -18,6 +18,8 @@ For key-value store plugins install the appropriate library dependencies. ``h3li
 * For `RocksDB <https://rocksdb.org>`_, instal all dependencies as per https://github.com/facebook/rocksdb/blob/master/INSTALL.md (``make shared_lib && make install-shared``).
 * For `Redis <https://redis.io>`_, install the ``hiredis`` client library.
 
+To enable compression, add the ``-DH3LIB_USE_COMPRESSION`` flag to the ``cmake`` command.
+
 To build and install::
 
     mkdir -p build && cd build

@@ -28,8 +28,6 @@ find_library(KREON_LIBRARY_RDMA kreon_rdma
 find_library(KREON_LIBRARY kreonr
              HINTS ${PC_KREON_LIBDIR} ${PC_KREON_LIBRARY_DIRS} )
 
-find_library(ZSTD_LIBRARY zstd)
-
 # Call the find_package_handle_standard_args() macro to set the _FOUND variable and print a success or failure message
 include(FindPackageHandleStandardArgs)
 
@@ -44,7 +42,7 @@ find_package_handle_standard_args(kreon  DEFAULT_MSG
 
 
 if(KREON_FOUND)
-	set(KREON_LIBRARIES ${KREON_LIBRARY} ${KREON_LIBRARY_CLIENT} ${KREON_LIBRARY_RDMA} ${ZSTD_LIBRARY})
+	set(KREON_LIBRARIES ${KREON_LIBRARY} ${KREON_LIBRARY_CLIENT} ${KREON_LIBRARY_RDMA})
 	set(KREON_DEFINITIONS ${KREON_INCLUDE_DIR})
 	message(STATUS "Kreon found")
 else()
