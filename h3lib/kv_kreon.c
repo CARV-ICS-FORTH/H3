@@ -24,18 +24,17 @@
 
 #include <kreon/kreon_rdma_client.h>
 
-#define KREON_COMPRESSION
-#ifdef KREON_COMPRESSION
+#ifdef H3LIB_USE_COMPRESSION
 
 #include <zstd.h>
 
 krc_ret_code krc_put_compressed(uint32_t key_size, void *key, uint32_t val_size, void *value) {
     uint32_t compress_bound = ZSTD_compressBound(val_size);
     void *compressed_value = malloc(compress_bound);
-    
+
     // The last argument to the function is the compression level, which can range from 1 (lowest) to 22 (highest).
     uint32_t compressed_value_len = ZSTD_compress(compressed_value, compress_bound, value, val_size, -1);
-    
+
     if (ZSTD_isError(compressed_value_len)) {
         LogActivity(H3_ERROR_MSG, "Failed to compress the value!");
         free(compressed_value);
@@ -48,20 +47,19 @@ krc_ret_code krc_put_compressed(uint32_t key_size, void *key, uint32_t val_size,
     return result;
 }
 
-
 krc_ret_code krc_get_compressed(uint32_t key_size, char *key, char **buffer, uint32_t *size, uint32_t offset) {
     void *compressed_value = NULL;
     uint32_t compressed_value_len;
 
-    // Retrieve whole compressed value 
+    // Retrieve whole compressed value
     krc_ret_code result = krc_get(key_size, key, (char **)&compressed_value, &compressed_value_len, 0);
     if (result != KRC_SUCCESS) {
         return result;
     }
-    
-    uint32_t frameContentSize = ZSTD_getFrameContentSize(compressed_value, compressed_value_len); 
+
+    uint32_t frameContentSize = ZSTD_getFrameContentSize(compressed_value, compressed_value_len);
     // Check if returned ZSTD_CONTENTSIZE_ERROR (error occured) / ZSTD_CONTENTSIZE_UNKNOWN (size can't be determined)
-    if(frameContentSize == ZSTD_CONTENTSIZE_ERROR 
+    if(frameContentSize == ZSTD_CONTENTSIZE_ERROR
       || frameContentSize == ZSTD_CONTENTSIZE_UNKNOWN){
 	LogActivity(H3_ERROR_MSG, "%s: could not retrieve original size!", key);
 	free(compressed_value);
@@ -89,13 +87,12 @@ krc_ret_code krc_get_compressed(uint32_t key_size, char *key, char **buffer, uin
           }
           free(decompressed_value);
         }
-    }   
+    }
 
     free(compressed_value);
 
     return result;
 }
-
 
 #else
 

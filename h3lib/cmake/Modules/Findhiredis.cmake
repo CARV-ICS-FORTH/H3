@@ -36,8 +36,8 @@ find_package_handle_standard_args(hiredis  DEFAULT_MSG HIREDIS_LIBRARIES HIREDIS
 
 
 if(HIREDIS_FOUND)
-	message(STATUS "HIREDIS found")
+	message(STATUS "Hiredis found")
 else()
-	message(STATUS "HIREDIS not found")
+	message(STATUS "Hiredis not found")
 endif()
 
