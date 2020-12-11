@@ -73,7 +73,7 @@ KV_Handle KV_RocksDb_Init(const char* storageUri) {
     rocksdb_options_set_max_open_files(options, (int) (files * 0.9));
 
     // Cache options
-    rocksdb_cache_t* rocksCache = rocksdb_cache_create_lru(1024 * 1024 * 1024); // 4GB
+    rocksdb_cache_t* rocksCache = rocksdb_cache_create_lru(2 * 1024 * 1024 * 1024LU); // 2GB
     rocksdb_block_based_options_set_block_cache(tableOptions, rocksCache);
 
     rocksdb_options_set_block_based_table_factory(options, tableOptions);
