@@ -247,6 +247,47 @@ def test_simple(h3):
 
     assert h3.list_buckets() == []
 
+def test_copy(h3):
+    """Create, copy an object."""
+
+    count = 100 # More than 10
+
+    assert h3.list_buckets() == []
+
+    assert h3.create_bucket('b1') == True
+
+    assert h3.list_objects('b1') == []
+
+    with open('/dev/urandom', 'rb') as f:
+        data = f.read(3 * MEGABYTE)
+
+    h3.create_object('b1', 'object', data)
+
+    for i in range(count):
+        h3.copy_object('b1', 'object', 'copy%d' % i)
+
+    assert len(h3.list_objects('b1')) == count + 1
+
+    for i in range(count):
+        object_info = h3.info_object('b1', 'copy%d' % i)
+        assert not object_info.is_bad
+        assert object_info.size == (3 * MEGABYTE)
+        assert type(object_info.creation) == float
+        assert type(object_info.last_access) == float
+        assert type(object_info.last_modification) == float
+        assert type(object_info.last_change) == float
+
+        object_data = h3.read_object('b1', 'copy%d' % i)
+        assert object_data == data
+
+    assert len(h3.list_objects('b1')) == count + 1
+
+    assert h3.purge_bucket('b1') == True
+
+    assert h3.list_objects('b1') == []
+
+    assert h3.delete_bucket('b1') == True
+
 def test_purge(h3):
     """Create many objects. Purge."""
 

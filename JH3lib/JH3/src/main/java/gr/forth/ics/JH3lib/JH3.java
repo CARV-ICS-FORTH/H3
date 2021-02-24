@@ -48,7 +48,8 @@ public class JH3 implements Serializable{
      * Create a JH3 client.
      * Example backend URIs include (defaults for each type shown):
      * ``file:///tmp/h3`` for local filesystem
-     * ``kreon://127.0.0.1:2181`` for Kreon, where the network location refers to the ZooKeeper host and port
+     * ``kreon:///tmp/h3/kreon.dat`` for Kreon, where the file can also be block device
+     * ``kreon-rdma://127.0.0.1:2181`` for distributed Kreon with RDMA, where the network location refers to the ZooKeeper host and port
      * ``rocksdb:///tmp/h3/rocksdb`` for `RocksDB <https://rocksdb.org>`_
      * ``redis://127.0.0.1:6379`` for `Redis <https://redis.io>`_
 
@@ -901,7 +902,7 @@ public class JH3 implements Serializable{
         return operationSucceeded(status);
     }
 
-    
+
      /**
      * Set an object's permissions attribute (used by h3fuse). The status of the
      * operation is set and can be retrieved by {@link JH3#getStatus() getStatus()}.
@@ -916,7 +917,7 @@ public class JH3 implements Serializable{
      * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
      * <p>
      * {@link JH3Status#JH3_NAME_TOO_LONG} - The bucket or object name is too long.
-     * 
+     *
      * @param bucketName            The name of the bucket hosting the object.
      * @param objectName            The name of the object.
      * @param mode                  The objects permissions.
@@ -954,7 +955,7 @@ public class JH3 implements Serializable{
      * {@link JH3Status#JH3_INVALID_ARGS} - The operation has missing or malformed arguments.
      * <p>
      * {@link JH3Status#JH3_NAME_TOO_LONG} - The bucket or object name is too long.
-     * 
+     *
      * @param bucketName            The name of the bucket hosting the object.
      * @param objectName            The name of the object.
      * @param uid                   The user id.
@@ -965,7 +966,7 @@ public class JH3 implements Serializable{
     public boolean setObjectOwner(String bucketName, String objectName, int uid, int gid) throws JH3Exception {
         Pointer bucket = new Memory(bucketName.length() + 1);
         Pointer name = new Memory(objectName.length() + 1);
-        
+
         bucket.setString(0, bucketName);
         name.setString(0, objectName);
 

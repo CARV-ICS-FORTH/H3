@@ -63,7 +63,8 @@ typedef char H3_PartId[50];                                                 // '
 
 typedef enum {
     H3_STORE_FILESYSTEM = 0,    // Mounted filesystem
-    H3_STORE_KREON,             // Kreon cluster
+    H3_STORE_KREON,             // Kreon local
+    H3_STORE_KREON_RDMA,        // Kreon distributed with RDMA
     H3_STORE_ROCKSDB,           // RocksDB server
     H3_STORE_REDIS,             // Redis
     H3_NumOfStores              // Not an option, used for iteration purposes

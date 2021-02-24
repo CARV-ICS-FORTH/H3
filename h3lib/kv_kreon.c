@@ -16,106 +16,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <linux/fs.h>
 
 #include "kv_interface.h"
 #include "common.h"
 #include "util.h"
 #include "url_parser.h"
 
-#include <kreon/kreon_rdma_client.h>
+#include <kreon.h>
 
-#ifdef H3LIB_USE_COMPRESSION
-
-#include <zstd.h>
-
-krc_ret_code krc_put_compressed(uint32_t key_size, void *key, uint32_t val_size, void *value) {
-    uint32_t compress_bound = ZSTD_compressBound(val_size);
-    void *compressed_value = malloc(compress_bound);
-
-    // The last argument to the function is the compression level, which can range from 1 (lowest) to 22 (highest).
-    uint32_t compressed_value_len = ZSTD_compress(compressed_value, compress_bound, value, val_size, -1);
-
-    if (ZSTD_isError(compressed_value_len)) {
-        LogActivity(H3_ERROR_MSG, "Failed to compress the value!");
-        free(compressed_value);
-        return KRC_FAILURE;
-    }
-
-    krc_ret_code result = krc_put(key_size, key, compressed_value_len, compressed_value);
-    free(compressed_value);
-
-    return result;
-}
-
-krc_ret_code krc_get_compressed(uint32_t key_size, char *key, char **buffer, uint32_t *size, uint32_t offset) {
-    void *compressed_value = NULL;
-    uint32_t compressed_value_len;
-
-    // Retrieve whole compressed value
-    krc_ret_code result = krc_get(key_size, key, (char **)&compressed_value, &compressed_value_len, 0);
-    if (result != KRC_SUCCESS) {
-        return result;
-    }
-
-    uint32_t frameContentSize = ZSTD_getFrameContentSize(compressed_value, compressed_value_len);
-    // Check if returned ZSTD_CONTENTSIZE_ERROR (error occured) / ZSTD_CONTENTSIZE_UNKNOWN (size can't be determined)
-    if(frameContentSize == ZSTD_CONTENTSIZE_ERROR
-      || frameContentSize == ZSTD_CONTENTSIZE_UNKNOWN){
-	LogActivity(H3_ERROR_MSG, "%s: could not retrieve original size!", key);
-	free(compressed_value);
-	return KRC_FAILURE;
-    }
-
-    void *decompressed_value = malloc(frameContentSize);
-    uint32_t decompressed_value_len = ZSTD_decompress(decompressed_value, frameContentSize, compressed_value, compressed_value_len);
-
-    if (ZSTD_isError(decompressed_value_len)) {
-        LogActivity(H3_ERROR_MSG, "Failed to decompress the value!");
-        result = KRC_FAILURE;
-    } else {
-        // Retrieve whole decompressed value
-        if(*buffer == NULL){
-          *buffer = decompressed_value;
-          *size = decompressed_value_len;
-        } else {
-          // Retrieve a part of the value
-          if ((decompressed_value_len - offset) < *size) {
-            result = KRC_FAILURE;
-          } else {
-            memcpy(*buffer, (char *)decompressed_value + offset, *size);
-            result = KRC_SUCCESS;
-          }
-          free(decompressed_value);
-        }
-    }
-
-    free(compressed_value);
-
-    return result;
-}
-
-#else
-
-krc_ret_code krc_put_compressed(uint32_t key_size, void *key, uint32_t val_size, void *value) {
-    return krc_put(key_size, key, val_size, value);
-}
-
-krc_ret_code krc_get_compressed(uint32_t key_size, char *key, char **buffer, uint32_t *size, uint32_t offset) {
-    return krc_get(key_size, key, buffer, size, offset);
-}
-
-#endif
-
-typedef struct {
-    char* ip;
-    int port;
-}KV_Kreon_Handle;
-
-void KV_Kreon_Free(KV_Handle _handle) {
-	KV_Kreon_Handle* handle = (KV_Kreon_Handle*) _handle;
-	krc_close();
-	free(handle->ip);
-	free(handle);
+void KV_Kreon_Free(KV_Handle handle) {
+    klc_sync(handle);
+    // free(handle->volume_name);
     return;
 }
 
@@ -126,138 +42,197 @@ KV_Handle KV_Kreon_Init(const char* storageUri) {
         return NULL;
     }
 
-    char *host;
-    if (url->host != NULL) {
-        host = strdup(url->host);
-        LogActivity(H3_INFO_MSG, "INFO: Host in URI: %s\n", host);
+    char *path;
+    if (url->path != NULL) {
+        path = malloc(strlen(url->path) + 2);
+        path[0] = '/';
+        strcpy(&(path[1]), url->path);
+        LogActivity(H3_INFO_MSG, "INFO: Path in URI: %s\n", path);
     } else {
-        host = strdup("127.0.0.1");
-        LogActivity(H3_INFO_MSG, "WARNING: No host in URI. Using default: 127.0.0.1\n");
-    }
-    int port;
-    if (url->port != NULL) {
-        port = atoi(url->port);
-        if (port == 0) {
-            port = 2181;
-            LogActivity(H3_INFO_MSG, "WARNING: Unrecognized port in URI. Using default: 2181\n");
-        }
-    } else {
-        port = 2181;
-        LogActivity(H3_INFO_MSG, "WARNING: No port in URI. Using default: 2181\n");
+        path = strdup("/tmp/h3/kreon.dat");
+        LogActivity(H3_INFO_MSG, "WARNING: No path in URI. Using default: /tmp/h3/kreon.dat\n");
     }
     parsed_url_free(url);
 
-    KV_Kreon_Handle* handle = malloc(sizeof(KV_Kreon_Handle));
-    krc_ret_code status;
-
-    if (!handle)
+    int64_t size;
+    int fd = open(path, O_RDONLY);
+    if (fd == -1) {
+        LogActivity(H3_ERROR_MSG, "ERROR: Can not open %s\n", path);
+        free(path);
         return NULL;
+    }
+    if (ioctl(fd, BLKGETSIZE64, &size) == -1) {
+        // Maybe this is a file
+        size = lseek(fd, 0, SEEK_END);
+        if (size == -1) {
+            LogActivity(H3_ERROR_MSG, "ERROR: Can not determine size of %s\n", path);
+            free(path);
+            return NULL;
+        }
+    }
+    close(fd);
 
-    handle->ip = host;
-    handle->port = port;
-    if((status = krc_init(handle->ip, handle->port)) != KRC_SUCCESS){
-        LogActivity(H3_ERROR_MSG, "Kreon - Failed to initialize (ip:%s  port:%d) Error:%d\n",handle->ip, handle->port, status);
-        KV_Kreon_Free(handle);
+    klc_db_options db_options;
+    db_options.volume_name = path;
+    db_options.db_name = path;
+    db_options.volume_start = 0;
+    db_options.volume_size = size;
+    db_options.create_flag = KLC_CREATE_DB;
+
+    klc_handle handle = klc_open(&db_options);
+    if (!handle) {
+        LogActivity(H3_ERROR_MSG, "ERROR: Failed to initialize Kreon\n");
+        free(path);
         return NULL;
     }
 
-    return (KV_Handle)handle;
+    return handle;
 }
 
 KV_Status KV_Kreon_List(KV_Handle handle, KV_Key prefix, uint8_t nTrim, KV_Key buffer, uint32_t offset, uint32_t* nKeys){
-	KV_Status status = KV_FAILURE;
-
     size_t remaining = KV_LIST_BUFFER_SIZE;
     uint32_t nRequiredKeys = *nKeys>0?*nKeys:UINT32_MAX;
     uint32_t nMatchingKeys = 0;
-    krc_scannerp scanner;
 
-    if((scanner = krc_scan_init(16, KV_LIST_BUFFER_SIZE))){
+    klc_scanner scanner;
+    struct klc_key prefix_key;
+    struct klc_key kreon_key;
 
-    	krc_scan_fetch_keys_only(scanner);
-    	krc_scan_set_prefix_filter(scanner, strlen(prefix), prefix);
+    prefix_key.size = strlen(prefix);
+    prefix_key.data = prefix;
+    scanner = klc_init_scanner(handle, &prefix_key, KLC_GREATER_OR_EQUAL);
+    if (!scanner)
+        return KV_FAILURE;
+    while (klc_is_valid(scanner)) {
+        kreon_key = klc_get_key(scanner);
+        if (memcmp(prefix, kreon_key.data, strlen(prefix)) != 0)
+            break;
 
-    	char *key, *value;
-    	size_t keySize, valueSize;
-    	while(nMatchingKeys < nRequiredKeys && krc_scan_get_next(scanner, &key, &keySize, &value, &valueSize)){
+        LogActivity(H3_DEBUG_MSG, "key size: %u data: '%*s'\n", kreon_key.size, kreon_key.size, kreon_key.data);
 
-    		LogActivity(H3_DEBUG_MSG, "keySize:%u key: '%*s'\n", keySize, keySize, key);
+        if(offset)
+            offset--;
 
-            if(offset)
-                offset--;
+        else {
 
-            else {
-
-            	// Copy the keys if a buffer is provided...
-            	if(buffer){
-                	size_t entrySize = keySize - nTrim;
-                	if(remaining >= entrySize){
-        				memcpy(&buffer[KV_LIST_BUFFER_SIZE - remaining], &key[nTrim], entrySize);
-        				remaining -= entrySize;
-        				nMatchingKeys++;
-                	}
-                	else
-                		break;
-            	}
-
-            	// ... otherwise just count them.
-            	else
-            		nMatchingKeys++;
+            // Copy the keys if a buffer is provided...
+            if(buffer){
+                size_t entrySize = kreon_key.size - nTrim;
+                if(remaining >= entrySize){
+                    memcpy(&buffer[KV_LIST_BUFFER_SIZE - remaining], &kreon_key.data[nTrim], entrySize);
+                    remaining -= entrySize;
+                    nMatchingKeys++;
+                }
+                else
+                    break;
             }
-    	}
 
-    	krc_scan_close(scanner);
-    	*nKeys = nMatchingKeys;
+            // ... otherwise just count them.
+            else
+                nMatchingKeys++;
+        }
+        if (nMatchingKeys >= nRequiredKeys)
+            break;
 
-    	status = KV_SUCCESS;
+        if (klc_get_next(scanner) && !klc_is_valid(scanner))
+            break;
     }
+    klc_close_scanner(scanner);
 
-	return status;
+    *nKeys = nMatchingKeys;
+    return KV_SUCCESS;
 }
 
-KV_Status KV_Kreon_Exists(KV_Handle _handle, KV_Key key) {
-	if(krc_exists(strlen(key)+1, key))
-		return KV_KEY_EXIST;
+KV_Status KV_Kreon_Exists(KV_Handle handle, KV_Key key) {
+    struct klc_key kreon_key;
+    kreon_key.size = strlen(key) + 1;
+    kreon_key.data = key;
+    if (klc_exists(handle, &kreon_key) == KLC_SUCCESS)
+        return KV_KEY_EXIST;
 
-	return KV_KEY_NOT_EXIST;
+    return KV_KEY_NOT_EXIST;
 }
 
 KV_Status KV_Kreon_Read(KV_Handle handle, KV_Key key, off_t offset, KV_Value* value, size_t* size) {
-	KV_Status status;
+    KV_Status status = KV_FAILURE;
 
-	switch(krc_get_compressed(strlen(key)+1, key, (char**)value, (uint32_t*)size, (uint32_t)offset)){
-		case KRC_SUCCESS: status = KV_SUCCESS; break;
-		case KRC_KEY_NOT_FOUND: status = KV_KEY_NOT_EXIST; break;
-		default: status = KV_FAILURE; break;
-	}
+    size_t segmentSize;
+    char *segment = NULL;
 
-	return status;
+    struct klc_key kreon_key;
+    kreon_key.size = strlen(key)+1;
+    kreon_key.data = key;
+    struct klc_value kreon_value;
+    struct klc_value *kreon_value_p;
+    kreon_value_p = &kreon_value;
+    switch (klc_get(handle, &kreon_key, &kreon_value_p)) {
+        case KLC_SUCCESS:
+            if (offset > kreon_value.size){
+                free(kreon_value.data);
+                *size = 0;
+                return KV_SUCCESS;
+            }
+
+            if (*value == NULL) {
+                if (!offset) {
+                    *value = (KV_Value)kreon_value.data;
+                    *size = kreon_value.size;
+                    return KV_SUCCESS;
+                }
+
+                segmentSize = kreon_value.size - offset;
+                if ((segment = malloc(segmentSize))) {
+                    memcpy(segment, kreon_value.data + offset, segmentSize);
+                    *value = (KV_Value)segment;
+                    *size = segmentSize;
+                    status = KV_SUCCESS;
+                }
+            } else {
+                segmentSize = min(kreon_value.size - offset, *size);
+                memcpy(*value, kreon_value.data + offset, segmentSize);
+                *size = segmentSize;
+                status = KV_SUCCESS;
+            }
+
+            free(kreon_value.data);
+            break;
+        case KLC_KEY_NOT_FOUND:
+            return KV_KEY_NOT_EXIST;
+        default:
+            return KV_FAILURE;
+    }
+
+    return status;
 }
 
 KV_Status KV_Kreon_Update(KV_Handle handle, KV_Key key, KV_Value value, off_t offset, size_t size) {
     KV_Status status;
 
-    KV_Value currentValue;
-    size_t currentSize;
     KV_Value newValue;
     size_t newSize;
     int freeNewValue = 0;
 
-    switch(krc_get_compressed(strlen(key)+1, key, (char**)&currentValue, (uint32_t*)&currentSize, 0)){
-        case KRC_SUCCESS:
-            if (offset + size <= currentSize) {
-                newValue = currentValue;
-                memcpy(currentValue + offset, value, size);
-                newSize = currentSize;
+    struct klc_key kreon_key;
+    kreon_key.size = strlen(key)+1;
+    kreon_key.data = key;
+    struct klc_value kreon_value;
+    struct klc_value *kreon_value_p;
+    kreon_value_p = &kreon_value;
+    switch (klc_get(handle, &kreon_key, &kreon_value_p)) {
+        case KLC_SUCCESS:
+            if (offset + size <= kreon_value.size) {
+                newValue = kreon_value.data;
+                memcpy(kreon_value.data + offset, value, size);
+                newSize = kreon_value.size;
             } else {
                 newValue = (KV_Value)malloc(offset + size);
                 freeNewValue = 1;
-                memcpy(newValue, currentValue, currentSize);
+                memcpy(newValue, kreon_value.data, kreon_value.size);
                 memcpy(newValue + offset, value, size);
                 newSize = offset + size;
             }
             break;
-        case KRC_KEY_NOT_FOUND:
+        case KLC_KEY_NOT_FOUND:
             if (!offset) {
                 newValue = value;
             } else {
@@ -269,11 +244,15 @@ KV_Status KV_Kreon_Update(KV_Handle handle, KV_Key key, KV_Value value, off_t of
             break;
         default:
             return KV_FAILURE;
-            break;
     }
 
     // Convert key blob to string
-    if(krc_put_compressed(strlen(key)+1, key, newSize, newValue) == KRC_SUCCESS) {
+    struct klc_key_value kreon_key_value;
+    kreon_key_value.k.size = strlen(key)+1;
+    kreon_key_value.k.data = key;
+    kreon_key_value.v.size = newSize;
+    kreon_key_value.v.data = (char *)newValue;
+    if(klc_put(handle, &kreon_key_value) == KLC_SUCCESS) {
         status = KV_SUCCESS;
     } else {
         status = KV_FAILURE;
@@ -286,62 +265,68 @@ KV_Status KV_Kreon_Update(KV_Handle handle, KV_Key key, KV_Value value, off_t of
 
 KV_Status KV_Kreon_Write(KV_Handle handle, KV_Key key, KV_Value value, size_t size) {
 
-	// Convert key blob to string
-	if(krc_put_compressed(strlen(key)+1, key, size, value) == KRC_SUCCESS)
-		return KV_SUCCESS;
+    // Convert key blob to string
+    struct klc_key_value kreon_key_value;
+    kreon_key_value.k.size = strlen(key)+1;
+    kreon_key_value.k.data = key;
+    kreon_key_value.v.size = size;
+    kreon_key_value.v.data = (char *)value;
+    if(klc_put(handle, &kreon_key_value) == KLC_SUCCESS)
+        return KV_SUCCESS;
 
-	return KV_FAILURE;
+    return KV_FAILURE;
 }
 
 KV_Status KV_Kreon_Delete(KV_Handle handle, KV_Key key) {
 
-	KV_Status status;
-	switch(krc_delete(strlen(key)+1, key)){
-		case KRC_SUCCESS: status = KV_SUCCESS; 				break;
-		case KRC_KEY_NOT_FOUND: status = KV_KEY_NOT_EXIST; 	break;
-		default: 				status = KV_FAILURE; 		break;
+    KV_Status status;
 
-	}
+    struct klc_key kreon_key;
+    kreon_key.size = strlen(key) + 1;
+    kreon_key.data = key;
+    switch(klc_delete(handle, &kreon_key)){
+        case KLC_SUCCESS: status = KV_SUCCESS;              break;
+        case KLC_KEY_NOT_FOUND: status = KV_KEY_NOT_EXIST;  break;
+        default:                status = KV_FAILURE;        break;
 
-	return status;
+    }
+
+    return status;
 }
 
-KV_Status KV_Kreon_Create(KV_Handle _handle, KV_Key key, KV_Value value, size_t size){
-	KV_Status status;
-	KV_Kreon_Handle* handle = (KV_Kreon_Handle *)_handle;
+KV_Status KV_Kreon_Create(KV_Handle handle, KV_Key key, KV_Value value, size_t size){
+    KV_Status status;
 
-	if( (status = KV_Kreon_Exists(handle, key)) == KV_KEY_NOT_EXIST){
-		 status = KV_Kreon_Write(handle, key, value, size);
-	}
+    if( (status = KV_Kreon_Exists(handle, key)) == KV_KEY_NOT_EXIST){
+         status = KV_Kreon_Write(handle, key, value, size);
+    }
 
-	return status;
+    return status;
 }
 
-KV_Status KV_Kreon_Copy(KV_Handle _handle, KV_Key src_key, KV_Key dest_key) {
+KV_Status KV_Kreon_Copy(KV_Handle handle, KV_Key src_key, KV_Key dest_key) {
     size_t size = 0x00;
     KV_Value value = NULL;
-	KV_Status status;
-	KV_Kreon_Handle* handle = (KV_Kreon_Handle *)_handle;
+    KV_Status status;
 
-	if((status = KV_Kreon_Read(handle, src_key, 0, &value, &size)) == KV_SUCCESS){
-		status = KV_Kreon_Write(handle, dest_key, value, size);
-	}
+    if((status = KV_Kreon_Read(handle, src_key, 0, &value, &size)) == KV_SUCCESS){
+        status = KV_Kreon_Write(handle, dest_key, value, size);
+    }
 
-	return status;
+    return status;
 }
 
-KV_Status KV_Kreon_Move(KV_Handle _handle, KV_Key src_key, KV_Key dest_key) {
+KV_Status KV_Kreon_Move(KV_Handle handle, KV_Key src_key, KV_Key dest_key) {
     size_t size = 0x00;
     KV_Value value = NULL;
-	KV_Status status;
-	KV_Kreon_Handle* handle = (KV_Kreon_Handle *)_handle;
+    KV_Status status;
 
-	if( (status = KV_Kreon_Read(handle, src_key, 0, &value, &size)) == KV_SUCCESS &&
-		(status = KV_Kreon_Write(handle, dest_key, value, size)) == KV_SUCCESS		){
-		status = KV_Kreon_Delete(handle, src_key);
-	}
+    if( (status = KV_Kreon_Read(handle, src_key, 0, &value, &size)) == KV_SUCCESS &&
+        (status = KV_Kreon_Write(handle, dest_key, value, size)) == KV_SUCCESS      ){
+        status = KV_Kreon_Delete(handle, src_key);
+    }
 
-	return status;
+    return status;
 }
 
 KV_Status KV_Kreon_Sync(KV_Handle handle) {
@@ -351,7 +336,7 @@ KV_Status KV_Kreon_Sync(KV_Handle handle) {
 KV_Operations operationsKreon = {
     .init = KV_Kreon_Init,
     .free = KV_Kreon_Free,
-	.validate_key = NULL,
+    .validate_key = NULL,
 
     .metadata_read = KV_Kreon_Read,
     .metadata_write = KV_Kreon_Write,
