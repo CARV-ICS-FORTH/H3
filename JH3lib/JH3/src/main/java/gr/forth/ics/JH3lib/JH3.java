@@ -8,7 +8,7 @@ import com.sun.jna.ptr.NativeLongByReference;
 import com.sun.jna.ptr.PointerByReference;
 
 import java.io.Serializable;
-import java.lang.ref.Cleaner;
+import sun.misc.Cleaner;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.*;
@@ -22,7 +22,7 @@ import java.util.logging.Logger;
 public class JH3 implements Serializable{
 
     private static final Logger log = Logger.getLogger(JH3.class.getName());
-    private static final Cleaner cleaner = Cleaner.create();
+    private static Cleaner cleaner;
     private Pointer handle;
     private NativeAuth token;
     private JH3Status status = JH3Status.JH3_SUCCESS;
@@ -65,7 +65,7 @@ public class JH3 implements Serializable{
         token = new NativeAuth(userId);
 
         // When object is garbage collected, H3_Free is called to free the handle
-        cleaner.register(this, () -> {JH3Interface.INSTANCE.H3_Free(handle);});
+        cleaner = sun.misc.Cleaner.create(this, () -> {JH3Interface.INSTANCE.H3_Free(handle);});
     }
 
     /**
