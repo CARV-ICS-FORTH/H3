@@ -1,30 +1,31 @@
-# JClouds-H3 Storage Api Provider
+# JClouds-H3 Storage API Provider
 
-Jclouds-H3 is a [Jclouds](https://github.com/apache/jclouds) API provider for [H3](https://github.com/CARV-ICS-FORTH/H3/) object store.
-Provides a minimal but functional storage API for jclouds-compatible technologies(i.e. [s3proxy](https://github.com/gaul/s3proxy)). 
+Jclouds-H3 is a [Jclouds](https://github.com/apache/jclouds) API provider for the [H3](https://github.com/CARV-ICS-FORTH/H3/) object store.
+Provides a minimal but functional storage API for jclouds-compatible technologies (i.e. [s3proxy](https://github.com/gaul/s3proxy)).
 
 Implemented the Jclouds BlobStore interface, utilizing H3's Java wrapper(JH3),
-similar to Amazon's S3, providing an efficient execution throughout the stack. 
+similar to Amazon's S3, providing an efficient execution throughout the stack.
 
 ## Installation
-Detailed instructions on how to install, configure, and get the project running.
--To install locally:
 
-**Note**: Firstly we need to have H3 and its wrappers installed locally:
+To install locally, you first need to have H3 and its wrappers installed:
 - Instructions of how to install the shared libraries of H3lib, are [here](https://github.com/CARV-ICS-FORTH/H3/tree/master/h3lib) .
 - Instructions of how to install the Java wrapper of H3, are [here](https://github.com/CARV-ICS-FORTH/H3/tree/master/JH3lib) .
 
-**Note**: use JDK 9+ to avoid JH3's class missmatch.
-##### Install Module with:
-``` mvn install -Drat.skip=true -Dcheckstyle.skip=true ```
+**Note**: use JDK 8.
+
+Install Module with:
+```bash
+mvn install -Drat.skip=true -Dcheckstyle.skip=true
+```
 
 - need to skip RAT::check
 - need to skip checkstyle::check
 
 ## Configuration
 ```properties
-    jclouds.provider=h3
-    jclouds.h3.basedir=file:///tmp/demo_h3via_jclouds
+jclouds.provider=h3
+jclouds.h3.basedir=file:///tmp/demo_h3via_jclouds
 ```
 
 ## Usage test
@@ -60,7 +61,6 @@ blobStore.removeBlob(containerName, "test");
 //close context
 context.close();
 ```
-
 
 ## Known issues
 
