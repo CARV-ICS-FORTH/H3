@@ -14,11 +14,7 @@ To install locally, check the ``README`` file in each folder.
 
 A Docker image is also `available <https://hub.docker.com/r/carvicsforth/h3>`_.
 
-Docker images are built with:
-
-* ``docker build --target h3 -t h3:<version> .`` (release version, binaries only)
-* ``docker build --build-arg BUILD_TYPE=Debug --target h3-builder -t h3:<version>-dev .`` (development version, source and binaries with debug symbols included)
-* ``docker build --target h3-s3proxy -t h3-s3proxy:<version> .`` (`S3proxy <https://github.com/gaul/s3proxy>`_ over H3)
+Docker images are built with `make containers` and uploaded with `make containers-push`.
 
 Extensions
 ----------
