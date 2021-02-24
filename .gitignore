@@ -12,6 +12,9 @@ dist/
 __pychache__
 _build/
 *.pyc
+Jclouds-H3/target/
+Jclouds-H3/.idea/
+Jclouds-H3/*.iml
 h3cp/h3cp
 docs/packages.rst
 docs/gr/
