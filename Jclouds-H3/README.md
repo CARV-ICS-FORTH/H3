@@ -64,4 +64,4 @@ context.close();
 
 ## Known issues
 
-- Unstable download when downloading parts with multiple connections per file (>100MB).
+- Unstable download when downloading parts with multiple connections per file (>100MB). When used with [Cyberduck](https://cyberduck.io), uncheck the option "Segmented downloads with multiple connections per file" in "General" preferences.
