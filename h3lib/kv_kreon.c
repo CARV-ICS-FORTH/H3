@@ -168,18 +168,11 @@ KV_Status KV_Kreon_Read(KV_Handle handle, KV_Key key, off_t offset, KV_Value* va
     switch (klc_get(handle, &kreon_key, &kreon_value_p)) {
         case KLC_SUCCESS:
             if (offset > kreon_value.size){
-                free(kreon_value.data);
                 *size = 0;
                 return KV_SUCCESS;
             }
 
             if (*value == NULL) {
-                if (!offset) {
-                    *value = (KV_Value)kreon_value.data;
-                    *size = kreon_value.size;
-                    return KV_SUCCESS;
-                }
-
                 segmentSize = kreon_value.size - offset;
                 if ((segment = malloc(segmentSize))) {
                     memcpy(segment, kreon_value.data + offset, segmentSize);
@@ -194,7 +187,6 @@ KV_Status KV_Kreon_Read(KV_Handle handle, KV_Key key, off_t offset, KV_Value* va
                 status = KV_SUCCESS;
             }
 
-            free(kreon_value.data);
             break;
         case KLC_KEY_NOT_FOUND:
             return KV_KEY_NOT_EXIST;
@@ -210,7 +202,6 @@ KV_Status KV_Kreon_Update(KV_Handle handle, KV_Key key, KV_Value value, off_t of
 
     KV_Value newValue;
     size_t newSize;
-    int freeNewValue = 0;
 
     struct klc_key kreon_key;
     kreon_key.size = strlen(key)+1;
@@ -221,26 +212,18 @@ KV_Status KV_Kreon_Update(KV_Handle handle, KV_Key key, KV_Value value, off_t of
     switch (klc_get(handle, &kreon_key, &kreon_value_p)) {
         case KLC_SUCCESS:
             if (offset + size <= kreon_value.size) {
-                newValue = kreon_value.data;
-                memcpy(kreon_value.data + offset, value, size);
                 newSize = kreon_value.size;
             } else {
-                newValue = (KV_Value)malloc(offset + size);
-                freeNewValue = 1;
-                memcpy(newValue, kreon_value.data, kreon_value.size);
-                memcpy(newValue + offset, value, size);
                 newSize = offset + size;
             }
+            newValue = (KV_Value)malloc(newSize);
+            memcpy(newValue, kreon_value.data, kreon_value.size);
+            memcpy(newValue + offset, value, size);
             break;
         case KLC_KEY_NOT_FOUND:
-            if (!offset) {
-                newValue = value;
-            } else {
-                newValue = (KV_Value)calloc(1, offset + size);
-                freeNewValue = 1;
-                memcpy(newValue + offset, value, size);
-            }
             newSize = offset + size;
+            newValue = (KV_Value)calloc(1, newSize);
+            memcpy(newValue + offset, value, size);
             break;
         default:
             return KV_FAILURE;
@@ -257,8 +240,7 @@ KV_Status KV_Kreon_Update(KV_Handle handle, KV_Key key, KV_Value value, off_t of
     } else {
         status = KV_FAILURE;
     }
-    if (freeNewValue)
-        free(newValue);
+    free(newValue);
 
     return status;
 }
