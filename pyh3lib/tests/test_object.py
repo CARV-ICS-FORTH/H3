@@ -266,7 +266,15 @@ def test_copy(h3):
     for i in range(count):
         h3.copy_object('b1', 'object', 'copy%d' % i)
 
-    assert len(h3.list_objects('b1')) == count + 1
+    # Get the list of objects
+    objects = []
+    while True:
+        result = h3.list_objects('b1', offset=len(objects))
+        objects += result
+        if result.done:
+            break
+
+    assert len(objects) == count + 1
 
     for i in range(count):
         object_info = h3.info_object('b1', 'copy%d' % i)
@@ -280,7 +288,14 @@ def test_copy(h3):
         object_data = h3.read_object('b1', 'copy%d' % i)
         assert object_data == data
 
-    assert len(h3.list_objects('b1')) == count + 1
+    objects = []
+    while True:
+        result = h3.list_objects('b1', offset=len(objects))
+        objects += result
+        if result.done:
+            break
+
+    assert len(objects) == count + 1
 
     assert h3.purge_bucket('b1') == True
 
