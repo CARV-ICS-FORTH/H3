@@ -17,7 +17,7 @@
 
 #include <stdint.h>
 
-#define KV_LIST_BUFFER_SIZE 64*1024
+#define KV_LIST_BUFFER_SIZE (256*1024)
 
 
 typedef void* KV_Handle;
