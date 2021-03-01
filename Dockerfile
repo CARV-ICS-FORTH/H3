@@ -34,7 +34,7 @@ RUN mkdir build && \
 
 WORKDIR /root/pyh3lib
 RUN ./setup.py bdist_wheel && \
-    pip3 install dist/pyh3lib-1.1-cp36-cp36m-linux_x86_64.whl
+    pip3 install dist/pyh3lib-1.2-cp36-cp36m-linux_x86_64.whl
 
 WORKDIR /root/JH3lib
 RUN mvn clean install
