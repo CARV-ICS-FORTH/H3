@@ -60,6 +60,7 @@ typedef char H3_BucketId[H3_BUCKET_NAME_SIZE+2];
 typedef char H3_ObjectId[H3_BUCKET_NAME_SIZE + H3_OBJECT_NAME_SIZE + 1];
 typedef char H3_UUID[UUID_STR_LEN];
 typedef char H3_PartId[50];                                                 // '_' + UUID[36+1byte] + '#' + <part_number> + ['.' + <subpart_number>]
+typedef char H3_ObjectMetadataId[H3_BUCKET_NAME_SIZE + H3_OBJECT_NAME_SIZE + H3_METADATA_NAME_SIZE + 2]; // bucket_name + '#' + object_name + '#' + metadata_name
 
 typedef enum {
     H3_STORE_FILESYSTEM = 0,    // Mounted filesystem
@@ -108,6 +109,7 @@ typedef struct{
     struct timespec lastAccess;				// Access - the last time the file was read
     struct timespec lastModification;		// Modify - the last time the file was modified (content has been modified)
     struct timespec lastChange;				// Change - the last time meta data of the file was changed (e.g. permissions)
+    char readOnly;                          // The object is read only (used by the h3controllers)
     mode_t mode;
     uid_t uid;
     gid_t gid;
@@ -123,15 +125,19 @@ typedef struct{
 
 H3_Status ValidBucketName(KV_Operations* op,char* name);
 H3_Status ValidObjectName(KV_Operations* op,char* name);
+H3_Status ValidMetadataName(KV_Operations* op,char* name);
 H3_Status ValidPrefix(KV_Operations* op,char* name);
 int GetUserId(H3_Token token, H3_UserId id);
 int GetBucketId(H3_Name bucketName, H3_BucketId id);
 int GetBucketIndex(H3_UserMetadata* userMetadata, H3_Name bucketName);
 void GetObjectId(H3_Name bucketName, H3_Name objectName, H3_ObjectId id);
 void GetMultipartObjectId(H3_Name bucketName, H3_Name objectName, H3_ObjectId id);
+void GetObjectMetadataId(H3_ObjectMetadataId metadataId, H3_Name bucketName, H3_Name objectName, H3_Name metadataName);
 char* GetBucketFromId(H3_ObjectId objId, H3_BucketId bucketId);
+void GetBucketAndObjectFromId(H3_Name* bucketName, H3_Name* objectName, H3_ObjectId id);
 void InitMode(H3_ObjectMetadata* objMeta);
 H3_MultipartId GenerateMultipartId(uuid_t uuid);
+H3_Name GenerateDummyObjectName();
 void CreatePartId(H3_PartId partId, uuid_t uuid, int partNumber, int subPartNumber);
 char* PartToId(H3_PartId partId, uuid_t uuid, H3_PartMetadata* part);
 int GrantBucketAccess(H3_UserId id, H3_BucketMetadata* meta);
@@ -142,3 +148,5 @@ H3_Status DeleteObject(H3_Context* ctx, H3_UserId userId, H3_ObjectId objId, cha
 KV_Status WriteData(H3_Context* ctx, H3_ObjectMetadata* meta, KV_Value value, size_t size, off_t offset);
 KV_Status ReadData(H3_Context* ctx, H3_ObjectMetadata* meta, KV_Value value, size_t* size, off_t offset);
 KV_Status CopyData(H3_Context* ctx, H3_UserId userId, H3_ObjectId srcObjId, H3_ObjectId dstObjId, off_t srcOffset, size_t* size, uint8_t noOverwrite, off_t dstOffset);
+H3_Status PurgeObjectMetadata(H3_Context* ctx, H3_UserId userId, H3_Name bucketName, H3_Name objectName);
+H3_Status CopyOrMoveObjectMetadata(H3_Context* ctx, H3_UserId userId, H3_Name bucketName, H3_Name srcObjectName, H3_Name dstObjectName, char move);

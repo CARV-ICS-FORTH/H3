@@ -75,6 +75,30 @@ void GetObjectId(H3_Name bucketName, H3_Name objectName, H3_ObjectId id){
         snprintf(id,sizeof(H3_ObjectId), "%s/", bucketName);
 }
 
+void GetObjectMetadataId(H3_ObjectMetadataId metadataId, H3_Name bucketName, H3_Name objectName, H3_Name metadataName){
+    // Common usage
+    if (bucketName && objectName && metadataName)
+        snprintf(metadataId, sizeof(H3_ObjectMetadataId), "%s#%s#%s", bucketName, objectName, metadataName);
+    // Used to filter objects metadata
+    else if (bucketName && objectName)
+        snprintf(metadataId, sizeof(H3_ObjectMetadataId), "%s#%s#", bucketName, objectName);
+    // Used for list metadata
+    else if (bucketName)
+        snprintf(metadataId, sizeof(H3_ObjectMetadataId), "%s#", bucketName);
+}
+
+H3_Name GenerateDummyObjectName() {
+    uuid_t uuid;
+    H3_UUID uuidString;
+    H3_Name id = malloc(H3_OBJECT_NAME_SIZE);
+
+    uuid_generate(uuid);
+    uuid_unparse_lower(uuid, uuidString);
+    
+    snprintf(id, H3_OBJECT_NAME_SIZE, "%s", uuidString);
+
+    return id;
+}
 
 H3_MultipartId GenerateMultipartId(uuid_t uuid ){
     H3_MultipartId id = malloc(H3_MULIPARTID_SIZE);
@@ -113,6 +137,18 @@ char* GetBucketFromId(H3_ObjectId objId, H3_BucketId bucketId){
     return bucketId;
 }
 
+void GetBucketAndObjectFromId(H3_Name* bucketName, H3_Name* objectName, H3_ObjectId id) {
+    char* marker = strchr(id, '/');
+    if (marker) {
+        size_t bucketNameSize = (size_t)(marker - id);
+
+        *bucketName = (H3_Name)calloc(1, bucketNameSize);
+        memcpy(*bucketName, id, bucketNameSize);
+
+        *objectName = (H3_Name)calloc(1, H3_OBJECT_NAME_SIZE);
+        memcpy(*objectName, marker + 1, H3_OBJECT_NAME_SIZE);
+    }
+} 
 
 int GetBucketIndex(H3_UserMetadata* userMetadata, H3_Name bucketName){
     int i;

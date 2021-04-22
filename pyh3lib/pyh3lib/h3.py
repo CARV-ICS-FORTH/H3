@@ -74,6 +74,9 @@ class H3(object, metaclass=H3Version):
     OBJECT_NAME_SIZE = h3lib.H3_OBJECT_NAME_SIZE
     """Maximum object name size."""
 
+    METADATA_NAME_SIZE = h3lib.H3_METADATA_NAME_SIZE
+    """Maximum metadata name size."""
+
     def __init__(self, storage_uri, user_id=0):
         self._handle = h3lib.init(storage_uri)
         if not self._handle:
@@ -180,6 +183,7 @@ class H3(object, metaclass=H3Version):
 
         =====================  ===========
         ``is_bad``             <boolean>
+        ``read_only``          <boolean>
         ``size``               <int>
         ``creation``           <timestamp>
         ``last_access``        <timestamp>
@@ -235,6 +239,18 @@ class H3(object, metaclass=H3Version):
         """
 
         return h3lib.set_object_owner(self._handle, bucket_name, object_name, uid, gid, self._user_id)
+
+    def make_object_read_only(self, bucket_name, object_name):
+        """Set object permissions attribute (used by h3fuse).
+
+        :param bucket_name: the bucket name
+        :param object_name: the object name
+        :type bucket_name: string
+        :type object_name: string
+        :returns: ``True`` if the call was successful
+        """
+
+        return h3lib.make_object_read_only(self._handle, bucket_name, object_name, self._user_id)
 
     def create_object(self, bucket_name, object_name, data):
         """Create an object.
@@ -443,6 +459,102 @@ class H3(object, metaclass=H3Version):
         """
 
         return h3lib.delete_object(self._handle, bucket_name, object_name, self._user_id)
+
+    def create_object_metadata(self, bucket_name, object_name, metadata_name, metadata_value):
+        """Create an object's specific metadata.
+
+        :param bucket_name: the bucket name
+        :param object_name: the object name
+        :param metadata_name: the object's metadata name
+        :param metadata_value: the object's metadata value
+        :param size: the size of the object's metadata value
+        :type bucket_name: string
+        :type object_name: string
+        :type metadata_name: string
+        :type metadata_value: bytes
+        :type size: int
+        :returns: ``True`` if the call was successful
+        """
+
+        return h3lib.create_object_metadata(self._handle, bucket_name, object_name, metadata_name, metadata_value, self._user_id)
+    
+    def read_object_metadata(self, bucket_name, object_name, metadata_name):
+        """Read an object's specific metadata.
+
+        :param bucket_name: the bucket name
+        :param object_name: the object name
+        :param metadata_name: the object's metadata name
+        :type bucket_name: string
+        :type object_name: string
+        :type metadata_name: string
+        :returns: An H3Bytes object if the call was successful
+        """
+
+        data, done = h3lib.read_object_metadata(self._handle, bucket_name, object_name, metadata_name, self._user_id)
+        if data is None:
+            data = b''
+        return H3Bytes(data, done=done)
+
+    def delete_object_metadata(self, bucket_name, object_name, metadata_name):
+        """Delete an object's specific metadata.
+
+        :param bucket_name: the bucket name
+        :param object_name: the object name
+        :param metadata_name: the object's metadata name
+        :type bucket_name: string
+        :type object_name: string
+        :type metadata_name: string
+        :returns: 
+        """
+
+        return h3lib.delete_object_metadata(self._handle, bucket_name, object_name, metadata_name, self._user_id)
+    
+    def copy_object_metadata(self, bucket_name, src_object_name, dst_object_name):
+        """Copy all the source object's metadata to the destination object.
+
+        :param bucket_name: the bucket name
+        :param src_object_name: the source object name
+        :param dst_object_name: the destination object name
+        :type bucket_name: string
+        :type src_object_name: string
+        :type dst_object_name: string
+        :returns: ``True`` if the call was successful
+        """
+
+        return h3lib.copy_object_metadata(self._handle, bucket_name, src_object_name, dst_object_name, self._user_id)
+    
+    def move_object_metadata(self, bucket_name, src_object_name, dst_object_name):
+        """Move all the source object's metadata to the destination object.
+
+        :param bucket_name: the bucket name
+        :param src_object_name: the source object name
+        :param dst_object_name: the destination object name
+        :type bucket_name: string
+        :type src_object_name: string
+        :type dst_object_name: string
+        :returns: ``True`` if the call was successful
+
+        .. note::
+            All the source object's metadata will be deleted after the move action.
+            All the destination object's metadata will be deleted before the move action
+        """
+
+        return h3lib.move_object_metadata(self._handle, bucket_name, src_object_name, dst_object_name, self._user_id)
+    
+    def list_objects_with_metadata(self, bucket_name, metadata_name, offset=0):
+        """List all the objects with a specific metadata.
+
+        :param bucket_name: the bucket name
+        :param metadata_name: metadata name
+        :param offset: continue list from offset (default is to start from the beginning)
+        :type bucket_name: string
+        :type metadata_name: string
+        :type offset: int
+        :returns: An H3List of object names if the call was successful
+        """
+
+        objects = h3lib.list_objects_with_metadata(self._handle, bucket_name, metadata_name, offset, self._user_id)
+        return H3List(objects["objects"], done=objects["done"], nextOffset=objects["nextOffset"])
 
     def list_multiparts(self, bucket_name, offset=0, count=10000):
         """List all multipart IDs for a bucket.
