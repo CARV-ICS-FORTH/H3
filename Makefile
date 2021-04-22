@@ -12,4 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__version__ = '1.2'
+REGISTRY_NAME?=carvicsforth
+H3_VERSION=$(shell cat VERSION)
+
+.PHONY: containers containers-push
+
+containers:
+	docker build -f Dockerfile --target h3 -t $(REGISTRY_NAME)/h3:$(H3_VERSION) .
+	docker build -f Dockerfile --target h3-s3proxy -t $(REGISTRY_NAME)/h3-s3proxy:$(H3_VERSION) .
+	docker build -f Dockerfile --build-arg BUILD_TYPE=Debug --target h3-builder -t $(REGISTRY_NAME)/h3:$(H3_VERSION)-dev .
+
+containers-push:
+	docker push $(REGISTRY_NAME)/h3:$(H3_VERSION)
+	docker push $(REGISTRY_NAME)/h3-s3proxy:$(H3_VERSION)
+	docker push $(REGISTRY_NAME)/h3:$(H3_VERSION)-dev

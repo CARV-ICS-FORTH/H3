@@ -72,7 +72,11 @@ KV_Handle KV_RocksDb_Init(const char* storageUri) {
     rocksdb_block_based_options_set_block_size(tableOptions, 1024 * 1024); // 1MB
     rocksdb_options_set_max_open_files(options, (int) (files * 0.9));
 
+    // Cache options
+    rocksdb_cache_t* rocksCache = rocksdb_cache_create_lru(2 * 1024 * 1024 * 1024LU); // 2GB
+    rocksdb_block_based_options_set_block_cache(tableOptions, rocksCache);
 
+    rocksdb_options_set_block_based_table_factory(options, tableOptions);
     // Flushing options
     rocksdb_options_set_write_buffer_size(options, 512 * __1MByte );
     rocksdb_options_set_max_write_buffer_number(options, 5);
@@ -96,6 +100,7 @@ KV_Handle KV_RocksDb_Init(const char* storageUri) {
     char* err = NULL;
     rocksdb_options_set_compression(options, rocksdb_no_compression);
     rocksdb_options_set_compaction_style(options, rocksdb_level_compaction); //Default is 'level'
+    rocksdb_options_set_use_direct_io_for_flush_and_compaction(options, 1);
     rocksdb_options_set_create_if_missing(options, 1); // create the DB if it's not already present
     rocksdb_t *db = rocksdb_open(options, path, &err);
     if (err){

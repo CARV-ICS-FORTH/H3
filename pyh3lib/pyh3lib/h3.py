@@ -59,7 +59,8 @@ class H3(object, metaclass=H3Version):
     Example backend URIs include (defaults for each type shown):
 
     * ``file:///tmp/h3`` for local filesystem
-    * ``kreon://127.0.0.1:2181`` for Kreon, where the network location refers to the ZooKeeper host and port
+    * ``kreon:///tmp/h3/kreon.dat`` for Kreon, where the file can also be block device
+    * ``kreon-rdma://127.0.0.1:2181`` for distributed Kreon with RDMA, where the network location refers to the ZooKeeper host and port
     * ``rocksdb:///tmp/h3/rocksdb`` for `RocksDB <https://rocksdb.org>`_
     * ``redis://127.0.0.1:6379`` for `Redis <https://redis.io>`_
 
