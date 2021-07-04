@@ -351,6 +351,7 @@ KV_Status KV_Kreon_RDMA_Sync(KV_Handle handle) {
 KV_Operations operationsKreonRDMA = {
     .init = KV_Kreon_RDMA_Init,
     .free = KV_Kreon_RDMA_Free,
+    .storage_info = NULL,
 	.validate_key = NULL,
 
     .metadata_read = KV_Kreon_RDMA_Read,

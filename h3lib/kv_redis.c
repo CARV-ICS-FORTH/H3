@@ -475,6 +475,7 @@ KV_Status KV_Redis_Sync(KV_Handle handle) {
 KV_Operations operationsRedis = {
     .init = KV_Redis_Init,
     .free = KV_Redis_Free,
+    .storage_info = NULL,
 	.validate_key = NULL,
 
     .metadata_read = KV_Redis_Read,

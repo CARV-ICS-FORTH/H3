@@ -395,6 +395,7 @@ KV_Status KV_RocksDb_Sync(KV_Handle handle) {
 KV_Operations operationsRocksDB = {
 	.init = KV_RocksDb_Init,
 	.free = KV_RocksDb_Free,
+    .storage_info = NULL,
 	.validate_key = NULL,
 
 	.metadata_read = KV_RocksDb_Read,

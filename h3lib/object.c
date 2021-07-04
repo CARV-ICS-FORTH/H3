@@ -599,6 +599,105 @@ H3_Status H3_CreateObject(H3_Handle handle, H3_Token token, H3_Name bucketName, 
     return status;
 }
 
+/*! \brief  Create pseudo an object
+ *
+ * Create a pseudo object according to metadata from another object. A pseudo object is a 
+ * special object that has no actual data and is present only to hold system-defined metadata.
+ *
+ * @param[in]    handle             An h3lib handle
+ * @param[in]    token              Authentication information
+ * @param[in]    bucketName         The name of the bucket to host the object
+ * @param[in]    objectName         The name of the object to be created
+ * @param[in]    info               The system-defined metadata that the pseudo object hold.
+ *
+ * @result \b H3_SUCCESS            Operation completed successfully
+ * @result \b H3_FAILURE            Bucket does not exist or user has no access
+ * @result \b H3_EXISTS             Object already exists
+ * @result \b H3_INVALID_ARGS       Missing or malformed arguments
+ * @result \b H3_NAME_TOO_LONG      Bucket or Object name is longer than H3_BUCKET_NAME_SIZE or H3_OBJECT_NAME_SIZE respectively
+ *
+ */
+H3_Status H3_CreatePseudoObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, H3_ObjectInfo* info) {
+    // Argument check. Note we allow zero-sized objects.
+    if(!handle || !token  || !bucketName || !objectName ){
+        return H3_INVALID_ARGS;
+    }
+
+    H3_Status status = H3_FAILURE;
+    H3_Context* ctx = (H3_Context*)handle;
+    KV_Handle _handle = ctx->handle;
+    KV_Operations* op = ctx->operation;
+
+    H3_UserId userId;
+    H3_BucketId bucketId;
+    H3_ObjectId objId;
+    KV_Status storeStatus;
+    KV_Value value = NULL;
+    size_t mSize = 0;
+
+    // Validate bucketName & extract userId from token
+    if( (status = ValidBucketName(op, bucketName)) != H3_SUCCESS || (status = ValidObjectName(op, objectName)) != H3_SUCCESS){
+        return status;
+    }
+
+    if( !GetUserId(token, userId) || !GetBucketId(bucketName, bucketId)){
+        return H3_INVALID_ARGS;
+    }
+
+    // Make sure user has access to the bucket
+    if(op->metadata_read(_handle, bucketId, 0, &value, &mSize) != KV_SUCCESS){
+        return H3_FAILURE;
+    }
+
+    // TODO - Check there is no multipart object with that name
+
+    status = H3_FAILURE;
+    H3_BucketMetadata* bucketMetadata = (H3_BucketMetadata*)value;
+    if(GrantBucketAccess(userId, bucketMetadata)){
+
+        GetObjectId(bucketName, objectName, objId);
+
+        size_t objMetaSize = sizeof(H3_ObjectMetadata) + sizeof(H3_PartMetadata);
+        H3_ObjectMetadata* objMeta = calloc(1, objMetaSize);
+        memcpy(objMeta->userId, userId, sizeof(H3_UserId));
+        uuid_generate(objMeta->uuid);
+        InitMode(objMeta);
+
+        objMeta->isBad = info->isBad;                                
+        objMeta->readOnly = info->readOnly;                       
+        objMeta->creation = info->creation;              
+        objMeta->lastAccess = info->lastAccess;             
+        objMeta->lastModification = info->lastModification;       
+        objMeta->lastChange = info->lastChange;            
+        objMeta->mode = info->mode;                            
+        objMeta->uid = info->uid;                              
+        objMeta->gid = info->gid;  
+        objMeta->nParts = 1;
+
+        objMeta->part[0].size      = info->size;
+        objMeta->part[0].offset    = 0;
+        objMeta->part[0].number    = 0;
+        objMeta->part[0].subNumber = -1;
+
+        H3_PartId partId;
+        CreatePartId(partId, objMeta->uuid, objMeta->part[0].number, objMeta->part[0].subNumber);
+
+        // Reserve object
+        if( (storeStatus = op->metadata_create(_handle, objId, (KV_Value)objMeta, objMetaSize)) == KV_SUCCESS &&
+            (storeStatus = op->create(_handle, partId, NULL, 0) == KV_SUCCESS)) {
+            status = H3_SUCCESS;
+        }
+        else if(storeStatus == KV_KEY_EXIST) 
+            status = H3_EXISTS;
+        else if(storeStatus == KV_KEY_TOO_LONG)
+            status = H3_NAME_TOO_LONG;
+
+        free(objMeta);
+    }
+    free(bucketMetadata);
+
+    return status;
+}
 
 /*! \brief  Create an object with data retrieved from a file
  *
@@ -1193,6 +1292,58 @@ H3_Status H3_InfoObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3
     else if(storeStatus == KV_KEY_NOT_EXIST)
         return H3_NOT_EXISTS;
 
+    else if(storeStatus == KV_KEY_TOO_LONG)
+        return H3_NAME_TOO_LONG;
+
+    return status;
+}
+
+/*! \brief  Checks if an object exists.
+ *
+ * @param[in]    handle             An h3lib handle
+ * @param[in]    token              Authentication information
+ * @param[in]    bucketName         The name of the bucket
+ * @param[in]    objectName         The name of the object
+ *
+ * @result \b H3_SUCCESS            Operation completed successfully
+ * @result \b H3_FAILURE            Unable to retrieve object info or user has no access
+ * @result \b H3_NOT_EXISTS         Object does not exist
+ * @result \b H3_INVALID_ARGS       Missing or malformed arguments
+ * @result \b H3_NAME_TOO_LONG      Bucket or Object name is longer than H3_BUCKET_NAME_SIZE or H3_OBJECT_NAME_SIZE respectively
+ *
+ */
+H3_Status H3_ObjectExists(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName) {
+    // Argument check
+    if(!handle || !token  || !bucketName || !objectName){
+        return H3_INVALID_ARGS;
+    }
+
+    H3_Status status;
+    H3_Context* ctx = (H3_Context*)handle;
+    KV_Handle _handle = ctx->handle;
+    KV_Operations* op = ctx->operation;
+
+    H3_UserId userId;
+    H3_ObjectId objId;
+    KV_Status storeStatus;
+    KV_Value value = NULL;
+    size_t mSize = 0;
+
+    // Validate bucketName & extract userId from token
+    if( (status = ValidBucketName(op, bucketName)) != H3_SUCCESS || (status = ValidObjectName(op, objectName)) != H3_SUCCESS){
+        return status;
+    }
+
+    if( !GetUserId(token, userId) ){
+        return H3_INVALID_ARGS;
+    }
+
+    status = H3_FAILURE;
+    GetObjectId(bucketName, objectName, objId);
+    if((storeStatus = op->exists(_handle, objId)) == KV_KEY_EXIST)
+        return H3_EXISTS;
+    else if(storeStatus == KV_KEY_NOT_EXIST)
+        return H3_NOT_EXISTS;
     else if(storeStatus == KV_KEY_TOO_LONG)
         return H3_NAME_TOO_LONG;
 
@@ -2766,7 +2917,12 @@ H3_Status H3_MoveObjectMetadata(H3_Handle handle, H3_Token token, H3_Name bucket
         return H3_INVALID_ARGS;
     }
 
-    return CopyOrMoveObjectMetadata(ctx, userId, bucketName, srcObjectName, dstObjectName, 1);
+    if ((status = PurgeObjectMetadata(ctx, userId, bucketName, dstObjectName))                        == H3_SUCCESS && 
+        (status = CopyOrMoveObjectMetadata(ctx, userId, bucketName, srcObjectName, dstObjectName, 1)) == H3_SUCCESS    ) {
+            return H3_SUCCESS;
+    }
+
+    return status;
 }
 
 /*! \brief  Retrieve objects that have a specific metadata key
