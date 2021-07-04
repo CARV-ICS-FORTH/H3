@@ -14,7 +14,7 @@ To compile ``h3lib`` you need CMake v3.10 or latter. H3 uses the ``glib2`` and `
 
 For key-value store plugins install the appropriate library dependencies. ``h3lib`` will build and link with any such libraries available:
 
-* For Kreon, use ``cmake .. -DCMAKE_BUILD_TYPE=Release -DKREON_BUILD_CPACK=TRUE``.
+* For `Kreon <https://github.com/CARV-ICS-FORTH/kreon>`_, use ``cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON ..``.
 * For `RocksDB <https://rocksdb.org>`_, instal all dependencies as per https://github.com/facebook/rocksdb/blob/master/INSTALL.md (``make shared_lib && make install-shared``).
 * For `Redis <https://redis.io>`_, install the ``hiredis`` client library.
 

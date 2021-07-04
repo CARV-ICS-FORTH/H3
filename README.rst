@@ -14,10 +14,7 @@ To install locally, check the ``README`` file in each folder.
 
 A Docker image is also `available <https://hub.docker.com/r/carvicsforth/h3>`_.
 
-Docker images are built with:
-
-* ``docker build -t h3:<version> .`` (release version, binaries only)
-* ``docker build --build-arg BUILD_TYPE=Debug --target h3-builder -t h3:<version>-dev .`` (development version, source and binaries with debug symbols included)
+Docker images are built with `make containers` and uploaded with `make containers-push`.
 
 Extensions
 ----------

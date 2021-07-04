@@ -26,6 +26,10 @@ extern KV_Operations operationsRedis;
 extern KV_Operations operationsKreon;
 #endif
 
+#ifdef H3LIB_USE_KREON_RDMA
+extern KV_Operations operationsKreonRDMA;
+#endif
+
 #ifdef H3LIB_USE_ROCKSDB
 extern KV_Operations operationsRocksDB;
 #endif
@@ -169,6 +173,7 @@ H3_StoreType H3_String2Type(const char* type){
     if(type){
         if(     strcmp(type, "file") == 0)           store = H3_STORE_FILESYSTEM;
         else if(strcmp(type, "kreon") == 0)          store = H3_STORE_KREON;
+        else if(strcmp(type, "kreon-rdma") == 0)     store = H3_STORE_KREON_RDMA;
         else if(strcmp(type, "rocksdb") == 0)        store = H3_STORE_ROCKSDB;
         else if(strcmp(type, "redis") == 0)          store = H3_STORE_REDIS;
     }
@@ -177,7 +182,7 @@ H3_StoreType H3_String2Type(const char* type){
 }
 
 
-const char* const StoreType[] = {"file", "kreon", "rocksdb", "redis", "unknown"};
+const char* const StoreType[] = {"file", "kreon", "kreon-rdma", "rocksdb", "redis", "unknown"};
 const char* H3_Type2String(H3_StoreType type){
 	const char* string;
 
@@ -288,6 +293,16 @@ H3_Handle H3_Init(const char* storageUri) {
 				ctx->operation = NULL;
 #endif
 				break;
+
+            case H3_STORE_KREON_RDMA:
+#ifdef H3LIB_USE_KREON_RDMA
+                LogActivity(H3_INFO_MSG, "Using kv_kreon_rdma driver...\n");
+                ctx->operation = &operationsKreonRDMA;
+#else
+                LogActivity(H3_INFO_MSG, "WARNING: Driver not available...\n");
+                ctx->operation = NULL;
+#endif
+                break;
 
             case H3_STORE_REDIS:
 #ifdef H3LIB_USE_REDIS

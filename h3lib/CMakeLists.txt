@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
-project(h3lib VERSION 1.1 LANGUAGES C)
+project(h3lib VERSION 1.2 LANGUAGES C)
 
 # Code checking
 find_program(CMAKE_C_CPPCHECK NAMES cppcheck)
@@ -48,6 +48,7 @@ pkg_search_module(GLIB REQUIRED glib-2.0)
 
 find_package(rocksdb)
 find_package(kreon)
+find_package(kreonrdma)
 find_package(hiredis)
 
 #https://cmake.org/cmake/help/v3.10/command/add_library.html
@@ -60,6 +61,11 @@ endif()
 if(KREON_FOUND)
 	set(SOURCE_FILES ${SOURCE_FILES} kv_kreon.c)
 	add_definitions(-DH3LIB_USE_KREON)
+endif()
+
+if(KREON_RDMA_FOUND)
+	set(SOURCE_FILES ${SOURCE_FILES} kv_kreon_rdma.c)
+	add_definitions(-DH3LIB_USE_KREON_RDMA)
 endif()
 
 if(HIREDIS_FOUND)
@@ -81,7 +87,12 @@ endif()
 
 if(KREON_FOUND)
 	target_include_directories(${PROJECT_NAME} PRIVATE ${KREON_INCLUDE_DIR})
-	target_link_libraries(${PROJECT_NAME} PRIVATE ${KREON_LIBRARIES} zookeeper_mt rdmacm ibverbs log)
+	target_link_libraries(${PROJECT_NAME} PRIVATE ${KREON_LIBRARIES} log)
+endif()
+
+if(KREON_RDMA_FOUND)
+	target_include_directories(${PROJECT_NAME} PRIVATE ${KREON_RDMA_INCLUDE_DIR})
+	target_link_libraries(${PROJECT_NAME} PRIVATE ${KREON_RDMA_LIBRARIES} zookeeper_mt rdmacm ibverbs log)
 endif()
 
 if(HIREDIS_FOUND)
