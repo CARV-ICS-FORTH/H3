@@ -345,4 +345,38 @@ void H3_Free(H3_Handle handle){
     free(ctx);
 };
 
+/*! \brief Retrieve information about the H3 storage
+ *
+ * @param[in]    handle             An h3lib handle
+ * @param[inout] storageInfo        User allocated structure to be filled with the info
+ *
+ * @result \b H3_SUCCESS            Operation completed successfully
+ * @result \b H3_FAILURE            Storage provider error
+ */
+ H3_Status H3_InfoStorage(H3_Handle handle, H3_StorageInfo* storageInfo) {
+    H3_Context* ctx = (H3_Context*)handle;
+    
+    KV_Handle _handle = ctx->handle;
+    KV_Operations* op = ctx->operation;
+
+    H3_Status status = H3_SUCCESS;
+    KV_StorageInfo info;
+    if (op->storage_info) {
+        if (op->storage_info(_handle, &info) == KV_SUCCESS) {
+            storageInfo->totalSpace = info.totalSpace;
+	        storageInfo->freeSpace  = info.freeSpace;
+	        storageInfo->usedSpace  = info.usedSpace;
+
+            status = H3_SUCCESS;
+        } else {
+            status = H3_FAILURE;
+        }
+    } else {
+        status = H3_FAILURE;
+    }
+
+    return status;
+ }
+
+
 

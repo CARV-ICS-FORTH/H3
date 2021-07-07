@@ -78,6 +78,12 @@ typedef struct{
 /*! \brief Pointer to user authentication data */
 typedef const H3_Auth* H3_Token;
 
+/*! \brief H3 Storage information */
+typedef struct {
+    unsigned long totalSpace;
+	unsigned long freeSpace;
+	unsigned long usedSpace;
+} H3_StorageInfo;
 
 /*! \brief Bucket statistics */
 typedef struct {
@@ -147,6 +153,11 @@ H3_Handle H3_Init(const char* storageUri);
 void H3_Free(H3_Handle handle);
 /** @}*/
 
+/** \defgroup storage Storage Info
+ *  @{
+ */
+ H3_Status H3_InfoStorage(H3_Handle handle, H3_StorageInfo* storageInfo);
+/** @}*/
 
 /** \defgroup bucket Bucket management
  *  @{
@@ -166,9 +177,11 @@ H3_Status H3_PurgeBucket(H3_Handle handle, H3_Token token, H3_Name bucketName);
 H3_Status H3_ListObjects(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name prefix, uint32_t offset, H3_Name* objectNameArray, uint32_t* nObjects);
 H3_Status H3_ForeachObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name prefix, uint32_t nObjects, uint32_t offset, h3_name_iterator_cb function, void* userData);
 H3_Status H3_InfoObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, H3_ObjectInfo* objectInfo);
+H3_Status H3_ObjectExists(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName);
 H3_Status H3_TouchObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, struct timespec *lastAccess, struct timespec *lastModification);
 H3_Status H3_SetObjectAttributes(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, H3_Attribute attrib);
 H3_Status H3_CreateObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, void* data, size_t size);
+H3_Status H3_CreatePseudoObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, H3_ObjectInfo* info);
 H3_Status H3_CreateObjectCopy(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name srcObjectName, off_t offset, size_t* size, H3_Name dstObjectName);
 H3_Status H3_CreateObjectFromFile(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, int fd, size_t size);
 H3_Status H3_CreateDummyObject(H3_Handle handle, H3_Token token, H3_Name bucketName, H3_Name objectName, const void* buffer, size_t bufferSize, size_t objectSize);

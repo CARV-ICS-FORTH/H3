@@ -21,12 +21,24 @@
 #include <fcntl.h>
 
 #define TIMESPEC_TO_DOUBLE(t) (t.tv_sec + ((double)t.tv_nsec / 1000000000ULL))
+#define DOUBLE_TO_TIMESPEC(t, time) {                                                \
+                                      t.tv_sec  = (long) time;                       \
+                                      t.tv_nsec = (time - t.tv_sec) * 1000000000ULL; \
+                                    }
 
 // Named tuples returned
+static PyTypeObject storage_info_type;
 static PyTypeObject bucket_stats_type;
 static PyTypeObject bucket_info_type;
 static PyTypeObject object_info_type;
 static PyTypeObject part_info_type;
+
+static PyStructSequence_Field storage_info_fields[] = {
+    {"total_space", NULL},
+    {"free_space",  NULL},
+    {"used_space",  NULL},
+    {NULL}
+};
 
 static PyStructSequence_Field bucket_stats_fields[] = {
     {"size",              NULL},
@@ -60,6 +72,13 @@ static PyStructSequence_Field part_info_fields[] = {
     {"part_number", NULL},
     {"size",        NULL},
     {NULL}
+};
+
+static PyStructSequence_Desc storage_info_desc = {
+    "pyh3lib.h3lib.storage_info",
+    NULL,
+    storage_info_fields,
+    3,
 };
 
 static PyStructSequence_Desc bucket_stats_desc = {
@@ -156,6 +175,39 @@ static PyObject *h3lib_init(PyObject* self, PyObject *args, PyObject *kw) {
     }
 
     return PyCapsule_New((void *)handle, NULL, h3lib_free);
+}
+
+static PyObject *h3lib_info_storage(PyObject* self, PyObject *args, PyObject *kw) {
+    PyObject *capsule = NULL;
+
+    static char *kwlist[] = {"handle", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "O", kwlist, &capsule))
+        return NULL;
+
+    H3_Handle handle = (H3_Handle)PyCapsule_GetPointer(capsule, NULL);
+    if (handle == NULL)
+        return NULL;
+
+    H3_StorageInfo storageInfo;
+    if (did_raise_exception(H3_InfoStorage(handle, &storageInfo)))
+        return NULL;
+
+    PyObject *storage_info = PyStructSequence_New(&storage_info_type);
+    if (storage_info == NULL) {
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    PyStructSequence_SET_ITEM(storage_info, 0, Py_BuildValue("k", storageInfo.totalSpace));
+    PyStructSequence_SET_ITEM(storage_info, 1, Py_BuildValue("k", storageInfo.freeSpace));
+    PyStructSequence_SET_ITEM(storage_info, 2, Py_BuildValue("k", storageInfo.usedSpace));
+    if (PyErr_Occurred()) {
+        Py_DECREF(storage_info);
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    return storage_info;
 }
 
 static PyObject *h3lib_list_buckets(PyObject* self, PyObject *args, PyObject *kw) {
@@ -415,6 +467,33 @@ static PyObject *h3lib_info_object(PyObject* self, PyObject *args, PyObject *kw)
     return object_info;
 }
 
+static PyObject *h3lib_object_exists(PyObject* self, PyObject *args, PyObject *kw) {
+    PyObject *capsule = NULL;
+    H3_Name bucketName;
+    H3_Name objectName;
+    uint32_t userId = 0;
+
+    static char *kwlist[] = {"handle", "bucket_name", "object_name", "user_id", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "Oss|I", kwlist, &capsule, &bucketName, &objectName, &userId))
+        return NULL;
+
+    H3_Handle handle = (H3_Handle)PyCapsule_GetPointer(capsule, NULL);
+    if (handle == NULL)
+        return NULL;
+
+    H3_Auth auth;
+    H3_Status status;
+    
+    auth.userId = userId;
+    if ((status = H3_ObjectExists(handle, &auth, bucketName, objectName)) == H3_NOT_EXISTS)
+        Py_RETURN_FALSE;
+    else if (status == H3_EXISTS) 
+        Py_RETURN_TRUE;
+    else 
+        if (did_raise_exception(status))
+            return NULL;
+}
+
 static PyObject *h3lib_touch_object(PyObject* self, PyObject *args, PyObject *kw) {
     PyObject *capsule = NULL;
     H3_Name bucketName;
@@ -553,6 +632,57 @@ static PyObject *h3lib_create_object(PyObject* self, PyObject *args, PyObject *k
 
     auth.userId = userId;
     if (did_raise_exception(H3_CreateObject(handle, &auth, bucketName, objectName, (void *)data, size)))
+        return NULL;
+
+    Py_RETURN_TRUE;
+}
+
+static PyObject *h3lib_create_pseudo_object(PyObject* self, PyObject *args, PyObject *kw) {
+    PyObject *capsule = NULL;
+    H3_Name bucketName;
+    H3_Name objectName;
+    uint32_t userId = 0;
+
+    char isBad;                             
+    char readOnly;                          
+    size_t size;                            
+    double creation;              
+    double lastAccess;             
+    double lastModification;       
+    double lastChange;             
+    mode_t mode;                            
+    uid_t uid;                              
+    gid_t gid;
+
+    static char *kwlist[] = {"handle", "bucket_name", "object_name", "is_bad", "read_only", "size", 
+                             "creation", "last_access", "last_modification", "last_change", "mode", 
+                             "uid", "gid", "user_id", NULL};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "Ossbbkddddiii|I", kwlist, &capsule, &bucketName, &objectName,  &isBad,                             
+                                                                          &readOnly, &size, &creation, &lastAccess, &lastModification,       
+                                                                          &lastChange, &mode, &uid, &gid, &userId))
+        return NULL;
+
+    H3_Handle handle = (H3_Handle)PyCapsule_GetPointer(capsule, NULL);
+    if (handle == NULL)
+        return NULL;
+    
+    H3_ObjectInfo info;
+
+    info.isBad = isBad;                                
+    info.readOnly = readOnly;                       
+    info.size = size;                                
+    DOUBLE_TO_TIMESPEC(info.creation,creation);              
+    DOUBLE_TO_TIMESPEC(info.lastAccess,lastAccess);             
+    DOUBLE_TO_TIMESPEC(info.lastModification,lastModification);       
+    DOUBLE_TO_TIMESPEC(info.lastChange,lastChange);            
+    info.mode = mode;                            
+    info.uid = uid;                              
+    info.gid = gid;
+
+    H3_Auth auth;
+    auth.userId = userId;
+    if (did_raise_exception(H3_CreatePseudoObject(handle, &auth, bucketName, objectName, &info)))
         return NULL;
 
     Py_RETURN_TRUE;
@@ -1305,6 +1435,7 @@ static PyObject *h3lib_create_part_copy(PyObject* self, PyObject *args, PyObject
 static PyMethodDef module_functions[] = {
     {"version",                     (PyCFunction)h3lib_version,                     METH_NOARGS, NULL},
     {"init",                        (PyCFunction)h3lib_init,                        METH_VARARGS|METH_KEYWORDS, NULL},
+    {"info_storage",                (PyCFunction)h3lib_info_storage,                METH_VARARGS|METH_KEYWORDS, NULL},
 
     {"list_buckets",                (PyCFunction)h3lib_list_buckets,                METH_VARARGS|METH_KEYWORDS, NULL},
     {"info_bucket",                 (PyCFunction)h3lib_info_bucket,                 METH_VARARGS|METH_KEYWORDS, NULL},
@@ -1314,11 +1445,13 @@ static PyMethodDef module_functions[] = {
 
     {"list_objects",                (PyCFunction)h3lib_list_objects,                METH_VARARGS|METH_KEYWORDS, NULL},
     {"info_object",                 (PyCFunction)h3lib_info_object,                 METH_VARARGS|METH_KEYWORDS, NULL},
+    {"object_exists",               (PyCFunction)h3lib_object_exists,               METH_VARARGS|METH_KEYWORDS, NULL},
     {"touch_object",                (PyCFunction)h3lib_touch_object,                METH_VARARGS|METH_KEYWORDS, NULL},
     {"set_object_permissions",      (PyCFunction)h3lib_set_object_permissions,      METH_VARARGS|METH_KEYWORDS, NULL},
     {"set_object_owner",            (PyCFunction)h3lib_set_object_owner,            METH_VARARGS|METH_KEYWORDS, NULL},
     {"make_object_read_only",       (PyCFunction)h3lib_make_object_read_only,       METH_VARARGS|METH_KEYWORDS, NULL},
     {"create_object",               (PyCFunction)h3lib_create_object,               METH_VARARGS|METH_KEYWORDS, NULL},
+    {"create_pseudo_object",        (PyCFunction)h3lib_create_pseudo_object,        METH_VARARGS|METH_KEYWORDS, NULL},
     {"create_object_copy",          (PyCFunction)h3lib_create_object_copy,          METH_VARARGS|METH_KEYWORDS, NULL},
     {"create_object_from_file",     (PyCFunction)h3lib_create_object_from_file,     METH_VARARGS|METH_KEYWORDS, NULL},
     {"write_object",                (PyCFunction)h3lib_write_object,                METH_VARARGS|METH_KEYWORDS, NULL},
@@ -1364,10 +1497,12 @@ PyMODINIT_FUNC PyInit_h3lib(void) {
     PyModule_AddIntConstant(module, "H3_OBJECT_NAME_SIZE", H3_OBJECT_NAME_SIZE);
     PyModule_AddIntConstant(module, "H3_METADATA_NAME_SIZE", H3_METADATA_NAME_SIZE);
 
+    PyStructSequence_InitType(&storage_info_type, &storage_info_desc);
     PyStructSequence_InitType(&bucket_stats_type, &bucket_stats_desc);
     PyStructSequence_InitType(&bucket_info_type, &bucket_info_desc);
     PyStructSequence_InitType(&object_info_type, &object_info_desc);
     PyStructSequence_InitType(&part_info_type, &part_info_desc);
+    Py_INCREF((PyObject *)&storage_info_type);
     Py_INCREF((PyObject *)&bucket_stats_type);
     Py_INCREF((PyObject *)&bucket_info_type);
     Py_INCREF((PyObject *)&object_info_type);

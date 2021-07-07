@@ -1,6 +1,7 @@
 from .version import __version__
 
 from .h3 import H3List, H3Bytes, H3
+from .h3_cache import H3Cache
 
 from .h3lib import FailureError as H3FailureError
 from .h3lib import InvalidArgsError as H3InvalidArgsError
